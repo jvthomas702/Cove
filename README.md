@@ -19,6 +19,7 @@ Native Swift/SwiftUI, no dependencies, MIT licensed.
 | **Next class / meeting** | "CPE lecture · in 12 min" beside the notch, a heads-up 5 minutes before with a **Join** link for Zoom/Meet/Teams, and today's schedule one hover away. |
 | **Due dates** | Assignments from a subscribed D2L/Canvas calendar and Reminders with due dates, in a Due Soon list, with alerts 24 h and 1 h before. |
 | **Volume & brightness HUD** | Notch-style level meter instead of the system pop-up. |
+| **Pip** | A little avatar beside the notch that works along with your agents, hops with confetti when something finishes, waves an "!" when something needs you, and droops when something fails. Turn it off with `"buddy": false`. |
 | **Screenshots → shelf** | Every new screenshot lands on the shelf with a thumbnail, ready to drag into a doc, Slack, or a Claude chat. |
 | **Now Playing** | Album art + animated bars while Music or Spotify plays; play/pause/skip in the expanded view. |
 | **Focus timer** | 25/50/90-minute sessions with a live countdown beside the notch. |

@@ -217,9 +217,19 @@ struct UpNextCard: View {
     @ObservedObject var model: IslandModel
 
     var body: some View {
+        if let current = model.config.calendar ? model.schedule.currentEvent() : nil {
+            NowCard(event: current, next: model.schedule.upcomingEvent())
+                .contentShape(Rectangle())
+                .onTapGesture { model.tab = .schedule }
+        } else {
+            upNext
+        }
+    }
+
+    private var upNext: some View {
         let next = model.schedule.nextEvent()
         let dueCount = model.dueSoon.count
-        HStack(spacing: 10) {
+        return HStack(spacing: 10) {
             Capsule()
                 .fill(next?.color ?? Theme.surfaceRaised)
                 .frame(width: 4, height: 30)
@@ -259,6 +269,63 @@ struct UpNextCard: View {
         .card()
         .contentShape(Rectangle())
         .onTapGesture { model.tab = .schedule }
+    }
+}
+
+/// The class or meeting happening right now, with how far through it you are.
+private struct NowCard: View {
+    let event: CalEvent
+    let next: CalEvent?
+
+    var body: some View {
+        TimelineView(.periodic(from: .now, by: 30)) { context in
+            let total = max(event.end.timeIntervalSince(event.start), 1)
+            let done = min(max(context.date.timeIntervalSince(event.start) / total, 0), 1)
+            let left = max(Int((event.end.timeIntervalSince(context.date) / 60).rounded(.up)), 0)
+            HStack(spacing: 10) {
+                Capsule().fill(event.color).frame(width: 4, height: 34)
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: 6) {
+                        Text("Now")
+                            .font(.system(size: 10, weight: .bold, design: .rounded))
+                            .foregroundStyle(.black)
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 1)
+                            .background(Capsule().fill(Palette.green))
+                        Text(event.title)
+                            .font(Theme.Font.headline)
+                            .lineLimit(1)
+                    }
+                    GeometryReader { geo in
+                        ZStack(alignment: .leading) {
+                            Capsule().fill(Color.white.opacity(0.12))
+                            Capsule().fill(event.color).frame(width: geo.size.width * done)
+                        }
+                    }
+                    .frame(height: 3)
+                    Text(subtitle(minutesLeft: left))
+                        .font(Theme.Font.caption)
+                        .foregroundStyle(Theme.inkSecondary)
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 0)
+                if let url = event.joinURL {
+                    ChipButton(title: "Join", systemImage: "video.fill", tint: Palette.green) { NSWorkspace.shared.open(url) }
+                }
+            }
+            .padding(.horizontal, Theme.Space.m)
+            .frame(height: 52)
+            .card(Palette.green.opacity(0.07))
+        }
+    }
+
+    private func subtitle(minutesLeft: Int) -> String {
+        var parts = ["\(minutesLeft) min left"]
+        if let location = event.location { parts.append(location) }
+        if let next, next.start.timeIntervalSince(event.end) < 3 * 3600 {
+            parts.append("then \(next.title)")
+        }
+        return parts.joined(separator: ", ")
     }
 }
 
@@ -414,9 +481,13 @@ struct ActivityList: View {
             }
             if model.activities.isEmpty && model.history.isEmpty {
                 VStack(spacing: 8) {
-                    Image(systemName: "sparkles")
-                        .font(.system(size: 20, weight: .medium))
-                        .foregroundStyle(Theme.inkTertiary)
+                    if model.config.buddy {
+                        Buddy(mood: .sleepy, size: 34)
+                    } else {
+                        Image(systemName: "sparkles")
+                            .font(.system(size: 20, weight: .medium))
+                            .foregroundStyle(Theme.inkTertiary)
+                    }
                     Text("Claude Code, Codex and long commands show up here")
                         .font(Theme.Font.caption)
                         .foregroundStyle(Theme.inkSecondary)

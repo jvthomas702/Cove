@@ -110,6 +110,17 @@ enum BannerIcon: Equatable {
     case app(String)
     /// A file thumbnail (screenshots).
     case file(URL)
+    /// Pip, the avatar, in a mood — optionally wearing a small badge for the agent it's reporting on.
+    case buddy(BuddyMood, AgentKind?)
+}
+
+/// Pip's moods. Each maps to an expression and a little animation.
+enum BuddyMood: Equatable {
+    case working   // focused, eyes reading, antenna pulsing blue
+    case happy     // hops with sparkles — something finished
+    case alert     // wide eyes, "!" — something needs you
+    case sad       // droops, a tear — something failed
+    case sleepy    // eyes closed, "z" — nothing going on
 }
 
 struct Banner: Identifiable, Equatable {
@@ -229,6 +240,16 @@ struct Schedule: Equatable {
     /// The next event that hasn't started, or one that started in the last 5 minutes.
     func nextEvent(at now: Date = Date()) -> CalEvent? {
         events.first { $0.start > now.addingTimeInterval(-300) && $0.end > now }
+    }
+
+    /// The event happening right now (the most recently started one, if they overlap).
+    func currentEvent(at now: Date = Date()) -> CalEvent? {
+        events.filter { $0.start <= now && $0.end > now }.max { $0.start < $1.start }
+    }
+
+    /// The next event that hasn't started yet.
+    func upcomingEvent(at now: Date = Date()) -> CalEvent? {
+        events.first { $0.start > now }
     }
 }
 

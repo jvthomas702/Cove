@@ -56,6 +56,13 @@ struct CoveConfig: Codable {
     /// Calendars to ignore entirely (e.g. "Birthdays", "US Holidays").
     var ignoreCalendars: [String] = ["Birthdays", "US Holidays", "Siri Suggestions"]
 
+    /// Banner when an event starts, so you know what's happening now.
+    var eventStartAlert: Bool = true
+
+    // MARK: Avatar
+    /// Pip, the little avatar that reacts when agents and commands work, finish, fail or need you.
+    var buddy: Bool = true
+
     // MARK: Screenshots
     /// Put every new screenshot on the shelf.
     var screenshotsToShelf: Bool = true
@@ -100,6 +107,8 @@ struct CoveConfig: Codable {
         dueAlertHours = value(.dueAlertHours, d.dueAlertHours)
         ignoreCalendars = value(.ignoreCalendars, d.ignoreCalendars)
         screenshotsToShelf = value(.screenshotsToShelf, d.screenshotsToShelf)
+        eventStartAlert = value(.eventStartAlert, d.eventStartAlert)
+        buddy = value(.buddy, d.buddy)
         hud = value(.hud, d.hud)
         hudSeconds = value(.hudSeconds, d.hudSeconds)
     }

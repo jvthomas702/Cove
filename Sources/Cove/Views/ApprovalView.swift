@@ -10,7 +10,11 @@ struct ApprovalView: View {
             Color.clear.frame(height: model.notchSize.height - 4)
 
             HStack(spacing: Theme.Space.m) {
-                AgentTile(agent: .claude, animating: true, size: 34)
+                if model.config.buddy {
+                    Buddy(mood: .alert, size: 38, badge: .claude)
+                } else {
+                    AgentTile(agent: .claude, animating: true, size: 34)
+                }
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Allow Claude to \(request.action)?")
                         .font(Theme.Font.title)

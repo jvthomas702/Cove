@@ -220,6 +220,9 @@ struct BannerIconView: View {
                     .foregroundStyle(color)
             }
             .frame(width: size, height: size)
+        case .buddy(let mood, let agent):
+            Buddy(mood: mood, size: size * 1.1, badge: agent)
+                .frame(width: size, height: size)
         case .file(let url):
             FileThumbnail(url: url, size: size)
                 .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.thumb, style: .continuous))

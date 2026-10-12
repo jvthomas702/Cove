@@ -12,7 +12,8 @@ final class IslandModel: ObservableObject {
     enum CompactItem: Equatable {
         case hud(HUDState)
         case attention(AgentKind)
-        case event(CalEvent)
+        case event(CalEvent)      // starting soon
+        case ongoing(CalEvent)    // happening now
         case running(count: Int, agent: AgentKind)
         case progress(Activity)
         case finished(count: Int, agent: AgentKind, failed: Bool)
@@ -106,7 +107,7 @@ final class IslandModel: ObservableObject {
     /// Width of each wing in compact mode. Wider for things that need words (a class name, a level bar).
     var compactWing: CGFloat {
         switch compactItem {
-        case .event?: return 112
+        case .event?, .ongoing?: return 112
         case .hud?: return 74
         default: return Self.wing
         }
@@ -135,6 +136,7 @@ final class IslandModel: ObservableObject {
         if let first = unseen.first {
             return .finished(count: unseen.count, agent: first.agent, failed: unseen.contains { $0.state == .failed })
         }
+        if config.calendar, let now = schedule.currentEvent() { return .ongoing(now) }
         if let event = countdownEvent { return .event(event) }
         if let end = focusEnd { return .focus(end: end) }
         if let np = nowPlaying, np.isPlaying { return .music(np) }
@@ -354,7 +356,7 @@ final class IslandModel: ObservableObject {
             title: "\(agent.displayName) needs you · \(title)",
             body: message,
             style: .attention,
-            icon: .symbol(agent.symbol, agent.tint),
+            icon: config.buddy ? .buddy(.alert, agent) : .symbol(agent.symbol, agent.tint),
             sticky: true,
             activityID: id
         ))
@@ -381,7 +383,9 @@ final class IslandModel: ObservableObject {
             title: failed ? "\(agent.displayName) failed · \(title)" : "\(agent.doneTitle) · \(title)",
             body: a.detail,
             style: failed ? .failure : .success,
-            icon: .symbol(failed ? "xmark.circle.fill" : agent.symbol, failed ? Palette.red : agent.tint),
+            icon: config.buddy
+                ? .buddy(failed ? .sad : .happy, agent)
+                : .symbol(failed ? "xmark.circle.fill" : agent.symbol, failed ? Palette.red : agent.tint),
             activityID: id
         ))
     }
@@ -466,15 +470,18 @@ final class IslandModel: ObservableObject {
             if let id = e.id, activity(id) != nil {
                 agentFinished(id: id, agent: activity(id)?.agent ?? agent, title: e.title, summary: body)
             } else {
-                show(Banner(title: e.title, body: body, style: .success,
-                            icon: .symbol(agent == .custom ? "checkmark.circle.fill" : agent.symbol, agent == .custom ? Palette.green : agent.tint),
-                            sticky: e.sticky ?? false))
+                let icon: BannerIcon = config.buddy
+                    ? .buddy(.happy, agent == .custom ? nil : agent)
+                    : .symbol(agent == .custom ? "checkmark.circle.fill" : agent.symbol, agent == .custom ? Palette.green : agent.tint)
+                show(Banner(title: e.title, body: body, style: .success, icon: icon, sticky: e.sticky ?? false))
             }
         case "error", "failed", "failure":
             if let id = e.id, activity(id) != nil {
                 agentFinished(id: id, agent: activity(id)?.agent ?? agent, title: e.title, summary: body, failed: true)
             } else {
-                show(Banner(title: e.title, body: body, style: .failure, icon: .symbol("xmark.octagon.fill", Palette.red), sticky: e.sticky ?? false))
+                show(Banner(title: e.title, body: body, style: .failure,
+                            icon: config.buddy ? .buddy(.sad, nil) : .symbol("xmark.octagon.fill", Palette.red),
+                            sticky: e.sticky ?? false))
             }
         case "attention", "waiting", "input":
             if let id = e.id {
@@ -637,6 +644,22 @@ final class IslandModel: ObservableObject {
         let since = lastAlertCheck
         lastAlertCheck = now
         guard config.calendar else { return }
+
+        if config.eventStartAlert {
+            for event in schedule.events where event.start > since && event.start <= now && event.end > now {
+                let until = event.end.formatted(date: .omitted, time: .shortened)
+                var body = "Until \(until)"
+                if let location = event.location { body += ", \(location)" }
+                show(Banner(
+                    title: "Now: \(event.title)",
+                    body: body,
+                    style: .info,
+                    icon: .symbol("calendar", event.color),
+                    openURL: event.joinURL,
+                    duration: 8
+                ))
+            }
+        }
 
         if config.meetingAlertMinutes > 0 {
             let lead = TimeInterval(config.meetingAlertMinutes * 60)

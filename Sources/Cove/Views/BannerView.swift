@@ -11,6 +11,9 @@ struct BannerView: View {
             Color.clear.frame(height: model.notchSize.height)
             HStack(alignment: .center, spacing: Theme.Space.m) {
                 BannerIconView(icon: banner.icon, size: 36)
+                    .background {
+                        if case .buddy(.happy, _) = banner.icon { ConfettiBurst() }
+                    }
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
                         if let source = sourceName {
@@ -68,7 +71,7 @@ struct BannerView: View {
         switch banner.icon {
         case .app(let bundleID): return AppIcons.name(for: bundleID)
         case .file: return "Shelf"
-        case .symbol:
+        case .symbol, .buddy:
             switch banner.style {
             case .success: return banner.activityID == nil ? "Done" : "Finished"
             case .attention: return "Needs you"

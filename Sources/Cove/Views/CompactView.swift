@@ -34,8 +34,8 @@ struct CompactView: View {
                 .contentTransition(.symbolEffect(.replace))
                 .frame(width: 20)
         case .attention(let agent)?:
-            AgentGlyph(agent: agent)
-        case .event(let event)?:
+            agentIcon(agent, mood: .alert)
+        case .event(let event)?, .ongoing(let event)?:
             HStack(spacing: 6) {
                 Capsule().fill(event.color).frame(width: 3, height: 13)
                 Text(event.title)
@@ -45,11 +45,11 @@ struct CompactView: View {
                     .truncationMode(.tail)
             }
         case .running(_, let agent)?:
-            AgentGlyph(agent: agent, animating: true)
+            agentIcon(agent, mood: .working)
         case .progress(let a)?:
-            AgentGlyph(agent: a.agent, animating: true)
-        case .finished(_, let agent, _)?:
-            AgentGlyph(agent: agent)
+            agentIcon(a.agent, mood: .working)
+        case .finished(_, let agent, let failed)?:
+            agentIcon(agent, mood: failed ? .sad : .happy)
         case .focus?:
             Image(systemName: "timer")
                 .font(.system(size: 13, weight: .semibold))
@@ -58,6 +58,16 @@ struct CompactView: View {
             ArtworkView(model: model, size: 20, matchID: "art")
         case nil:
             EmptyView()
+        }
+    }
+
+    /// Pip when the avatar is on; the agent's own glyph otherwise.
+    @ViewBuilder
+    private func agentIcon(_ agent: AgentKind, mood: BuddyMood) -> some View {
+        if model.config.buddy {
+            Buddy(mood: mood, size: 24)
+        } else {
+            AgentGlyph(agent: agent, animating: mood == .working)
         }
     }
 
@@ -72,6 +82,20 @@ struct CompactView: View {
                 .font(.system(size: 14, weight: .bold))
                 .foregroundStyle(Palette.amber)
                 .symbolEffect(.pulse, options: .repeating, isActive: !Theme.reduceMotion)
+        case .ongoing(let event)?:
+            TimelineView(.periodic(from: .now, by: 15)) { context in
+                let left = max(Int((event.end.timeIntervalSince(context.date) / 60).rounded(.up)), 0)
+                HStack(spacing: 5) {
+                    Text(left >= 60 ? "\(left / 60)h \(left % 60)m left" : "\(left) min left")
+                        .font(Theme.Font.headline.monospacedDigit())
+                        .foregroundStyle(Theme.inkSecondary)
+                        .lineLimit(1)
+                    ProgressRing(
+                        progress: min(max(context.date.timeIntervalSince(event.start) / max(event.end.timeIntervalSince(event.start), 1), 0), 1),
+                        color: event.color, size: 12, lineWidth: 2
+                    )
+                }
+            }
         case .event(let event)?:
             TimelineView(.periodic(from: .now, by: 15)) { context in
                 let minutes = Int((event.start.timeIntervalSince(context.date) / 60).rounded(.up))
