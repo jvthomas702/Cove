@@ -109,6 +109,8 @@ enum BannerStyle: Equatable {
 enum BannerIcon: Equatable {
     case symbol(String, Color)
     case app(String)
+    /// A file thumbnail (screenshots).
+    case file(URL)
 }
 
 struct Banner: Identifiable, Equatable {
@@ -123,6 +125,10 @@ struct Banner: Identifiable, Equatable {
     var openURL: URL? = nil
     var date = Date()
     var activityID: String? = nil
+    /// Overrides the default on-screen time for non-sticky banners.
+    var duration: TimeInterval? = nil
+    /// Clicking opens the shelf tab.
+    var showsShelf: Bool = false
 }
 
 // MARK: - Event API payload
@@ -168,6 +174,92 @@ struct BatteryState: Equatable {
         default: return "battery.100"
         }
     }
+}
+
+// MARK: - Calendar
+
+struct CalEvent: Identifiable, Equatable {
+    let id: String
+    var title: String
+    var start: Date
+    var end: Date
+    var location: String?
+    var calendar: String
+    var color: Color
+    /// Zoom / Meet / Teams / Webex link found in the event, if any.
+    var joinURL: URL?
+}
+
+struct DueItem: Identifiable, Equatable {
+    let id: String
+    var title: String
+    var due: Date
+    /// Reminders list or calendar it came from.
+    var source: String
+    var color: Color
+}
+
+struct Schedule: Equatable {
+    var events: [CalEvent] = []   // timed events, sorted by start
+    var due: [DueItem] = []       // assignments & reminders, sorted by due date
+
+    /// The next event that hasn't started, or one that started in the last 5 minutes.
+    func nextEvent(at now: Date = Date()) -> CalEvent? {
+        events.first { $0.start > now.addingTimeInterval(-300) && $0.end > now }
+    }
+}
+
+// MARK: - Volume / brightness HUD
+
+struct HUDState: Equatable {
+    enum Kind: Equatable { case volume, brightness }
+    var kind: Kind
+    var level: Double
+    var muted: Bool = false
+    /// Changes on every update so a repeated level still restarts the hide timer.
+    var stamp = UUID()
+
+    var symbol: String {
+        switch kind {
+        case .brightness:
+            return level < 0.5 ? "sun.min.fill" : "sun.max.fill"
+        case .volume:
+            if muted || level <= 0.001 { return "speaker.slash.fill" }
+            if level < 0.34 { return "speaker.wave.1.fill" }
+            if level < 0.67 { return "speaker.wave.2.fill" }
+            return "speaker.wave.3.fill"
+        }
+    }
+}
+
+// MARK: - Claude Code permission requests
+
+enum ApprovalDecision {
+    case allow, allowAlways, deny, ask
+}
+
+struct ApprovalPreview: Equatable {
+    enum Style: Equatable { case plain, code, added, removed, meta }
+    struct Line: Equatable, Identifiable {
+        let id: Int
+        let text: String
+        let style: Style
+    }
+    var lines: [Line]
+}
+
+struct ApprovalRequest: Identifiable {
+    let id = UUID()
+    let sessionID: String
+    let project: String
+    let tool: String
+    /// "run a command", "edit eval.py", …
+    let action: String
+    let preview: ApprovalPreview
+    /// Claude's suggested "don't ask again" rules; present only when "Always allow" makes sense.
+    let canAlwaysAllow: Bool
+    let createdAt = Date()
+    let expiresAt: Date
 }
 
 // MARK: - Helpers

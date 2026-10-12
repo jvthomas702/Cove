@@ -5,12 +5,14 @@ import Combine
 /// All island state lives here. Everything runs on the main actor.
 @MainActor
 final class IslandModel: ObservableObject {
-    enum Presentation: Equatable { case idle, compact, banner, expanded }
-    enum Tab: String { case home, shelf }
+    enum Presentation: Equatable { case idle, compact, banner, expanded, approval }
+    enum Tab: String { case home, schedule, shelf }
 
     /// What the two "wings" beside the notch show in compact mode, in priority order.
     enum CompactItem: Equatable {
+        case hud(HUDState)
         case attention(AgentKind)
+        case event(CalEvent)
         case running(count: Int, agent: AgentKind)
         case progress(Activity)
         case finished(count: Int, agent: AgentKind, failed: Bool)
@@ -21,7 +23,11 @@ final class IslandModel: ObservableObject {
     // Geometry
     static let wing: CGFloat = 44
     static let ear: CGFloat = 8
-    @Published var notchSize = CGSize(width: 190, height: 32)
+    @Published var notchSize = CGSize(width: 190, height: 32) {
+        didSet { recompute() }
+    }
+    /// The island's current size; the window follows this.
+    @Published private(set) var currentSize = CGSize(width: 190, height: 32)
     @Published var hasHardwareNotch = true
 
     // State
@@ -37,6 +43,9 @@ final class IslandModel: ObservableObject {
     @Published private(set) var focusEnd: Date?
     @Published private(set) var focusTotal: TimeInterval = 0
     @Published private(set) var shelf: [URL] = []
+    @Published private(set) var schedule = Schedule()
+    @Published private(set) var hud: HUDState?
+    @Published private(set) var approvals: [ApprovalRequest] = []
     @Published var serverStatus = "Starting…"
 
     /// Set by the app delegate: (command, bundleID) → sends play/pause/next to Music or Spotify.
@@ -51,6 +60,10 @@ final class IslandModel: ObservableObject {
     private var suppressHoverUntilExit = false
     private var isDropTargeted = false
     private var lastAgentSignal: Date?
+    private var hudTimer: Timer?
+    private var clockTimer: Timer?
+    private var lastAlertCheck = Date()
+    private var approvalReplies: [UUID: @MainActor (ApprovalDecision) -> Void] = [:]
 
     private static let terminalApps = [
         "com.mitchellh.ghostty", "com.googlecode.iterm2", "com.apple.Terminal", "dev.warp.Warp-Stable",
@@ -63,6 +76,10 @@ final class IslandModel: ObservableObject {
         pruneTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.prune() }
         }
+        // Drives the calendar countdown and heads-up alerts.
+        clockTimer = Timer.scheduledTimer(withTimeInterval: 20, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.clockTick() }
+        }
     }
 
     // MARK: - Sizes
@@ -71,14 +88,36 @@ final class IslandModel: ObservableObject {
         let n = notchSize
         switch p {
         case .idle: return n
-        case .compact: return CGSize(width: n.width + Self.wing * 2, height: n.height)
+        case .compact: return CGSize(width: n.width + compactWing * 2, height: n.height)
         case .banner: return CGSize(width: max(n.width + 230, 430), height: n.height + 64)
-        case .expanded: return CGSize(width: max(n.width + 430, 640), height: n.height + 206)
+        case .expanded: return CGSize(width: max(n.width + 450, 660), height: n.height + 252)
+        case .approval: return CGSize(width: max(n.width + 400, 600), height: n.height + 214)
         }
     }
 
+    /// Width of each wing in compact mode. Wider for things that need words (a class name, a level bar).
+    var compactWing: CGFloat {
+        switch compactItem {
+        case .event?: return 112
+        case .hud?: return 74
+        default: return Self.wing
+        }
+    }
+
+    /// The next event worth a countdown, if it starts within `countdownMinutes` (or started < 5 min ago).
+    var countdownEvent: CalEvent? {
+        guard config.calendar, let next = schedule.nextEvent() else { return nil }
+        let minutes = next.start.timeIntervalSinceNow / 60
+        return minutes <= Double(config.countdownMinutes) ? next : nil
+    }
+
     var compactItem: CompactItem? {
+        if let hud { return .hud(hud) }
         if let a = activities.first(where: { $0.state == .attention }) { return .attention(a.agent) }
+        // A class or meeting about to start beats background work.
+        if let event = countdownEvent, event.start.timeIntervalSinceNow <= Double(max(config.meetingAlertMinutes, 5)) * 60 {
+            return .event(event)
+        }
         let running = activities.filter { $0.state == .running }
         if let first = running.first {
             if running.count == 1, first.progress != nil { return .progress(first) }
@@ -88,6 +127,7 @@ final class IslandModel: ObservableObject {
         if let first = unseen.first {
             return .finished(count: unseen.count, agent: first.agent, failed: unseen.contains { $0.state == .failed })
         }
+        if let event = countdownEvent { return .event(event) }
         if let end = focusEnd { return .focus(end: end) }
         if let np = nowPlaying, np.isPlaying { return .music(np) }
         return nil
@@ -95,11 +135,15 @@ final class IslandModel: ObservableObject {
 
     private func recompute() {
         let next: Presentation
-        if expanded { next = .expanded }
+        if !approvals.isEmpty { next = .approval }
+        else if expanded { next = .expanded }
+        else if hud != nil { next = .compact }
         else if banner != nil { next = .banner }
         else if compactItem != nil { next = .compact }
         else { next = .idle }
         if next != presentation { presentation = next }
+        let newSize = self.size(for: next)
+        if newSize != currentSize { currentSize = newSize }
     }
 
     // MARK: - Hover / expand
@@ -154,7 +198,7 @@ final class IslandModel: ObservableObject {
             queue.removeAll()
         } else {
             markAllSeen()
-            if shelf.isEmpty { tab = .home }
+            if tab != .shelf || shelf.isEmpty { tab = .home }
         }
         recompute()
     }
@@ -196,7 +240,7 @@ final class IslandModel: ObservableObject {
         bannerTimer?.invalidate()
         bannerTimer = nil
         if !b.sticky {
-            bannerTimer = Timer.scheduledTimer(withTimeInterval: config.bannerSeconds, repeats: false) { [weak self] _ in
+            bannerTimer = Timer.scheduledTimer(withTimeInterval: b.duration ?? config.bannerSeconds, repeats: false) { [weak self] _ in
                 MainActor.assumeIsolated { self?.dismissBanner() }
             }
         }
@@ -214,7 +258,10 @@ final class IslandModel: ObservableObject {
     }
 
     func tapBanner(_ b: Banner) {
-        if let id = b.activityID, let a = activity(id) {
+        if b.showsShelf {
+            tab = .shelf
+            setExpanded(true)
+        } else if let id = b.activityID, let a = activity(id) {
             open(a)
         } else if let url = b.openURL {
             NSWorkspace.shared.open(url)
@@ -520,6 +567,168 @@ final class IslandModel: ObservableObject {
                     icon: .symbol("timer", Palette.green), sticky: true))
     }
 
+    // MARK: - Volume / brightness HUD
+
+    func showHUD(_ kind: HUDState.Kind, level: Double, muted: Bool = false) {
+        guard config.hud.lowercased() != "off", !expanded else { return }
+        hud = HUDState(kind: kind, level: min(max(level, 0), 1), muted: muted)
+        hudTimer?.invalidate()
+        hudTimer = Timer.scheduledTimer(withTimeInterval: config.hudSeconds, repeats: false) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.hud = nil
+                self?.recompute()
+            }
+        }
+        recompute()
+    }
+
+    // MARK: - Calendar & due dates
+
+    func setSchedule(_ updated: Schedule) {
+        guard updated != schedule else { return }
+        schedule = updated
+        recompute()
+    }
+
+    /// Upcoming due items within the lookahead window (overdue ones from the last 3 days included).
+    var dueSoon: [DueItem] {
+        let horizon = Date().addingTimeInterval(TimeInterval(config.dueLookaheadDays) * 86_400)
+        return schedule.due.filter { $0.due <= horizon }
+    }
+
+    /// Runs every 20 s: refreshes the countdown and fires heads-up banners for thresholds crossed since the last tick.
+    private func clockTick() {
+        let now = Date()
+        let since = lastAlertCheck
+        lastAlertCheck = now
+        guard config.calendar else { return }
+
+        if config.meetingAlertMinutes > 0 {
+            let lead = TimeInterval(config.meetingAlertMinutes * 60)
+            for event in schedule.events {
+                let alertAt = event.start.addingTimeInterval(-lead)
+                guard alertAt > since, alertAt <= now, event.start > now else { continue }
+                let minutes = max(1, Int((event.start.timeIntervalSince(now) / 60).rounded()))
+                var body = event.start.formatted(date: .omitted, time: .shortened)
+                if let location = event.location { body += " · \(location)" }
+                if event.joinURL != nil { body += " · click to join" }
+                show(Banner(
+                    title: "\(event.title) in \(minutes) min",
+                    body: body,
+                    style: .attention,
+                    icon: .symbol("calendar", event.color),
+                    openURL: event.joinURL,
+                    duration: 12
+                ))
+            }
+        }
+
+        for item in schedule.due {
+            for hours in config.dueAlertHours.sorted(by: >) {
+                let alertAt = item.due.addingTimeInterval(-hours * 3600)
+                guard alertAt > since, alertAt <= now, item.due > now else { continue }
+                show(Banner(
+                    title: "Due \(Self.relative(item.due, from: now)): \(item.title)",
+                    body: "\(item.source) · \(item.due.formatted(date: .abbreviated, time: .shortened))",
+                    style: hours <= 1 ? .attention : .info,
+                    icon: .symbol("checklist", item.color),
+                    sticky: hours <= 1,
+                    duration: 10
+                ))
+            }
+        }
+        recompute()
+    }
+
+    /// "in 12 min", "in 3h", "tomorrow", "Fri", "2h ago"…
+    nonisolated static func relative(_ date: Date, from now: Date = Date()) -> String {
+        let seconds = date.timeIntervalSince(now)
+        let minutes = Int((abs(seconds) / 60).rounded())
+        if seconds < 0 {
+            if minutes < 60 { return "\(max(minutes, 1))m ago" }
+            if minutes < 24 * 60 { return "\(minutes / 60)h ago" }
+            return "\(minutes / (24 * 60))d overdue"
+        }
+        if minutes < 1 { return "now" }
+        if minutes < 60 { return "in \(minutes) min" }
+        if minutes < 12 * 60 {
+            let h = minutes / 60, m = minutes % 60
+            return m == 0 ? "in \(h)h" : "in \(h)h \(m)m"
+        }
+        let calendar = Calendar.current
+        if calendar.isDateInToday(date) { return "today \(date.formatted(date: .omitted, time: .shortened))" }
+        if calendar.isDateInTomorrow(date) { return "tomorrow \(date.formatted(date: .omitted, time: .shortened))" }
+        return date.formatted(.dateTime.weekday(.abbreviated).hour().minute())
+    }
+
+    // MARK: - Claude Code approvals
+
+    /// "smart" mode: use the notch only when you're at the Mac but not looking at Claude's terminal.
+    func shouldRouteApproval(activityID: String) -> Bool {
+        switch config.approvals.lowercased() {
+        case "off": return false
+        case "always": return true
+        default:
+            if SystemState.screenLocked { return false }
+            if SystemState.idleSeconds > config.approvalIdleMinutes * 60 { return false }
+            let front = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
+            if let owner = activity(activityID)?.ownerApp { return front != owner }
+            guard let front else { return true }
+            return !Self.terminalApps.contains(front)
+        }
+    }
+
+    func requestApproval(_ request: ApprovalRequest, reply: @escaping @MainActor (ApprovalDecision) -> Void) {
+        approvals.append(request)
+        approvalReplies[request.id] = reply
+        // Reflect it on the session's live activity without a separate banner.
+        if var a = activity(request.sessionID) {
+            a.state = .attention
+            a.detail = "Wants to \(request.action)"
+            a.updatedAt = Date()
+            put(a)
+        }
+        lastAgentSignal = Date()
+        if config.sounds, let sound = NSSound(named: NSSound.Name(config.attentionSound)) {
+            sound.stop()
+            sound.play()
+        }
+        let id = request.id
+        _ = Timer.scheduledTimer(withTimeInterval: max(request.expiresAt.timeIntervalSinceNow, 1), repeats: false) { [weak self] _ in
+            MainActor.assumeIsolated { self?.resolveApproval(id, .ask) }
+        }
+        recompute()
+    }
+
+    func resolveApproval(_ id: UUID, _ decision: ApprovalDecision) {
+        guard let index = approvals.firstIndex(where: { $0.id == id }) else { return }
+        let request = approvals.remove(at: index)
+        approvalReplies.removeValue(forKey: id)?(decision)
+        switch decision {
+        case .allow, .allowAlways:
+            agentUpdate(id: request.sessionID, agent: .claude, title: request.project, detail: "Approved: \(request.action)")
+        case .deny:
+            agentUpdate(id: request.sessionID, agent: .claude, title: request.project, detail: "Denied: \(request.action)")
+        case .ask:
+            break // the terminal prompt takes over; Claude's Notification hook will flag it
+        }
+        recompute()
+    }
+
+    /// Answer in the terminal instead: hand the prompt back and jump to Claude's window.
+    func answerInTerminal(_ id: UUID) {
+        let sessionID = approvals.first(where: { $0.id == id })?.sessionID
+        resolveApproval(id, .ask)
+        if let sessionID, let a = activity(sessionID) { open(a) }
+    }
+
+    /// The hook gave up (Claude Code timed out or was interrupted).
+    func cancelApproval(_ id: UUID) {
+        approvals.removeAll { $0.id == id }
+        approvalReplies.removeValue(forKey: id)
+        recompute()
+    }
+
     // MARK: - Shelf
 
     func receiveDrop(_ providers: [NSItemProvider]) {
@@ -531,10 +740,29 @@ final class IslandModel: ObservableObject {
         }
     }
 
-    func addToShelf(_ urls: [URL]) {
-        for url in urls where !shelf.contains(url) { shelf.append(url) }
-        if shelf.count > 24 { shelf.removeFirst(shelf.count - 24) }
+    func addToShelf(_ urls: [URL], atFront: Bool = false) {
+        for url in urls where !shelf.contains(url) {
+            if atFront { shelf.insert(url, at: 0) } else { shelf.append(url) }
+        }
+        if shelf.count > 24 {
+            if atFront { shelf.removeLast(shelf.count - 24) } else { shelf.removeFirst(shelf.count - 24) }
+        }
         saveShelf()
+    }
+
+    /// New screenshots go to the front of the shelf, with a small thumbnail banner.
+    func addScreenshots(_ urls: [URL]) {
+        guard config.screenshotsToShelf, !urls.isEmpty else { return }
+        addToShelf(urls, atFront: true)
+        guard let newest = urls.last else { return }
+        show(Banner(
+            title: urls.count == 1 ? "Screenshot on the shelf" : "\(urls.count) screenshots on the shelf",
+            body: "Hover the notch and drag it anywhere.",
+            style: .info,
+            icon: .file(newest),
+            duration: 2.5,
+            showsShelf: true
+        ))
     }
 
     func removeFromShelf(_ url: URL) {

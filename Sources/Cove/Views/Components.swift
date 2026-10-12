@@ -1,4 +1,5 @@
 import AppKit
+import QuickLookThumbnailing
 import SwiftUI
 
 /// Agent icon (Claude sparkle, Codex brackets, terminal…), pulsing while the agent works.
@@ -117,6 +118,9 @@ struct BannerIconView: View {
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(color)
             }
+        case .file(let url):
+            FileThumbnail(url: url, size: 34)
+                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
         case .app(let bundleID):
             if let image = AppIcons.icon(for: bundleID) {
                 Image(nsImage: image).resizable().aspectRatio(contentMode: .fit)
@@ -170,5 +174,53 @@ struct IconButton: View {
         }
         .buttonStyle(.plain)
         .onHover { hovering = $0 }
+    }
+}
+
+/// Quick Look thumbnail for a file (falls back to its Finder icon while loading).
+struct FileThumbnail: View {
+    let url: URL
+    var size: CGFloat
+    @State private var image: NSImage?
+
+    var body: some View {
+        Group {
+            if let image {
+                Image(nsImage: image).resizable().aspectRatio(contentMode: .fit)
+            } else {
+                Image(nsImage: NSWorkspace.shared.icon(forFile: url.path)).resizable().aspectRatio(contentMode: .fit)
+            }
+        }
+        .frame(width: size, height: size)
+        .task(id: url) {
+            let request = QLThumbnailGenerator.Request(
+                fileAt: url,
+                size: CGSize(width: size * 2, height: size * 2),
+                scale: NSScreen.main?.backingScaleFactor ?? 2,
+                representationTypes: .thumbnail
+            )
+            if let representation = try? await QLThumbnailGenerator.shared.generateBestRepresentation(for: request) {
+                image = representation.nsImage
+            }
+        }
+    }
+}
+
+/// Horizontal level meter for the volume / brightness HUD.
+struct LevelBar: View {
+    var level: Double
+    var tint: Color
+
+    var body: some View {
+        GeometryReader { geo in
+            ZStack(alignment: .leading) {
+                Capsule().fill(Color.white.opacity(0.18))
+                Capsule()
+                    .fill(tint)
+                    .frame(width: max(geo.size.height, geo.size.width * min(max(level, 0), 1)))
+                    .opacity(level <= 0.001 ? 0 : 1)
+            }
+        }
+        .animation(.spring(response: 0.25, dampingFraction: 0.85), value: level)
     }
 }

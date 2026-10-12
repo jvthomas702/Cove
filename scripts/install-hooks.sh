@@ -13,6 +13,7 @@ MODE="install"
 
 BIN_DIR="${COVE_BIN_DIR:-$HOME/.local/bin}"
 CLAUDE_HOOK="$BIN_DIR/cove-claude-hook"
+CLAUDE_PERMISSION="$BIN_DIR/cove-claude-permission"
 CODEX_NOTIFY="$BIN_DIR/cove-codex-notify"
 
 # ---------- Claude Code ----------
@@ -21,24 +22,35 @@ mkdir -p "$HOME/.claude"
 [ -f "$CLAUDE_SETTINGS" ] && cp "$CLAUDE_SETTINGS" "$CLAUDE_SETTINGS.cove-backup"
 
 # JavaScript for Automation ships with macOS, so no jq/python dependency.
-/usr/bin/osascript -l JavaScript - "$CLAUDE_SETTINGS" "$CLAUDE_HOOK" "$MODE" <<'JXA'
+/usr/bin/osascript -l JavaScript - "$CLAUDE_SETTINGS" "$CLAUDE_HOOK" "$CLAUDE_PERMISSION" "$MODE" <<'JXA'
 ObjC.import('Foundation');
 function run(argv) {
-  const [path, cmd, mode] = argv;
+  const [path, cmd, permissionCmd, mode] = argv;
+  const ours = [cmd, permissionCmd];
   const raw = ObjC.unwrap($.NSString.stringWithContentsOfFileEncodingError(path, $.NSUTF8StringEncoding, null));
   let settings = {};
   if (raw && raw.trim().length) settings = JSON.parse(raw);
   settings.hooks = settings.hooks || {};
-  const events = ['UserPromptSubmit', 'PreToolUse', 'Notification', 'Stop', 'SessionEnd'];
-  for (const ev of events) {
+  // Event → [command, timeout seconds, matcher]
+  const wanted = {
+    UserPromptSubmit: [cmd, 5],
+    PreToolUse: [cmd, 5, '*'],
+    Notification: [cmd, 5],
+    Stop: [cmd, 5],
+    SessionEnd: [cmd, 5],
+    // Waits for your click in the notch; Cove gives up well before this timeout.
+    PermissionRequest: [permissionCmd, 120, '*'],
+  };
+  for (const ev of Object.keys(wanted)) {
     let groups = settings.hooks[ev] || [];
     // Always drop our old entries first, so re-running never duplicates them.
     groups = groups
-      .map(g => Object.assign({}, g, { hooks: (g.hooks || []).filter(h => h.command !== cmd) }))
+      .map(g => Object.assign({}, g, { hooks: (g.hooks || []).filter(h => !ours.includes(h.command)) }))
       .filter(g => g.hooks.length > 0);
     if (mode === 'install') {
-      const group = { hooks: [{ type: 'command', command: cmd, timeout: 5 }] };
-      if (ev === 'PreToolUse') group.matcher = '*';
+      const [command, timeout, matcher] = wanted[ev];
+      const group = { hooks: [{ type: 'command', command: command, timeout: timeout }] };
+      if (matcher) group.matcher = matcher;
       groups.push(group);
     }
     if (groups.length) settings.hooks[ev] = groups; else delete settings.hooks[ev];

@@ -17,9 +17,9 @@
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
-    <string>0.1.0</string>
+    <string>0.2.0</string>
     <key>CFBundleVersion</key>
-    <string>1</string>
+    <string>2</string>
     <key>LSApplicationCategoryType</key>
     <string>public.app-category.productivity</string>
     <key>LSMinimumSystemVersion</key>
@@ -30,6 +30,14 @@
     <true/>
     <key>NSAppleEventsUsageDescription</key>
     <string>Cove asks Music and Spotify what's playing so it can show it in the notch and control playback.</string>
+    <key>NSCalendarsFullAccessUsageDescription</key>
+    <string>Cove shows your next class or meeting beside the notch and gives you a heads-up before it starts.</string>
+    <key>NSCalendarsUsageDescription</key>
+    <string>Cove shows your next class or meeting beside the notch and gives you a heads-up before it starts.</string>
+    <key>NSRemindersFullAccessUsageDescription</key>
+    <string>Cove shows reminders with due dates (like assignments) in its Due Soon list.</string>
+    <key>NSRemindersUsageDescription</key>
+    <string>Cove shows reminders with due dates (like assignments) in its Due Soon list.</string>
     <key>NSHumanReadableCopyright</key>
     <string>MIT License</string>
 </dict>

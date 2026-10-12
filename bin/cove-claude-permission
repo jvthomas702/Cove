@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Claude Code PermissionRequest hook → Cove.
+#
+# Forwards the permission request to Cove and waits for your click in the notch. Cove answers
+# with Claude Code's decision JSON (allow / deny), which this script prints for Claude to read.
+# If Cove isn't running, decides not to handle it, or you don't answer in time, this prints
+# nothing and Claude shows its normal prompt in the terminal.
+WAIT="${COVE_APPROVAL_WAIT:-100}"
+response="$(curl -s -m "$WAIT" -X POST \
+  -H 'Content-Type: application/json' -H 'Expect:' \
+  --data-binary @- "http://127.0.0.1:${COVE_PORT:-7777}/hook/claude/permission" 2>/dev/null)" || exit 0
+case "$response" in
+  *hookSpecificOutput*) printf '%s\n' "$response" ;;
+esac
+exit 0

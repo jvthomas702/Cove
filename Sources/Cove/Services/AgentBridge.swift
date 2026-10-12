@@ -47,11 +47,11 @@ final class AgentBridge {
 
         case "Stop":
             let transcript = obj["transcript_path"] as? String
-            let model = self.model
+            let island = self.model
             DispatchQueue.global(qos: .utility).async {
                 let summary = transcript.flatMap { TranscriptReader.lastAssistantText(path: $0) }?.oneLine(max: 160)
                 Task { @MainActor in
-                    model.agentFinished(id: id, agent: .claude, title: project, summary: summary)
+                    island.agentFinished(id: id, agent: .claude, title: project, summary: summary)
                 }
             }
 
@@ -91,6 +91,133 @@ final class AgentBridge {
         }
     }
 
+    // MARK: Permission prompts (PermissionRequest hook)
+    // cove-claude-permission posts the hook JSON here and waits. We answer with Claude Code's
+    // hookSpecificOutput JSON (allow / deny), or an empty body to fall back to the normal terminal prompt.
+
+    func handlePermission(_ exchange: HTTPExchange) {
+        guard let obj = (try? JSONSerialization.jsonObject(with: exchange.body)) as? [String: Any] else {
+            exchange.respond(200, "")
+            return
+        }
+        let sessionID = obj["session_id"] as? String ?? "default"
+        let cwd = obj["cwd"] as? String ?? ""
+        let project = cwd.isEmpty ? "Claude Code" : (cwd as NSString).lastPathComponent
+        let tool = obj["tool_name"] as? String ?? "tool"
+        let input = obj["tool_input"] as? [String: Any] ?? [:]
+        let suggestions = obj["permission_suggestions"] as? [Any]
+        let activityID = "claude:\(sessionID)"
+
+        guard model.shouldRouteApproval(activityID: activityID) else {
+            exchange.respond(200, "") // terminal handles it as usual
+            return
+        }
+
+        let (action, preview) = Self.describePermission(tool: tool, input: input)
+        let request = ApprovalRequest(
+            sessionID: activityID,
+            project: project,
+            tool: tool,
+            action: action,
+            preview: preview,
+            canAlwaysAllow: !(suggestions?.isEmpty ?? true),
+            expiresAt: Date().addingTimeInterval(model.config.approvalTimeout)
+        )
+        let island = self.model
+        exchange.onClientGone = { island.cancelApproval(request.id) }
+        island.requestApproval(request) { decision in
+            exchange.respond(200, Self.permissionResponse(decision, suggestions: suggestions))
+        }
+    }
+
+    static func permissionResponse(_ decision: ApprovalDecision, suggestions: [Any]?) -> String {
+        var body: [String: Any]
+        switch decision {
+        case .ask:
+            return ""
+        case .allow:
+            body = ["behavior": "allow"]
+        case .allowAlways:
+            body = ["behavior": "allow"]
+            if let suggestions, !suggestions.isEmpty { body["updatedPermissions"] = suggestions }
+        case .deny:
+            body = ["behavior": "deny", "message": "Denied from the notch (Cove)."]
+        }
+        let output: [String: Any] = [
+            "hookSpecificOutput": ["hookEventName": "PermissionRequest", "decision": body] as [String: Any]
+        ]
+        guard let data = try? JSONSerialization.data(withJSONObject: output),
+              let text = String(data: data, encoding: .utf8) else { return "" }
+        return text
+    }
+
+    /// Turns the tool call into a short verb phrase plus a few preview lines (command, diff, file head…).
+    static func describePermission(tool: String, input: [String: Any]) -> (String, ApprovalPreview) {
+        var lines: [(String, ApprovalPreview.Style)] = []
+        func file(_ key: String = "file_path") -> String {
+            ((input[key] as? String).map { ($0 as NSString).lastPathComponent }) ?? "a file"
+        }
+        func addBlock(_ text: String?, style: ApprovalPreview.Style, prefix: String = "", limit: Int) {
+            guard let text, !text.isEmpty else { return }
+            let all = text.components(separatedBy: "\n")
+            for line in all.prefix(limit) { lines.append((prefix + line, style)) }
+            if all.count > limit { lines.append(("  … \(all.count - limit) more lines", .meta)) }
+        }
+
+        let action: String
+        switch tool {
+        case "Bash":
+            action = "run a command"
+            if let description = input["description"] as? String, !description.isEmpty { lines.append((description, .meta)) }
+            addBlock(input["command"] as? String, style: .code, prefix: "$ ", limit: 6)
+        case "Edit":
+            action = "edit \(file())"
+            addBlock(input["old_string"] as? String, style: .removed, prefix: "- ", limit: 4)
+            addBlock(input["new_string"] as? String, style: .added, prefix: "+ ", limit: 4)
+        case "MultiEdit":
+            action = "edit \(file())"
+            let edits = input["edits"] as? [[String: Any]] ?? []
+            if let first = edits.first {
+                addBlock(first["old_string"] as? String, style: .removed, prefix: "- ", limit: 3)
+                addBlock(first["new_string"] as? String, style: .added, prefix: "+ ", limit: 3)
+            }
+            if edits.count > 1 { lines.append(("+ \(edits.count - 1) more edits", .meta)) }
+        case "Write":
+            action = FileManager.default.fileExists(atPath: input["file_path"] as? String ?? "") ? "overwrite \(file())" : "create \(file())"
+            addBlock(input["content"] as? String, style: .added, prefix: "+ ", limit: 6)
+        case "NotebookEdit":
+            action = "edit \(file("notebook_path"))"
+            addBlock(input["new_source"] as? String, style: .added, prefix: "+ ", limit: 6)
+        case "Read":
+            action = "read \(file())"
+            addBlock(input["file_path"] as? String, style: .code, limit: 1)
+        case "WebFetch":
+            action = "open a web page"
+            addBlock(input["url"] as? String, style: .code, limit: 1)
+            addBlock((input["prompt"] as? String)?.oneLine(max: 140), style: .meta, limit: 1)
+        case "WebSearch":
+            action = "search the web"
+            addBlock(input["query"] as? String, style: .code, limit: 1)
+        default:
+            if tool.hasPrefix("mcp__") {
+                let parts = tool.components(separatedBy: "__")
+                let server = parts.count > 1 ? parts[1] : "MCP"
+                action = "use \(parts.last ?? tool) (\(server))"
+            } else {
+                action = "use \(tool)"
+            }
+            if let data = try? JSONSerialization.data(withJSONObject: input, options: [.sortedKeys]),
+               let json = String(data: data, encoding: .utf8) {
+                addBlock(json.oneLine(max: 300), style: .code, limit: 1)
+            }
+        }
+
+        let trimmed = lines.prefix(9).enumerated().map { index, entry in
+            ApprovalPreview.Line(id: index, text: String(entry.0.prefix(180)), style: entry.1)
+        }
+        return (action, ApprovalPreview(lines: trimmed))
+    }
+
     // MARK: Codex
     // Codex runs `notify = [...]` from ~/.codex/config.toml with the event JSON as its last argument.
 
@@ -102,6 +229,20 @@ final class AgentBridge {
         let thread = obj["thread-id"] as? String ?? obj["turn-id"] as? String ?? "codex"
         let summary = (obj["last-assistant-message"] as? String)?.oneLine(max: 160)
         model.agentFinished(id: "codex:\(thread)", agent: .codex, title: project, summary: summary)
+    }
+}
+
+/// Signals for "is the person actually at the Mac right now?"
+enum SystemState {
+    static var screenLocked: Bool {
+        guard let session = CGSessionCopyCurrentDictionary() as? [String: Any] else { return false }
+        return session["CGSSessionScreenIsLocked"] as? Bool ?? false
+    }
+
+    /// Seconds since the last keyboard or mouse input.
+    static var idleSeconds: Double {
+        let kinds: [CGEventType] = [.mouseMoved, .keyDown, .leftMouseDown, .scrollWheel]
+        return kinds.map { CGEventSource.secondsSinceLastEventType(.combinedSessionState, eventType: $0) }.min() ?? 0
     }
 }
 

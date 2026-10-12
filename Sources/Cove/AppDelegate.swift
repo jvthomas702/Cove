@@ -10,6 +10,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var nowPlaying: NowPlayingMonitor?
     private var mirror: NotificationMirror?
     private let battery = BatteryMonitor()
+    private var calendar: CalendarMonitor?
+    private let screenshots = ScreenshotWatcher()
+    private let volume = VolumeController()
+    private let mediaKeys = MediaKeyTap()
+    private var trustTimer: Timer?
     private var statusItem: NSStatusItem!
     private var statusLine: NSMenuItem!
     private var loginItem: NSMenuItem!
@@ -27,6 +32,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         battery.onChange = { [weak self] state in self?.model.setBattery(state) }
         battery.start()
+
+        if config.calendar { startCalendar(config) }
+        screenshots.onNew = { [weak self] urls in self?.model.addScreenshots(urls) }
+        screenshots.start()
+        startHUD(mode: config.hud)
 
         workspaceObserver = NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main
@@ -50,13 +60,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         mirror?.stop()
         nowPlaying?.stop()
         battery.stop()
+        calendar?.stop()
+        screenshots.stop()
+        volume.stop()
+        mediaKeys.stop()
     }
 
     // MARK: - Services
 
     private func startServer(port: UInt16) {
-        let server = EventServer(port: port) { [weak self] method, path, body in
-            self?.route(method: method, path: path, body: body) ?? (503, #"{"error":"shutting down"}"#)
+        let server = EventServer(port: port) { [weak self] exchange in
+            guard let self else {
+                exchange.respond(503, #"{"error":"shutting down"}"#)
+                return
+            }
+            self.route(exchange)
         }
         server.onState = { [weak self] text in
             self?.model.serverStatus = text
@@ -77,25 +95,103 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    private func route(method: String, path: String, body: Data) -> (Int, String) {
-        let ok = (200, #"{"ok":true}"#)
-        switch (method, path) {
+    private func route(_ exchange: HTTPExchange) {
+        let ok = #"{"ok":true}"#
+        switch (exchange.method, exchange.path) {
         case ("GET", "/health"):
-            return (200, #"{"ok":true,"app":"cove"}"#)
+            exchange.respond(200, #"{"ok":true,"app":"cove"}"#)
         case ("POST", "/event"):
-            guard let event = try? JSONDecoder().decode(CoveEvent.self, from: body) else {
-                return (400, #"{"error":"expected JSON with at least a \"title\""}"#)
+            guard let event = try? JSONDecoder().decode(CoveEvent.self, from: exchange.body) else {
+                exchange.respond(400, #"{"error":"expected JSON with at least a \"title\""}"#)
+                return
             }
             model.ingest(event)
-            return ok
+            exchange.respond(200, ok)
         case ("POST", "/hook/claude"):
-            agents.handleClaude(body)
-            return ok
+            agents.handleClaude(exchange.body)
+            exchange.respond(200, ok)
+        case ("POST", "/hook/claude/permission"):
+            agents.handlePermission(exchange) // answers later, when you click
         case ("POST", "/hook/codex"):
-            agents.handleCodex(body)
-            return ok
+            agents.handleCodex(exchange.body)
+            exchange.respond(200, ok)
         default:
-            return (404, #"{"error":"not found"}"#)
+            exchange.respond(404, #"{"error":"not found"}"#)
+        }
+    }
+
+    // MARK: - Calendar
+
+    private func startCalendar(_ config: CoveConfig) {
+        let monitor = CalendarMonitor(config: config)
+        monitor.onUpdate = { [weak self] schedule in self?.model.setSchedule(schedule) }
+        monitor.onAccessDenied = { [weak self] in
+            self?.model.show(Banner(
+                title: "Calendar access is off",
+                body: "Click to allow Cove in Settings → Privacy → Calendars and Reminders.",
+                style: .info,
+                icon: .symbol("calendar.badge.exclamationmark", Palette.amber),
+                openURL: URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Calendars")
+            ))
+        }
+        monitor.start()
+        calendar = monitor
+    }
+
+    // MARK: - Volume & brightness HUD
+
+    private func startHUD(mode: String) {
+        let mode = mode.lowercased()
+        guard mode != "off" else { return }
+        volume.onChange = { [weak self] level, muted in
+            self?.model.showHUD(.volume, level: Double(level), muted: muted)
+        }
+        volume.start()
+        guard mode == "replace" else { return }
+
+        mediaKeys.handler = { [weak self] key, isDown, _, fine in
+            self?.handleMediaKey(key, isDown: isDown, fine: fine) ?? false
+        }
+        if MediaKeyTap.isTrusted {
+            mediaKeys.start()
+        } else {
+            MediaKeyTap.requestTrust()
+            // Start the tap as soon as Accessibility is granted; until then the passive HUD still works.
+            trustTimer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { [weak self] timer in
+                MainActor.assumeIsolated {
+                    guard MediaKeyTap.isTrusted else { return }
+                    timer.invalidate()
+                    self?.mediaKeys.start()
+                }
+            }
+        }
+    }
+
+    /// Returns true when Cove handled the key (so macOS doesn't show its own pop-up).
+    private func handleMediaKey(_ key: MediaKeyTap.Key, isDown: Bool, fine: Bool) -> Bool {
+        let step: Float = fine ? 1.0 / 64 : 1.0 / 16
+        switch key {
+        case .volumeUp, .volumeDown, .mute:
+            guard volume.canSetVolume else { return false }
+            guard isDown else { return true }
+            if key == .mute {
+                volume.setMuted(!volume.isMuted)
+            } else {
+                let current = volume.volume ?? 0
+                let next = key == .volumeUp ? current + step : current - step
+                volume.setVolume((next / step).rounded() * step)
+                if key == .volumeDown && next <= 0.001 { volume.setMuted(true) }
+            }
+            model.showHUD(.volume, level: Double(volume.volume ?? 0), muted: volume.isMuted)
+            return true
+        case .brightnessUp, .brightnessDown:
+            guard DisplayBrightness.isAvailable else { return false }
+            guard isDown else { return true }
+            let current = DisplayBrightness.level ?? 0.5
+            let next = key == .brightnessUp ? current + step : current - step
+            DisplayBrightness.set((next / step).rounded() * step)
+            model.showHUD(.brightness, level: Double(DisplayBrightness.level ?? next))
+            return true
         }
     }
 
@@ -163,6 +259,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func reloadConfig() {
         model.config = CoveConfig.load()
+        calendar?.update(config: model.config)
         model.show(Banner(title: "Config reloaded", body: "Port changes apply after a restart.", style: .info,
                           icon: .symbol("arrow.clockwise", Palette.blue)))
     }
@@ -187,20 +284,40 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         loginItem.state = SMAppService.mainApp.status == .enabled ? .on : .off
     }
 
-    /// Simulates a Claude Code session so you can see every state without wiring anything up.
+    /// Simulates a Claude Code session, including a (fake) permission prompt, so you can see every state.
+    /// Nothing is sent anywhere.
     @objc private func runDemo() {
         let id = "claude:demo"
-        let steps: [(TimeInterval, () -> Void)] = [
-            (0.0, { [weak self] in self?.model.agentStarted(id: id, agent: .claude, title: "hdc-classifier", detail: "Add a confusion-matrix plot to eval.py", ownerApp: nil) }),
-            (2.0, { [weak self] in self?.model.agentUpdate(id: id, agent: .claude, title: "hdc-classifier", detail: "Reading eval.py") }),
-            (4.0, { [weak self] in self?.model.agentUpdate(id: id, agent: .claude, title: "hdc-classifier", detail: "$ python -m pytest tests/") }),
-            (6.5, { [weak self] in self?.model.agentAttention(id: id, agent: .claude, title: "hdc-classifier", message: "Claude needs your permission to use Bash") }),
-            (10.0, { [weak self] in self?.model.agentUpdate(id: id, agent: .claude, title: "hdc-classifier", detail: "Editing eval.py") }),
-            (13.0, { [weak self] in self?.model.agentFinished(id: id, agent: .claude, title: "hdc-classifier", summary: "Added plot_confusion_matrix() and saved figures/confusion.png. All 14 tests pass.") }),
-        ]
-        for (delay, step) in steps {
-            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
-                MainActor.assumeIsolated { step() }
+        let project = "hdc-classifier"
+        model.agentStarted(id: id, agent: .claude, title: project, detail: "Add a confusion-matrix plot to eval.py", ownerApp: nil)
+        after(2) { $0.agentUpdate(id: id, agent: .claude, title: project, detail: "Reading eval.py") }
+        after(4) { model in
+            let input: [String: Any] = [
+                "command": "python -m pytest tests/ -q && git add eval.py",
+                "description": "Run the test suite, then stage eval.py",
+            ]
+            let (action, preview) = AgentBridge.describePermission(tool: "Bash", input: input)
+            let request = ApprovalRequest(
+                sessionID: id, project: project, tool: "Bash", action: action, preview: preview,
+                canAlwaysAllow: true, expiresAt: Date().addingTimeInterval(model.config.approvalTimeout)
+            )
+            model.requestApproval(request) { [weak self] decision in
+                guard decision != .ask else { return }
+                let denied = decision == .deny
+                self?.after(2) { $0.agentUpdate(id: id, agent: .claude, title: project, detail: denied ? "Skipping tests, editing eval.py" : "Editing eval.py") }
+                self?.after(4.5) {
+                    $0.agentFinished(id: id, agent: .claude, title: project,
+                                     summary: "Added plot_confusion_matrix() and saved figures/confusion.png." + (denied ? "" : " All 14 tests pass."))
+                }
+            }
+        }
+    }
+
+    private func after(_ delay: TimeInterval, _ step: @escaping @MainActor (IslandModel) -> Void) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+            MainActor.assumeIsolated {
+                guard let model = self?.model else { return }
+                step(model)
             }
         }
     }

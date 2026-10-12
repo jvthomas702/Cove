@@ -11,6 +11,7 @@ struct ExpandedView: View {
             Group {
                 switch model.tab {
                 case .home: HomePane(model: model)
+                case .schedule: SchedulePane(model: model)
                 case .shelf: ShelfPane(model: model)
                 }
             }
@@ -26,6 +27,7 @@ struct ExpandedView: View {
         HStack(spacing: 0) {
             HStack(spacing: 2) {
                 tabButton(.home, symbol: "house.fill")
+                tabButton(.schedule, symbol: "calendar")
                 tabButton(.shelf, symbol: model.shelf.isEmpty ? "tray.fill" : "tray.full.fill")
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -64,7 +66,8 @@ struct HomePane: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            VStack(spacing: 10) {
+            VStack(spacing: 8) {
+                UpNextCard(model: model)
                 MediaCard(model: model)
                 FocusCard(model: model)
             }
@@ -153,6 +156,169 @@ struct FocusCard: View {
         .padding(.horizontal, 12)
         .frame(height: 50)
         .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Palette.card))
+    }
+}
+
+// MARK: - Calendar
+
+struct UpNextCard: View {
+    @ObservedObject var model: IslandModel
+
+    var body: some View {
+        let next = model.schedule.nextEvent()
+        let dueCount = model.dueSoon.count
+        HStack(spacing: 10) {
+            RoundedRectangle(cornerRadius: 2)
+                .fill(next?.color ?? Color.white.opacity(0.25))
+                .frame(width: 4, height: 34)
+            VStack(alignment: .leading, spacing: 2) {
+                if let next {
+                    Text(next.title)
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .lineLimit(1)
+                    let place = next.location.map { " · " + $0 } ?? ""
+                    TimelineView(.periodic(from: .now, by: 30)) { context in
+                        Text(IslandModel.relative(next.start, from: context.date) + place)
+                            .font(.system(size: 11))
+                            .foregroundStyle(.white.opacity(0.6))
+                            .lineLimit(1)
+                    }
+                } else {
+                    Text("Nothing else today")
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    Text(dueCount == 0 ? "No deadlines this week" : "\(dueCount) due soon")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.white.opacity(0.6))
+                }
+            }
+            Spacer(minLength: 0)
+            if let url = next?.joinURL {
+                ChipButton(title: "Join", systemImage: "video.fill", tint: Palette.green) { NSWorkspace.shared.open(url) }
+            } else if next != nil, dueCount > 0 {
+                Text("\(dueCount) due")
+                    .font(.system(size: 10, weight: .bold, design: .rounded))
+                    .foregroundStyle(Palette.amber)
+            }
+        }
+        .padding(.horizontal, 12)
+        .frame(height: 50)
+        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Palette.card))
+        .contentShape(Rectangle())
+        .onTapGesture { model.tab = .schedule }
+    }
+}
+
+struct SchedulePane: View {
+    @ObservedObject var model: IslandModel
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            column(title: "UP NEXT") {
+                let events = model.schedule.events.filter { $0.end > Date() }.prefix(8)
+                if events.isEmpty {
+                    emptyRow(model.config.calendar ? "No more events today" : "Calendar is off in config")
+                }
+                ForEach(Array(events)) { event in
+                    EventRow(event: event)
+                }
+            }
+            column(title: "DUE SOON") {
+                let items = model.dueSoon.prefix(10)
+                if items.isEmpty {
+                    emptyRow("Nothing due. Subscribe your D2L/Canvas calendar or add Reminders with due dates.")
+                }
+                ForEach(Array(items)) { item in
+                    DueRow(item: item)
+                }
+            }
+        }
+    }
+
+    private func column<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(.system(size: 10, weight: .bold, design: .rounded))
+                .tracking(0.8)
+                .foregroundStyle(.white.opacity(0.45))
+            ScrollView(.vertical, showsIndicators: false) {
+                VStack(spacing: 5, content: content)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    private func emptyRow(_ text: String) -> some View {
+        Text(text)
+            .font(.system(size: 11))
+            .foregroundStyle(.white.opacity(0.5))
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(10)
+            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white.opacity(0.04)))
+    }
+}
+
+struct EventRow: View {
+    let event: CalEvent
+
+    private var timeLine: String {
+        let start = event.start.formatted(date: .omitted, time: .shortened)
+        let end = event.end.formatted(date: .omitted, time: .shortened)
+        let place = event.location.map { " · " + $0 } ?? ""
+        return "\(start) – \(end)\(place)"
+    }
+
+    var body: some View {
+        HStack(spacing: 8) {
+            RoundedRectangle(cornerRadius: 2).fill(event.color).frame(width: 3, height: 28)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(event.title)
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .lineLimit(1)
+                Text(timeLine)
+                    .font(.system(size: 10.5))
+                    .foregroundStyle(.white.opacity(0.55))
+                    .lineLimit(1)
+            }
+            Spacer(minLength: 4)
+            if let url = event.joinURL {
+                IconButton(systemImage: "video.fill", size: 11) { NSWorkspace.shared.open(url) }
+                    .foregroundStyle(Palette.green)
+            }
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 5)
+        .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.white.opacity(0.05)))
+    }
+}
+
+struct DueRow: View {
+    let item: DueItem
+
+    var body: some View {
+        let overdue = item.due < Date()
+        let urgent = item.due.timeIntervalSinceNow < 24 * 3600
+        HStack(spacing: 8) {
+            Image(systemName: overdue ? "exclamationmark.circle.fill" : "circle")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(overdue ? Palette.red : item.color)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(item.title)
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .lineLimit(1)
+                Text(item.source)
+                    .font(.system(size: 10.5))
+                    .foregroundStyle(.white.opacity(0.5))
+                    .lineLimit(1)
+            }
+            Spacer(minLength: 4)
+            Text(IslandModel.relative(item.due))
+                .font(.system(size: 10.5, weight: .semibold, design: .rounded))
+                .foregroundStyle(overdue ? Palette.red : (urgent ? Palette.amber : Color.white.opacity(0.6)))
+                .lineLimit(1)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 5)
+        .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.white.opacity(0.05)))
     }
 }
 
@@ -366,10 +532,8 @@ struct ShelfItem: View {
 
     var body: some View {
         VStack(spacing: 5) {
-            Image(nsImage: NSWorkspace.shared.icon(forFile: url.path))
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .frame(width: 52, height: 52)
+            FileThumbnail(url: url, size: 52)
+                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
             Text(url.lastPathComponent)
                 .font(.system(size: 10))
                 .lineLimit(2)

@@ -60,7 +60,7 @@ final class IslandHostingView: NSHostingView<IslandRootView> {
 
     private func update(with event: NSEvent) {
         guard let model, let window else { return }
-        let island = model.size(for: model.presentation)
+        let island = model.currentSize
         let bounds = window.frame.size
         // Window coordinates: origin bottom-left, island hugs the top centre.
         let rect = NSRect(
@@ -120,9 +120,10 @@ final class NotchWindowController {
             MainActor.assumeIsolated { self?.relocate() }
         })
 
-        model.$presentation
+        // recompute() sets `presentation` before `currentSize`, so the presentation is current here.
+        model.$currentSize
             .removeDuplicates()
-            .sink { [weak self] p in self?.resize(for: p) }
+            .sink { [weak self] size in self?.resize(to: size) }
             .store(in: &cancellables)
 
         panel.orderFrontRegardless()
@@ -134,12 +135,12 @@ final class NotchWindowController {
         screen = s
         model.hasHardwareNotch = s.hasNotch
         model.notchSize = s.notchSize
-        applyFrame(windowSize(for: model.presentation))
+        applyFrame(windowSize(for: model.currentSize))
     }
 
-    private func windowSize(for p: IslandModel.Presentation) -> CGSize {
-        let island = model.size(for: p)
-        let pad = (p == .expanded || p == .banner) ? Self.shadowPad : .zero
+    private func windowSize(for island: CGSize) -> CGSize {
+        let p = model.presentation
+        let pad = (p == .expanded || p == .banner || p == .approval) ? Self.shadowPad : .zero
         return CGSize(width: island.width + pad.width, height: island.height + pad.height)
     }
 
@@ -156,9 +157,9 @@ final class NotchWindowController {
     }
 
     /// Grow immediately; shrink only after the spring animation has finished.
-    private func resize(for p: IslandModel.Presentation) {
+    private func resize(to island: CGSize) {
         shrinkWork?.cancel()
-        let target = windowSize(for: p)
+        let target = windowSize(for: island)
         let current = panel.frame.size
         let interim = CGSize(width: max(target.width, current.width), height: max(target.height, current.height))
         applyFrame(interim)

@@ -7,7 +7,7 @@ BIN_DIR="${COVE_BIN_DIR:-$HOME/.local/bin}"
 pkill -x Cove 2>/dev/null || true
 COVE_BIN_DIR="$BIN_DIR" "$ROOT/scripts/install-hooks.sh" --uninstall
 rm -rf "/Applications/Cove.app" "$HOME/Applications/Cove.app"
-for tool in cove-notify cove-run cove-claude-hook cove-codex-notify; do
+for tool in cove-notify cove-run cove-claude-hook cove-claude-permission cove-codex-notify; do
   rm -f "$BIN_DIR/$tool"
 done
 echo "✓ Cove removed (config left in ~/.config/cove)"

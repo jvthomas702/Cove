@@ -47,13 +47,13 @@ struct IslandShell: View {
 
     var body: some View {
         let p = model.presentation
-        let size = model.size(for: p)
+        let size = model.currentSize
         let shape = IslandShape(ear: p == .idle ? 0 : IslandModel.ear, bottomRadius: radius(for: p))
 
         ZStack(alignment: .top) {
             shape
                 .fill(Color.black)
-                .shadow(color: .black.opacity(p == .expanded || p == .banner ? 0.45 : 0), radius: 14, y: 6)
+                .shadow(color: .black.opacity(p == .expanded || p == .banner || p == .approval ? 0.45 : 0), radius: 14, y: 6)
 
             content(for: p)
                 .padding(.horizontal, p == .idle ? 0 : IslandModel.ear)
@@ -78,7 +78,7 @@ struct IslandShell: View {
             model.setDropTargeted(targeted)
         }
         .animation(spring, value: p)
-        .animation(spring, value: model.notchSize)
+        .animation(spring, value: size)
     }
 
     private func radius(for p: IslandModel.Presentation) -> CGFloat {
@@ -86,7 +86,7 @@ struct IslandShell: View {
         case .idle: return 9
         case .compact: return 12
         case .banner: return 24
-        case .expanded: return 32
+        case .expanded, .approval: return 32
         }
     }
 
@@ -98,6 +98,8 @@ struct IslandShell: View {
         case .compact:
             if case .attention? = model.compactItem { return Palette.amber }
             return nil
+        case .approval:
+            return Palette.amber
         default:
             return nil
         }
@@ -118,6 +120,12 @@ struct IslandShell: View {
             }
         case .expanded:
             ExpandedView(model: model)
+        case .approval:
+            if let request = model.approvals.first {
+                ApprovalView(model: model, request: request)
+            } else {
+                Color.clear
+            }
         }
     }
 }

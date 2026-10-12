@@ -19,7 +19,7 @@ cp -R "$ROOT/build/Cove.app" "$DEST/"
 BIN_DIR="${COVE_BIN_DIR:-$HOME/.local/bin}"
 echo "→ Installing CLI tools to $BIN_DIR"
 mkdir -p "$BIN_DIR"
-for tool in cove-notify cove-run cove-claude-hook cove-codex-notify; do
+for tool in cove-notify cove-run cove-claude-hook cove-claude-permission cove-codex-notify; do
   install -m 755 "$ROOT/bin/$tool" "$BIN_DIR/$tool"
 done
 
@@ -34,5 +34,6 @@ case ":$PATH:" in
   *":$BIN_DIR:"*) ;;
   *) echo "  Add the CLI tools to your PATH:  echo 'export PATH=\"$BIN_DIR:\$PATH\"' >> ~/.zshrc" ;;
 esac
+echo "  macOS will ask for Calendars, Reminders and Accessibility (for the volume/brightness HUD) — allow them."
 echo "  Mirror notifications: System Settings → Privacy & Security → Full Disk Access → add Cove, then relaunch it."
 echo "  Try it: menu bar capsule icon → Run demo"

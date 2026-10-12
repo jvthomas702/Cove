@@ -1,14 +1,51 @@
 import Foundation
 import Network
 
+/// One HTTP request. Most routes answer immediately; the permission route holds the
+/// connection open until you click Allow/Deny in the notch (or it times out).
+@MainActor
+final class HTTPExchange {
+    let method: String
+    let path: String
+    let body: Data
+    private(set) var finished = false
+    /// Called if the client hangs up before we answered (e.g. Claude Code gave up on the hook).
+    var onClientGone: (@MainActor () -> Void)?
+    fileprivate var send: ((Int, String) -> Void)?
+
+    fileprivate init(method: String, path: String, body: Data) {
+        self.method = method
+        self.path = path
+        self.body = body
+    }
+
+    func respond(_ status: Int, _ body: String) {
+        guard !finished else { return }
+        finished = true
+        onClientGone = nil
+        send?(status, body)
+        send = nil
+    }
+
+    fileprivate func clientGone() {
+        guard !finished else { return }
+        finished = true
+        send = nil
+        let callback = onClientGone
+        onClientGone = nil
+        callback?()
+    }
+}
+
 /// A tiny HTTP server bound to the loopback interface. Hooks and scripts talk to Cove through it:
 ///
-///   GET  /health        → {"ok":true}
-///   POST /event         → generic event (see CoveEvent)
-///   POST /hook/claude   → raw Claude Code hook payload (piped from stdin)
-///   POST /hook/codex    → raw Codex `notify` payload
+///   GET  /health                    → {"ok":true}
+///   POST /event                     → generic event (see CoveEvent)
+///   POST /hook/claude               → raw Claude Code hook payload (piped from stdin)
+///   POST /hook/claude/permission    → PermissionRequest hook; answered when you decide
+///   POST /hook/codex                → raw Codex `notify` payload
 final class EventServer {
-    typealias Handler = @MainActor (_ method: String, _ path: String, _ body: Data) -> (Int, String)
+    typealias Handler = @MainActor (HTTPExchange) -> Void
 
     private let port: UInt16
     private let handler: Handler
@@ -62,8 +99,7 @@ final class EventServer {
 
             switch HTTPRequest.parse(buffer) {
             case .complete(let request):
-                let (status, body) = MainActor.assumeIsolated { self.handler(request.method, request.path, request.body) }
-                self.respond(connection, status: status, body: body)
+                MainActor.assumeIsolated { self.dispatch(request, on: connection) }
             case .needsContinue:
                 // Client sent "Expect: 100-continue"; tell it to go ahead with the body.
                 connection.send(content: Data("HTTP/1.1 100 Continue\r\n\r\n".utf8), completion: .contentProcessed { _ in })
@@ -75,16 +111,42 @@ final class EventServer {
                     self.receive(connection, buffer: buffer)
                 }
             case .invalid:
-                self.respond(connection, status: 400, body: #"{"error":"bad request"}"#)
+                Self.write(connection, status: 400, body: #"{"error":"bad request"}"#)
             }
         }
     }
 
-    private func respond(_ connection: NWConnection, status: Int, body: String) {
+    @MainActor
+    private func dispatch(_ request: HTTPRequest, on connection: NWConnection) {
+        let exchange = HTTPExchange(method: request.method, path: request.path, body: request.body)
+        exchange.send = { status, body in Self.write(connection, status: status, body: body) }
+        handler(exchange)
+        if !exchange.finished {
+            watchForHangUp(connection, exchange: exchange)
+        }
+    }
+
+    /// While a response is pending, a read that returns EOF means the client went away.
+    private func watchForHangUp(_ connection: NWConnection, exchange: HTTPExchange) {
+        connection.receive(minimumIncompleteLength: 1, maximumLength: 1024) { [weak self] _, _, isComplete, error in
+            MainActor.assumeIsolated {
+                guard !exchange.finished else { return }
+                if isComplete || error != nil {
+                    exchange.clientGone()
+                    connection.cancel()
+                } else {
+                    self?.watchForHangUp(connection, exchange: exchange)
+                }
+            }
+        }
+    }
+
+    private static func write(_ connection: NWConnection, status: Int, body: String) {
         let reason: String
         switch status {
         case 200: reason = "OK"
         case 404: reason = "Not Found"
+        case 503: reason = "Service Unavailable"
         default: reason = "Bad Request"
         }
         let payload = Data(body.utf8)

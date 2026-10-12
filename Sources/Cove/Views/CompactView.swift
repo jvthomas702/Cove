@@ -6,22 +6,43 @@ struct CompactView: View {
     @ObservedObject var model: IslandModel
 
     var body: some View {
-        let wing = IslandModel.wing - IslandModel.ear
+        let wing = model.compactWing - IslandModel.ear
         HStack(spacing: 0) {
-            leading.frame(width: wing)
+            leading
+                .frame(width: wing - 6, alignment: isWide ? .leading : .center)
+                .padding(.leading, 6)
             Color.clear.frame(width: model.notchSize.width)
-            trailing.frame(width: wing)
+            trailing
+                .frame(width: wing - 6, alignment: isWide ? .trailing : .center)
+                .padding(.trailing, 6)
         }
         .frame(height: model.notchSize.height)
         .contentShape(Rectangle())
         .onTapGesture { model.setExpanded(true) }
+        .animation(.spring(response: 0.35, dampingFraction: 0.8), value: model.compactItem)
     }
+
+    private var isWide: Bool { model.compactWing > IslandModel.wing }
 
     @ViewBuilder
     private var leading: some View {
         switch model.compactItem {
+        case .hud(let hud)?:
+            Image(systemName: hud.symbol)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(.white)
+                .contentTransition(.symbolEffect(.replace))
         case .attention(let agent)?:
             AgentGlyph(agent: agent)
+        case .event(let event)?:
+            HStack(spacing: 5) {
+                Circle().fill(event.color).frame(width: 7, height: 7)
+                Text(event.title)
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+            }
         case .running(_, let agent)?:
             AgentGlyph(agent: agent, animating: true)
         case .progress(let a)?:
@@ -42,11 +63,23 @@ struct CompactView: View {
     @ViewBuilder
     private var trailing: some View {
         switch model.compactItem {
+        case .hud(let hud)?:
+            LevelBar(level: hud.muted ? 0 : hud.level, tint: hud.kind == .brightness ? Palette.amber : .white)
+                .frame(width: 48, height: 6)
         case .attention?:
             Image(systemName: "exclamationmark.circle.fill")
                 .font(.system(size: 14, weight: .bold))
                 .foregroundStyle(Palette.amber)
                 .symbolEffect(.pulse, isActive: true)
+        case .event(let event)?:
+            TimelineView(.periodic(from: .now, by: 15)) { context in
+                let minutes = Int((event.start.timeIntervalSince(context.date) / 60).rounded(.up))
+                Text(minutes <= 0 ? "now" : "in \(minutes) min")
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(minutes <= 5 ? Palette.amber : Color.white.opacity(0.8))
+                    .lineLimit(1)
+            }
         case .running(let count, let agent)?:
             if count > 1 {
                 Text("\(count)")
