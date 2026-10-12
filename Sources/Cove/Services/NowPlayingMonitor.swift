@@ -7,10 +7,13 @@ import AppKit
 /// never launches one, and macOS asks once for Automation permission per player.
 final class NowPlayingMonitor {
     var onUpdate: (@MainActor (NowPlaying?) -> Void)?
+    /// Album art bytes for players that don't expose a URL (Apple Music), keyed by `NowPlaying.trackKey`.
+    var onArtwork: (@MainActor (String, Data) -> Void)?
 
     private let apps: [String]
     private let queue = DispatchQueue(label: "cove.nowplaying", qos: .utility)
     private var scripts: [String: NSAppleScript] = [:] // only touched on `queue`
+    private var lastArtworkKey: String?                  // only touched on `queue`
     private var timer: Timer?
 
     private static let names = ["com.spotify.client": "Spotify", "com.apple.Music": "Music"]
@@ -47,6 +50,14 @@ final class NowPlayingMonitor {
                 if info.isPlaying { best = info; break }
                 if best == nil { best = info }
             }
+            if let best, best.bundleID == "com.apple.Music", best.trackKey != self.lastArtworkKey {
+                self.lastArtworkKey = best.trackKey
+                if let data = self.musicArtwork() {
+                    let key = best.trackKey
+                    let callback = self.onArtwork
+                    Task { @MainActor in callback?(key, data) }
+                }
+            }
             self.deliver(best)
         }
     }
@@ -57,13 +68,22 @@ final class NowPlayingMonitor {
 
     private func fetch(_ bundleID: String) -> NowPlaying? {
         guard let app = Self.names[bundleID] else { return nil }
-        let artwork = bundleID == "com.spotify.client" ? "artwork url of t" : "\"\""
+        let spotify = bundleID == "com.spotify.client"
+        let artwork = spotify ? "artwork url of t" : "\"\""
+        // Spotify reports duration in milliseconds, Music in seconds; both report position in seconds.
+        let duration = spotify ? "round ((duration of t) / 1000)" : "round (duration of t)"
         let source = """
         tell application "\(app)"
             if player state is stopped then return ""
             try
                 set t to current track
-                return (name of t) & linefeed & (artist of t) & linefeed & (player state as text) & linefeed & (\(artwork))
+                set p to 0
+                set d to 0
+                try
+                    set p to round (player position)
+                    set d to \(duration)
+                end try
+                return (name of t) & linefeed & (artist of t) & linefeed & (player state as text) & linefeed & (\(artwork)) & linefeed & (p as text) & linefeed & (d as text)
             on error
                 return ""
             end try
@@ -72,13 +92,44 @@ final class NowPlayingMonitor {
         guard let output = run(source, key: "\(bundleID).info"), !output.isEmpty else { return nil }
         let parts = output.components(separatedBy: "\n")
         guard parts.count >= 3, !parts[0].isEmpty else { return nil }
+        let position = parts.count > 4 ? Double(parts[4]) : nil
+        let duration = parts.count > 5 ? Double(parts[5]).flatMap { $0 > 0 ? $0 : nil } : nil
         return NowPlaying(
             bundleID: bundleID,
             title: parts[0],
             artist: parts[1],
             isPlaying: parts[2].lowercased() == "playing",
-            artworkURL: parts.count > 3 ? URL(string: parts[3]) : nil
+            artworkURL: parts.count > 3 && !parts[3].isEmpty ? URL(string: parts[3]) : nil,
+            position: position,
+            duration: duration,
+            readAt: Date()
         )
+    }
+
+    /// Apple Music has no artwork URL; ask for the image bytes instead (only when the track changes).
+    private func musicArtwork() -> Data? {
+        let source = """
+        tell application "Music"
+            try
+                return raw data of artwork 1 of current track
+            on error
+                return missing value
+            end try
+        end tell
+        """
+        let script: NSAppleScript
+        if let cached = scripts["music.artwork"] {
+            script = cached
+        } else {
+            guard let compiled = NSAppleScript(source: source) else { return nil }
+            scripts["music.artwork"] = compiled
+            script = compiled
+        }
+        var error: NSDictionary?
+        let result = script.executeAndReturnError(&error)
+        guard error == nil else { return nil }
+        let data = result.data
+        return data.isEmpty ? nil : data
     }
 
     /// command: "playpause", "next track", "previous track"

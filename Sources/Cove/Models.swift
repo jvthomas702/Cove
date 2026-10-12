@@ -19,13 +19,12 @@ enum Palette {
     static let claude = Color(hex: 0xD97757)
     static let codex = Color(hex: 0x7EE0B5)
     static let command = Color(hex: 0x8AB4F8)
-    static let green = Color(hex: 0x32D74B)
+    static let green = Color(hex: 0x30D158)
     static let amber = Color(hex: 0xFFB340)
     static let red = Color(hex: 0xFF453A)
     static let blue = Color(hex: 0x0A84FF)
     static let spotify = Color(hex: 0x1DB954)
     static let music = Color(hex: 0xFA2D48)
-    static let card = Color.white.opacity(0.07)
 }
 
 // MARK: - Live activities (agents, long commands)
@@ -155,8 +154,32 @@ struct NowPlaying: Equatable {
     var artist: String
     var isPlaying: Bool
     var artworkURL: URL?
+    /// Seconds into the track and track length, when the player reports them.
+    var position: Double? = nil
+    var duration: Double? = nil
+    /// When `position` was read, so the progress bar can run smoothly between polls.
+    var readAt = Date()
 
-    var tint: Color { bundleID == "com.spotify.client" ? Palette.spotify : Palette.music }
+    /// Identifies the track (not the moment), for artwork caching.
+    var trackKey: String { "\(bundleID)|\(title)|\(artist)" }
+
+    /// The player's own color, used until the artwork's color is known.
+    var appTint: Color { bundleID == "com.spotify.client" ? Palette.spotify : Palette.music }
+
+    /// Estimated position right now.
+    func elapsed(at date: Date = Date()) -> Double? {
+        guard let position else { return nil }
+        let live = isPlaying ? position + date.timeIntervalSince(readAt) : position
+        if let duration { return min(max(live, 0), duration) }
+        return max(live, 0)
+    }
+
+    /// Equality ignores the read time and small position drift, so polling doesn't redraw everything.
+    static func == (a: NowPlaying, b: NowPlaying) -> Bool {
+        a.bundleID == b.bundleID && a.title == b.title && a.artist == b.artist && a.isPlaying == b.isPlaying
+            && a.artworkURL == b.artworkURL && a.duration == b.duration
+            && abs((a.elapsed() ?? 0) - (b.elapsed() ?? 0)) < 2.5
+    }
 }
 
 struct BatteryState: Equatable {

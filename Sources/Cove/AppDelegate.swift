@@ -198,6 +198,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func startMedia(apps: [String]) {
         let monitor = NowPlayingMonitor(apps: apps)
         monitor.onUpdate = { [weak self] np in self?.model.setNowPlaying(np) }
+        monitor.onArtwork = { [weak self] key, data in self?.model.setArtwork(data, forTrack: key) }
         model.mediaControl = { [weak monitor] command, bundleID in monitor?.send(command, to: bundleID) }
         monitor.start()
         nowPlaying = monitor
@@ -217,8 +218,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func buildStatusItem() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        statusItem.button?.image = NSImage(systemSymbolName: "capsule.fill", accessibilityDescription: "Cove")
-        statusItem.button?.image?.isTemplate = true
+        statusItem.button?.image = Self.menuBarGlyph()
+        statusItem.button?.toolTip = "Cove"
 
         let menu = NSMenu()
         statusLine = NSMenuItem(title: "Cove — \(model.serverStatus)", action: nil, keyEquivalent: "")
@@ -238,6 +239,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         quit.target = NSApp
         menu.addItem(quit)
         statusItem.menu = menu
+    }
+
+    /// A tiny screen with the island hanging from its top edge (template, so it follows the menu bar's color).
+    private static func menuBarGlyph() -> NSImage {
+        let image = NSImage(size: NSSize(width: 18, height: 18), flipped: false) { _ in
+            NSColor.black.set()
+            let screen = NSBezierPath(roundedRect: NSRect(x: 1.5, y: 3.5, width: 15, height: 11), xRadius: 3, yRadius: 3)
+            screen.lineWidth = 1.3
+            screen.stroke()
+            let island = NSBezierPath(roundedRect: NSRect(x: 5.5, y: 10.5, width: 7, height: 4), xRadius: 2, yRadius: 2)
+            island.fill()
+            return true
+        }
+        image.isTemplate = true
+        image.accessibilityDescription = "Cove"
+        return image
     }
 
     @discardableResult

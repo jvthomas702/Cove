@@ -6,7 +6,7 @@ import Combine
 @MainActor
 final class IslandModel: ObservableObject {
     enum Presentation: Equatable { case idle, compact, banner, expanded, approval }
-    enum Tab: String { case home, schedule, shelf }
+    enum Tab: String, CaseIterable { case home, schedule, shelf }
 
     /// What the two "wings" beside the notch show in compact mode, in priority order.
     enum CompactItem: Equatable {
@@ -39,6 +39,11 @@ final class IslandModel: ObservableObject {
     @Published private(set) var banner: Banner?
     @Published private(set) var history: [Banner] = []
     @Published private(set) var nowPlaying: NowPlaying?
+    /// Album art for the current track and the color pulled from it (tints the music UI).
+    @Published private(set) var artwork: NSImage?
+    @Published private(set) var accent: Color?
+    /// A file drag is hovering over the island.
+    @Published private(set) var isDropTargeted = false
     @Published private(set) var battery: BatteryState?
     @Published private(set) var focusEnd: Date?
     @Published private(set) var focusTotal: TimeInterval = 0
@@ -58,7 +63,7 @@ final class IslandModel: ObservableObject {
     private var hoverWork: DispatchWorkItem?
     private var isHovering = false
     private var suppressHoverUntilExit = false
-    private var isDropTargeted = false
+    private var artworkKey: String?
     private var lastAgentSignal: Date?
     private var hudTimer: Timer?
     private var clockTimer: Timer?
@@ -89,9 +94,12 @@ final class IslandModel: ObservableObject {
         switch p {
         case .idle: return n
         case .compact: return CGSize(width: n.width + compactWing * 2, height: n.height)
-        case .banner: return CGSize(width: max(n.width + 230, 430), height: n.height + 64)
+        case .banner: return CGSize(width: max(n.width + 250, 440), height: n.height + 72)
         case .expanded: return CGSize(width: max(n.width + 450, 660), height: n.height + 252)
-        case .approval: return CGSize(width: max(n.width + 400, 600), height: n.height + 214)
+        case .approval:
+            // Grows with the preview (a one-line command vs. an 8-line diff).
+            let lines = CGFloat(max(approvals.first?.preview.lines.count ?? 1, 1))
+            return CGSize(width: max(n.width + 420, 620), height: n.height + min(134 + lines * 17, 280))
         }
     }
 
@@ -515,7 +523,34 @@ final class IslandModel: ObservableObject {
     func setNowPlaying(_ np: NowPlaying?) {
         guard np != nowPlaying else { return }
         nowPlaying = np
+        loadArtwork(for: np)
         recompute()
+    }
+
+    /// Artwork bytes from the player (Apple Music) or downloaded from its URL (Spotify).
+    func setArtwork(_ data: Data, forTrack key: String) {
+        guard key == nowPlaying?.trackKey, let image = NSImage(data: data) else { return }
+        artwork = image
+        accent = ArtworkTint.color(from: image)
+    }
+
+    private func loadArtwork(for np: NowPlaying?) {
+        guard let np else {
+            artworkKey = nil
+            artwork = nil
+            accent = nil
+            return
+        }
+        guard np.trackKey != artworkKey else { return }
+        artworkKey = np.trackKey
+        artwork = nil
+        accent = nil
+        guard let url = np.artworkURL else { return }
+        let key = np.trackKey
+        Task { [weak self] in
+            guard let result = try? await URLSession.shared.data(from: url) else { return }
+            self?.setArtwork(result.0, forTrack: key)
+        }
     }
 
     func media(_ command: String) {

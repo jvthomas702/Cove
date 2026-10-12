@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <!-- Dusk "wallpaper" seen on the screen -->
+    <linearGradient id="dusk" x1="0" y1="0" x2="0.35" y2="1">
+      <stop offset="0" stop-color="#232a6b"/>
+      <stop offset="0.45" stop-color="#5b3f9a"/>
+      <stop offset="0.8" stop-color="#c0679a"/>
+      <stop offset="1" stop-color="#f3a27a"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.18" r="0.6">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="rim" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0.05"/>
+    </linearGradient>
+    <filter id="drop" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="14" stdDeviation="18" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+    <filter id="islandShadow" x="-30%" y="-60%" width="160%" height="260%">
+      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#0b0620" flood-opacity="0.55"/>
+    </filter>
+    <clipPath id="squircle">
+      <rect x="100" y="100" width="824" height="824" rx="186"/>
+    </clipPath>
+  </defs>
+
+  <g filter="url(#drop)">
+    <rect x="100" y="100" width="824" height="824" rx="186" fill="url(#dusk)"/>
+  </g>
+  <g clip-path="url(#squircle)">
+    <rect x="100" y="100" width="824" height="824" fill="url(#glow)"/>
+    <!-- The island, dropped open from the top edge -->
+    <g filter="url(#islandShadow)">
+      <path d="M262 100 q26 0 26 26 v118 q0 74 74 74 h300 q74 0 74 -74 v-118 q0 -26 26 -26 z" fill="#000"/>
+    </g>
+    <!-- Live activity: a status dot and a waveform -->
+    <circle cx="395" cy="214" r="30" fill="#30D158"/>
+    <g fill="#ffffff">
+      <rect x="560" y="196" width="18" height="36" rx="9"/>
+      <rect x="594" y="172" width="18" height="84" rx="9"/>
+      <rect x="628" y="186" width="18" height="56" rx="9"/>
+      <rect x="662" y="202" width="18" height="24" rx="9"/>
+    </g>
+  </g>
+  <rect x="100.5" y="100.5" width="823" height="823" rx="186" fill="none" stroke="url(#rim)" stroke-width="2"/>
+</svg>

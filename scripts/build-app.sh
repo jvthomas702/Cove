@@ -19,8 +19,8 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/Cove"
 cp "$ROOT/Resources/Info.plist" "$APP/Contents/Info.plist"
-if [ -f "$ROOT/Resources/AppIcon.icns" ]; then
-  cp "$ROOT/Resources/AppIcon.icns" "$APP/Contents/Resources/AppIcon.icns"
+if [ -d "$ROOT/Resources/AppIcon.iconset" ]; then
+  iconutil -c icns "$ROOT/Resources/AppIcon.iconset" -o "$APP/Contents/Resources/AppIcon.icns"
   /usr/libexec/PlistBuddy -c "Add :CFBundleIconFile string AppIcon" "$APP/Contents/Info.plist" 2>/dev/null || true
 fi
 

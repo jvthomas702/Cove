@@ -6,9 +6,7 @@ Cove turns the dead space around the notch into a live surface: it tells you the
 
 Native Swift/SwiftUI, no dependencies, MIT licensed.
 
-![Cove states](docs/states.svg)
-
-![Approvals, countdown, HUD and screenshots](docs/new-states.svg)
+![Cove: the open island, a permission prompt, an agent banner, and compact states](docs/preview.png)
 
 ## Features
 

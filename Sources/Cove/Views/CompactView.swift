@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Live-activity state: content sits in the two "wings" either side of the physical notch,
-/// like the iPhone's compact leading/trailing views.
+/// like the iPhone's compact leading/trailing views. Each wing holds one glanceable thing.
 struct CompactView: View {
     @ObservedObject var model: IslandModel
 
@@ -9,17 +9,17 @@ struct CompactView: View {
         let wing = model.compactWing - IslandModel.ear
         HStack(spacing: 0) {
             leading
-                .frame(width: wing - 6, alignment: isWide ? .leading : .center)
-                .padding(.leading, 6)
+                .frame(width: wing - 8, alignment: isWide ? .leading : .center)
+                .padding(.leading, 8)
             Color.clear.frame(width: model.notchSize.width)
             trailing
-                .frame(width: wing - 6, alignment: isWide ? .trailing : .center)
-                .padding(.trailing, 6)
+                .frame(width: wing - 8, alignment: isWide ? .trailing : .center)
+                .padding(.trailing, 8)
         }
         .frame(height: model.notchSize.height)
         .contentShape(Rectangle())
         .onTapGesture { model.setExpanded(true) }
-        .animation(.spring(response: 0.35, dampingFraction: 0.8), value: model.compactItem)
+        .animation(Theme.snappy, value: model.compactItem)
     }
 
     private var isWide: Bool { model.compactWing > IslandModel.wing }
@@ -30,16 +30,17 @@ struct CompactView: View {
         case .hud(let hud)?:
             Image(systemName: hud.symbol)
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(.white)
+                .foregroundStyle(Theme.ink)
                 .contentTransition(.symbolEffect(.replace))
+                .frame(width: 20)
         case .attention(let agent)?:
             AgentGlyph(agent: agent)
         case .event(let event)?:
-            HStack(spacing: 5) {
-                Circle().fill(event.color).frame(width: 7, height: 7)
+            HStack(spacing: 6) {
+                Capsule().fill(event.color).frame(width: 3, height: 13)
                 Text(event.title)
-                    .font(.system(size: 12, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white)
+                    .font(Theme.Font.headline)
+                    .foregroundStyle(Theme.ink)
                     .lineLimit(1)
                     .truncationMode(.tail)
             }
@@ -53,8 +54,8 @@ struct CompactView: View {
             Image(systemName: "timer")
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(Palette.amber)
-        case .music(let np)?:
-            ArtworkView(nowPlaying: np, size: 20)
+        case .music?:
+            ArtworkView(model: model, size: 20, matchID: "art")
         case nil:
             EmptyView()
         }
@@ -64,50 +65,51 @@ struct CompactView: View {
     private var trailing: some View {
         switch model.compactItem {
         case .hud(let hud)?:
-            LevelBar(level: hud.muted ? 0 : hud.level, tint: hud.kind == .brightness ? Palette.amber : .white)
-                .frame(width: 48, height: 6)
+            LevelBar(level: hud.muted ? 0 : hud.level, tint: hud.kind == .brightness ? Palette.amber : Theme.ink)
+                .frame(width: 50, height: 5)
         case .attention?:
             Image(systemName: "exclamationmark.circle.fill")
                 .font(.system(size: 14, weight: .bold))
                 .foregroundStyle(Palette.amber)
-                .symbolEffect(.pulse, isActive: true)
+                .symbolEffect(.pulse, options: .repeating, isActive: !Theme.reduceMotion)
         case .event(let event)?:
             TimelineView(.periodic(from: .now, by: 15)) { context in
                 let minutes = Int((event.start.timeIntervalSince(context.date) / 60).rounded(.up))
-                Text(minutes <= 0 ? "now" : "in \(minutes) min")
-                    .font(.system(size: 12, weight: .semibold, design: .rounded))
-                    .monospacedDigit()
-                    .foregroundStyle(minutes <= 5 ? Palette.amber : Color.white.opacity(0.8))
+                Text(minutes <= 0 ? "Now" : "in \(minutes) min")
+                    .font(Theme.Font.headline.monospacedDigit())
+                    .foregroundStyle(minutes <= 5 ? Palette.amber : Theme.inkSecondary)
                     .lineLimit(1)
+                    .contentTransition(.numericText(countsDown: true))
             }
         case .running(let count, let agent)?:
             if count > 1 {
                 Text("\(count)")
                     .font(.system(size: 12, weight: .bold, design: .rounded))
                     .foregroundStyle(agent.tint)
+                    .contentTransition(.numericText())
             } else {
-                ArcSpinner(color: agent.tint, size: 12)
+                ArcSpinner(color: agent.tint, size: 13)
             }
         case .progress(let a)?:
-            ProgressRing(progress: a.progress ?? 0, color: a.agent.tint)
+            ProgressRing(progress: a.progress ?? 0, color: a.agent.tint, size: 15)
         case .finished(let count, _, let failed)?:
-            HStack(spacing: 2) {
+            HStack(spacing: 3) {
                 Image(systemName: failed ? "xmark.circle.fill" : "checkmark.circle.fill")
                     .font(.system(size: 14, weight: .bold))
                     .foregroundStyle(failed ? Palette.red : Palette.green)
+                    .symbolEffect(.bounce, value: count)
                 if count > 1 {
-                    Text("\(count)").font(.system(size: 11, weight: .bold, design: .rounded))
+                    Text("\(count)").font(Theme.Font.number).foregroundStyle(Theme.inkSecondary)
                 }
             }
         case .focus(let end)?:
             Text(timerInterval: Date()...max(end, Date()), countsDown: true)
-                .font(.system(size: 11, weight: .semibold, design: .rounded))
-                .monospacedDigit()
+                .font(Theme.Font.number)
                 .foregroundStyle(Palette.amber)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
         case .music(let np)?:
-            EqualizerBars(playing: np.isPlaying, color: np.tint)
+            EqualizerBars(playing: np.isPlaying, color: model.accent ?? np.appTint)
         case nil:
             EmptyView()
         }

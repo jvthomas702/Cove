@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
 
-/// Hover the notch to open this: media, focus timer, agent activity, recent notifications, and the file shelf.
+/// Hover the notch to open this: up next, media, focus, agent activity, schedule, and the file shelf.
 struct ExpandedView: View {
     @ObservedObject var model: IslandModel
 
@@ -15,47 +15,81 @@ struct ExpandedView: View {
                 case .shelf: ShelfPane(model: model)
                 }
             }
+            .id(model.tab)
+            .transition(.opacity.combined(with: .scale(scale: 0.98, anchor: .top)))
             .padding(.horizontal, 14)
-            .padding(.top, 8)
+            .padding(.top, Theme.Space.s)
             .padding(.bottom, 14)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
-        .foregroundStyle(.white)
+        .foregroundStyle(Theme.ink)
+        .animation(Theme.snappy, value: model.tab)
     }
 
     private var header: some View {
         HStack(spacing: 0) {
-            HStack(spacing: 2) {
-                tabButton(.home, symbol: "house.fill")
-                tabButton(.schedule, symbol: "calendar")
-                tabButton(.shelf, symbol: model.shelf.isEmpty ? "tray.fill" : "tray.full.fill")
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-
+            TabSwitcher(model: model)
+                .frame(maxWidth: .infinity, alignment: .leading)
             Color.clear.frame(width: model.notchSize.width)
-
-            HStack(spacing: 8) {
-                if let battery = model.battery {
-                    HStack(spacing: 4) {
-                        Text("\(battery.percent)%")
-                            .font(.system(size: 11, weight: .semibold, design: .rounded))
-                            .monospacedDigit()
-                        Image(systemName: battery.symbol)
-                            .font(.system(size: 13))
-                            .foregroundStyle(battery.percent <= 20 && !battery.pluggedIn ? Palette.red : Color.white)
-                    }
-                    .foregroundStyle(.white.opacity(0.75))
-                }
+            Group {
+                if let battery = model.battery { BatteryGlyph(state: battery) }
             }
             .frame(maxWidth: .infinity, alignment: .trailing)
         }
-        .padding(.horizontal, 12)
+        .padding(.horizontal, 14)
         .frame(height: model.notchSize.height)
     }
+}
 
-    private func tabButton(_ tab: IslandModel.Tab, symbol: String) -> some View {
-        IconButton(systemImage: symbol, size: 12) { model.tab = tab }
-            .foregroundStyle(model.tab == tab ? Color.white : Color.white.opacity(0.4))
+/// Segmented control with a pill that slides to the selected tab.
+private struct TabSwitcher: View {
+    @ObservedObject var model: IslandModel
+    @Namespace private var pill
+
+    var body: some View {
+        HStack(spacing: 2) {
+            ForEach(IslandModel.Tab.allCases, id: \.self) { tab in
+                Button {
+                    model.tab = tab
+                } label: {
+                    Image(systemName: symbol(for: tab))
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(model.tab == tab ? Theme.ink : Theme.inkTertiary)
+                        .frame(width: 30, height: 20)
+                        .background {
+                            if model.tab == tab {
+                                Capsule().fill(Theme.surfaceRaised).matchedGeometryEffect(id: "pill", in: pill)
+                            }
+                        }
+                        .overlay(alignment: .topTrailing) {
+                            if tab == .shelf, !model.shelf.isEmpty, model.tab != .shelf {
+                                Circle().fill(Palette.blue).frame(width: 5, height: 5).offset(x: -5, y: 3)
+                            }
+                        }
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(PressableStyle())
+                .help(label(for: tab))
+            }
+        }
+        .padding(2)
+        .background(Capsule().fill(Theme.surface))
+    }
+
+    private func symbol(for tab: IslandModel.Tab) -> String {
+        switch tab {
+        case .home: return "house.fill"
+        case .schedule: return "calendar"
+        case .shelf: return "tray.full.fill"
+        }
+    }
+
+    private func label(for tab: IslandModel.Tab) -> String {
+        switch tab {
+        case .home: return "Home"
+        case .schedule: return "Schedule"
+        case .shelf: return "Shelf"
+        }
     }
 }
 
@@ -65,13 +99,13 @@ struct HomePane: View {
     @ObservedObject var model: IslandModel
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            VStack(spacing: 8) {
+        HStack(alignment: .top, spacing: Theme.Space.m) {
+            VStack(spacing: Theme.Space.s) {
                 UpNextCard(model: model)
                 MediaCard(model: model)
                 FocusCard(model: model)
             }
-            .frame(width: 236)
+            .frame(width: 240)
 
             ActivityList(model: model)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -83,40 +117,61 @@ struct MediaCard: View {
     @ObservedObject var model: IslandModel
 
     var body: some View {
-        HStack(spacing: 10) {
+        Group {
             if let np = model.nowPlaying {
-                ArtworkView(nowPlaying: np, size: 56)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(np.title)
-                        .font(.system(size: 13, weight: .semibold, design: .rounded))
-                        .lineLimit(1)
-                    Text(np.artist)
-                        .font(.system(size: 11))
-                        .foregroundStyle(.white.opacity(0.6))
-                        .lineLimit(1)
-                    HStack(spacing: 4) {
-                        IconButton(systemImage: "backward.fill", size: 12) { model.media("previous track") }
-                        IconButton(systemImage: np.isPlaying ? "pause.fill" : "play.fill", size: 15) { model.media("playpause") }
-                        IconButton(systemImage: "forward.fill", size: 12) { model.media("next track") }
+                let tint = model.accent ?? np.appTint
+                VStack(spacing: Theme.Space.s) {
+                    HStack(spacing: 10) {
+                        ArtworkView(model: model, size: 44, matchID: "art")
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(np.title)
+                                .font(.system(size: 12.5, weight: .semibold, design: .rounded))
+                                .lineLimit(1)
+                            Text(np.artist)
+                                .font(Theme.Font.caption)
+                                .foregroundStyle(Theme.inkSecondary)
+                                .lineLimit(1)
+                        }
+                        Spacer(minLength: 0)
+                        HStack(spacing: 0) {
+                            IconButton(systemImage: "backward.fill", size: 11) { model.media("previous track") }
+                            IconButton(systemImage: np.isPlaying ? "pause.fill" : "play.fill", size: 16) { model.media("playpause") }
+                                .contentTransition(.symbolEffect(.replace))
+                            IconButton(systemImage: "forward.fill", size: 11) { model.media("next track") }
+                        }
+                        .padding(.trailing, -6)
                     }
-                    .padding(.leading, -6)
+                    PlaybackBar(nowPlaying: np, tint: tint)
                 }
-                Spacer(minLength: 0)
+                .padding(10)
+                .background(
+                    RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
+                        .fill(LinearGradient(colors: [tint.opacity(0.22), tint.opacity(0.05)],
+                                             startPoint: .topLeading, endPoint: .bottomTrailing))
+                )
+                .card()
+                .animation(.easeInOut(duration: 0.6), value: model.accent)
             } else {
-                Image(systemName: "music.note")
-                    .font(.system(size: 18))
-                    .frame(width: 56, height: 56)
-                    .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white.opacity(0.06)))
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Nothing playing").font(.system(size: 12, weight: .semibold, design: .rounded))
-                    Text("Music or Spotify shows up here").font(.system(size: 11)).foregroundStyle(.white.opacity(0.5))
+                HStack(spacing: 10) {
+                    Image(systemName: "music.note")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(Theme.inkTertiary)
+                        .frame(width: 44, height: 44)
+                        .background(RoundedRectangle(cornerRadius: 11, style: .continuous).fill(Theme.surface))
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Nothing playing").font(Theme.Font.headline)
+                        Text("Play something in Music or Spotify")
+                            .font(Theme.Font.caption)
+                            .foregroundStyle(Theme.inkTertiary)
+                    }
+                    Spacer(minLength: 0)
                 }
-                Spacer(minLength: 0)
+                .padding(10)
+                .frame(maxHeight: .infinity)
+                .card()
             }
         }
-        .padding(10)
-        .frame(height: 76)
-        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Palette.card))
+        .frame(height: 92)
     }
 }
 
@@ -128,34 +183,31 @@ struct FocusCard: View {
             if let end = model.focusEnd {
                 TimelineView(.periodic(from: .now, by: 1)) { context in
                     let remaining = max(0, end.timeIntervalSince(context.date))
-                    let total = max(model.focusTotal, 1)
-                    ProgressRing(progress: 1 - remaining / total, color: Palette.amber, size: 30)
+                    ProgressRing(progress: remaining / max(model.focusTotal, 1), color: Palette.amber, size: 26, lineWidth: 3)
                 }
-                VStack(alignment: .leading, spacing: 1) {
+                VStack(alignment: .leading, spacing: 0) {
                     Text("Focus")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.6))
+                        .font(Theme.Font.caption)
+                        .foregroundStyle(Theme.inkSecondary)
                     Text(timerInterval: Date()...max(end, Date()), countsDown: true)
-                        .font(.system(size: 18, weight: .semibold, design: .rounded))
-                        .monospacedDigit()
+                        .font(.system(size: 17, weight: .semibold, design: .rounded).monospacedDigit())
                 }
                 Spacer(minLength: 0)
-                ChipButton(title: "Stop", systemImage: "stop.fill", tint: Palette.red) { model.stopFocus() }
+                ChipButton(title: "End", systemImage: "stop.fill", tint: Palette.red) { model.stopFocus() }
             } else {
                 Image(systemName: "timer")
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(Palette.amber)
-                Text("Focus")
-                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                Text("Focus").font(Theme.Font.headline)
                 Spacer(minLength: 0)
                 ForEach(model.config.focusMinutes.prefix(3), id: \.self) { minutes in
                     ChipButton(title: "\(minutes)m") { model.startFocus(minutes: minutes) }
                 }
             }
         }
-        .padding(.horizontal, 12)
-        .frame(height: 50)
-        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Palette.card))
+        .padding(.horizontal, Theme.Space.m)
+        .frame(height: 48)
+        .card()
     }
 }
 
@@ -168,27 +220,26 @@ struct UpNextCard: View {
         let next = model.schedule.nextEvent()
         let dueCount = model.dueSoon.count
         HStack(spacing: 10) {
-            RoundedRectangle(cornerRadius: 2)
-                .fill(next?.color ?? Color.white.opacity(0.25))
-                .frame(width: 4, height: 34)
-            VStack(alignment: .leading, spacing: 2) {
+            Capsule()
+                .fill(next?.color ?? Theme.surfaceRaised)
+                .frame(width: 4, height: 30)
+            VStack(alignment: .leading, spacing: 1) {
                 if let next {
                     Text(next.title)
-                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .font(Theme.Font.headline)
                         .lineLimit(1)
-                    let place = next.location.map { " · " + $0 } ?? ""
+                    let place = next.location.map { ", " + $0 } ?? ""
                     TimelineView(.periodic(from: .now, by: 30)) { context in
-                        Text(IslandModel.relative(next.start, from: context.date) + place)
-                            .font(.system(size: 11))
-                            .foregroundStyle(.white.opacity(0.6))
+                        Text(IslandModel.relative(next.start, from: context.date).capitalizedFirst + place)
+                            .font(Theme.Font.caption)
+                            .foregroundStyle(Theme.inkSecondary)
                             .lineLimit(1)
                     }
                 } else {
-                    Text("Nothing else today")
-                        .font(.system(size: 12, weight: .semibold, design: .rounded))
-                    Text(dueCount == 0 ? "No deadlines this week" : "\(dueCount) due soon")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.white.opacity(0.6))
+                    Text("Nothing else today").font(Theme.Font.headline)
+                    Text(dueCount == 0 ? "No deadlines this week" : "\(dueCount) due this week")
+                        .font(Theme.Font.caption)
+                        .foregroundStyle(Theme.inkSecondary)
                 }
             }
             Spacer(minLength: 0)
@@ -196,13 +247,16 @@ struct UpNextCard: View {
                 ChipButton(title: "Join", systemImage: "video.fill", tint: Palette.green) { NSWorkspace.shared.open(url) }
             } else if next != nil, dueCount > 0 {
                 Text("\(dueCount) due")
-                    .font(.system(size: 10, weight: .bold, design: .rounded))
+                    .font(Theme.Font.number)
                     .foregroundStyle(Palette.amber)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Capsule().fill(Palette.amber.opacity(0.14)))
             }
         }
-        .padding(.horizontal, 12)
-        .frame(height: 50)
-        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Palette.card))
+        .padding(.horizontal, Theme.Space.m)
+        .frame(height: 52)
+        .card()
         .contentShape(Rectangle())
         .onTapGesture { model.tab = .schedule }
     }
@@ -212,82 +266,96 @@ struct SchedulePane: View {
     @ObservedObject var model: IslandModel
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            column(title: "UP NEXT") {
-                let events = model.schedule.events.filter { $0.end > Date() }.prefix(8)
-                if events.isEmpty {
-                    emptyRow(model.config.calendar ? "No more events today" : "Calendar is off in config")
-                }
-                ForEach(Array(events)) { event in
-                    EventRow(event: event)
-                }
-            }
-            column(title: "DUE SOON") {
-                let items = model.dueSoon.prefix(10)
-                if items.isEmpty {
-                    emptyRow("Nothing due. Subscribe your D2L/Canvas calendar or add Reminders with due dates.")
-                }
-                ForEach(Array(items)) { item in
-                    DueRow(item: item)
+        let events = Array(model.schedule.events.filter { $0.end > Date() }.prefix(8))
+        let due = Array(model.dueSoon.prefix(10))
+        HStack(alignment: .top, spacing: Theme.Space.m) {
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
+                SectionTitle(title: "Up next", count: events.count)
+                ScrollView(.vertical, showsIndicators: false) {
+                    VStack(spacing: 6) {
+                        if events.isEmpty {
+                            EmptyNote(symbol: "calendar",
+                                      text: model.config.calendar ? "No more events today" : "Calendar is turned off in settings")
+                        }
+                        ForEach(events) { EventRow(event: $0) }
+                    }
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
+                SectionTitle(title: "Due soon", count: due.count)
+                ScrollView(.vertical, showsIndicators: false) {
+                    VStack(spacing: 6) {
+                        if due.isEmpty {
+                            EmptyNote(symbol: "checklist",
+                                      text: "Subscribe to your D2L or Canvas calendar, or add Reminders with due dates")
+                        }
+                        ForEach(due) { DueRow(item: $0) }
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
     }
+}
 
-    private func column<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(title)
-                .font(.system(size: 10, weight: .bold, design: .rounded))
-                .tracking(0.8)
-                .foregroundStyle(.white.opacity(0.45))
-            ScrollView(.vertical, showsIndicators: false) {
-                VStack(spacing: 5, content: content)
-            }
+private struct EmptyNote: View {
+    let symbol: String
+    let text: String
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: symbol)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(Theme.inkTertiary)
+            Text(text)
+                .font(Theme.Font.caption)
+                .foregroundStyle(Theme.inkSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-    }
-
-    private func emptyRow(_ text: String) -> some View {
-        Text(text)
-            .font(.system(size: 11))
-            .foregroundStyle(.white.opacity(0.5))
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(10)
-            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white.opacity(0.04)))
+        .padding(Theme.Space.m)
+        .background(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).fill(Theme.surface))
     }
 }
 
 struct EventRow: View {
     let event: CalEvent
 
-    private var timeLine: String {
-        let start = event.start.formatted(date: .omitted, time: .shortened)
-        let end = event.end.formatted(date: .omitted, time: .shortened)
-        let place = event.location.map { " · " + $0 } ?? ""
-        return "\(start) – \(end)\(place)"
-    }
-
     var body: some View {
-        HStack(spacing: 8) {
-            RoundedRectangle(cornerRadius: 2).fill(event.color).frame(width: 3, height: 28)
+        let now = Date()
+        let live = event.start <= now && event.end > now
+        HStack(spacing: 10) {
+            VStack(alignment: .trailing, spacing: 0) {
+                Text(event.start.formatted(date: .omitted, time: .shortened))
+                    .font(Theme.Font.number)
+                    .foregroundStyle(live ? Palette.green : Theme.ink)
+                Text(event.end.formatted(date: .omitted, time: .shortened))
+                    .font(.system(size: 10, design: .rounded).monospacedDigit())
+                    .foregroundStyle(Theme.inkTertiary)
+            }
+            .frame(width: 58, alignment: .trailing)
+            Capsule().fill(event.color).frame(width: 3, height: 26)
             VStack(alignment: .leading, spacing: 1) {
                 Text(event.title)
-                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .font(Theme.Font.headline)
                     .lineLimit(1)
-                Text(timeLine)
-                    .font(.system(size: 10.5))
-                    .foregroundStyle(.white.opacity(0.55))
-                    .lineLimit(1)
+                if let location = event.location {
+                    Text(location)
+                        .font(Theme.Font.caption)
+                        .foregroundStyle(Theme.inkSecondary)
+                        .lineLimit(1)
+                }
             }
             Spacer(minLength: 4)
             if let url = event.joinURL {
-                IconButton(systemImage: "video.fill", size: 11) { NSWorkspace.shared.open(url) }
-                    .foregroundStyle(Palette.green)
+                ChipButton(title: "Join", systemImage: "video.fill", tint: Palette.green) { NSWorkspace.shared.open(url) }
             }
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 5)
-        .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.white.opacity(0.05)))
+        .padding(.horizontal, 10)
+        .padding(.vertical, 7)
+        .background(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).fill(live ? Palette.green.opacity(0.08) : Theme.surface))
     }
 }
 
@@ -297,28 +365,29 @@ struct DueRow: View {
     var body: some View {
         let overdue = item.due < Date()
         let urgent = item.due.timeIntervalSinceNow < 24 * 3600
-        HStack(spacing: 8) {
-            Image(systemName: overdue ? "exclamationmark.circle.fill" : "circle")
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(overdue ? Palette.red : item.color)
+        let accent = overdue ? Palette.red : (urgent ? Palette.amber : Theme.inkSecondary)
+        HStack(spacing: 10) {
+            Circle()
+                .strokeBorder(overdue ? Palette.red : item.color, lineWidth: 1.5)
+                .frame(width: 13, height: 13)
             VStack(alignment: .leading, spacing: 1) {
                 Text(item.title)
-                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .font(Theme.Font.headline)
                     .lineLimit(1)
                 Text(item.source)
-                    .font(.system(size: 10.5))
-                    .foregroundStyle(.white.opacity(0.5))
+                    .font(Theme.Font.caption)
+                    .foregroundStyle(Theme.inkTertiary)
                     .lineLimit(1)
             }
             Spacer(minLength: 4)
-            Text(IslandModel.relative(item.due))
-                .font(.system(size: 10.5, weight: .semibold, design: .rounded))
-                .foregroundStyle(overdue ? Palette.red : (urgent ? Palette.amber : Color.white.opacity(0.6)))
+            Text(IslandModel.relative(item.due).capitalizedFirst)
+                .font(Theme.Font.number)
+                .foregroundStyle(accent)
                 .lineLimit(1)
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 5)
-        .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.white.opacity(0.05)))
+        .padding(.horizontal, 10)
+        .padding(.vertical, 7)
+        .background(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).fill(Theme.surface))
     }
 }
 
@@ -328,36 +397,53 @@ struct ActivityList: View {
     @ObservedObject var model: IslandModel
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        let connected = model.serverStatus.hasPrefix("listening")
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
             HStack {
-                Text("ACTIVITY")
-                    .font(.system(size: 10, weight: .bold, design: .rounded))
-                    .tracking(0.8)
-                    .foregroundStyle(.white.opacity(0.45))
+                SectionTitle(title: "Activity", count: model.activities.count)
                 Spacer()
-                Text(model.serverStatus)
-                    .font(.system(size: 10, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.35))
+                HStack(spacing: 5) {
+                    Circle()
+                        .fill(connected ? Palette.green : Palette.red)
+                        .frame(width: 5, height: 5)
+                    Text(connected ? "Hooks connected" : model.serverStatus)
+                        .font(.system(size: 10.5))
+                        .foregroundStyle(Theme.inkTertiary)
+                }
+                .help(model.serverStatus)
             }
             if model.activities.isEmpty && model.history.isEmpty {
-                VStack(spacing: 6) {
+                VStack(spacing: 8) {
                     Image(systemName: "sparkles")
-                        .font(.system(size: 20))
-                        .foregroundStyle(Palette.claude)
-                    Text("Agents, long commands and notifications show up here.")
-                        .font(.system(size: 11))
-                        .foregroundStyle(.white.opacity(0.55))
+                        .font(.system(size: 20, weight: .medium))
+                        .foregroundStyle(Theme.inkTertiary)
+                    Text("Claude Code, Codex and long commands show up here")
+                        .font(Theme.Font.caption)
+                        .foregroundStyle(Theme.inkSecondary)
+                        .multilineTextAlignment(.center)
+                    Text("Run a command with cove-run, or try the demo from the menu bar")
+                        .font(.system(size: 10.5))
+                        .foregroundStyle(Theme.inkTertiary)
                         .multilineTextAlignment(.center)
                 }
+                .padding(.horizontal, Theme.Space.l)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).fill(Color.white.opacity(0.03)))
             } else {
                 ScrollView(.vertical, showsIndicators: false) {
                     LazyVStack(spacing: 6) {
                         ForEach(model.activities) { activity in
                             ActivityRow(activity: activity) { model.open(activity) }
                         }
-                        ForEach(model.history.prefix(8)) { banner in
-                            HistoryRow(banner: banner) { model.tapBanner(banner) }
+                        if !model.history.isEmpty {
+                            HStack {
+                                SectionTitle(title: "Earlier")
+                                Spacer()
+                            }
+                            .padding(.top, model.activities.isEmpty ? 0 : 6)
+                            ForEach(model.history.prefix(8)) { banner in
+                                HistoryRow(banner: banner) { model.tapBanner(banner) }
+                            }
                         }
                     }
                 }
@@ -372,46 +458,65 @@ struct ActivityRow: View {
     @State private var hovering = false
 
     var body: some View {
-        HStack(spacing: 9) {
-            AgentGlyph(agent: activity.agent, animating: activity.state == .running, size: 13)
-                .frame(width: 26, height: 26)
-                .background(Circle().fill(activity.agent.tint.opacity(0.15)))
+        HStack(spacing: 10) {
+            AgentTile(agent: activity.agent, animating: activity.state == .running, size: 30)
             VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 5) {
+                HStack(spacing: 6) {
                     Text(activity.title)
-                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .font(Theme.Font.headline)
                         .lineLimit(1)
                     if !activity.seen {
                         Circle().fill(Palette.green).frame(width: 6, height: 6)
+                            .transition(.scale.combined(with: .opacity))
                     }
                     Spacer(minLength: 4)
                     timeLabel
-                        .font(.system(size: 10, design: .rounded))
-                        .monospacedDigit()
-                        .foregroundStyle(.white.opacity(0.45))
+                        .font(.system(size: 10.5, weight: .medium, design: .rounded).monospacedDigit())
+                        .foregroundStyle(Theme.inkTertiary)
                 }
-                Text(activity.detail)
-                    .font(.system(size: 11))
-                    .foregroundStyle(.white.opacity(0.65))
-                    .lineLimit(1)
+                HStack(spacing: 6) {
+                    statusBadge
+                    Text(activity.detail)
+                        .font(Theme.Font.caption)
+                        .foregroundStyle(Theme.inkSecondary)
+                        .lineLimit(1)
+                }
                 if let progress = activity.progress, activity.state == .running {
                     GeometryReader { geo in
                         ZStack(alignment: .leading) {
                             Capsule().fill(Color.white.opacity(0.12))
-                            Capsule().fill(activity.agent.tint).frame(width: geo.size.width * min(max(progress, 0), 1))
+                            Capsule()
+                                .fill(activity.agent.tint)
+                                .frame(width: geo.size.width * min(max(progress, 0), 1))
                         }
                     }
                     .frame(height: 3)
+                    .padding(.top, 2)
+                    .animation(Theme.snappy, value: progress)
                 }
             }
-            stateBadge
+            Image(systemName: "chevron.right")
+                .font(.system(size: 9, weight: .bold))
+                .foregroundStyle(Theme.inkTertiary)
+                .opacity(hovering ? 1 : 0)
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 6)
-        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white.opacity(hovering ? 0.11 : 0.05)))
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(
+            RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous)
+                .fill(activity.state == .attention ? Palette.amber.opacity(0.1) : (hovering ? Theme.surfaceRaised : Theme.surface))
+        )
         .contentShape(Rectangle())
         .onHover { hovering = $0 }
         .onTapGesture(perform: onTap)
+        .help(helpText)
+        .animation(Theme.snappy, value: activity.state)
+        .animation(Theme.snappy, value: activity.seen)
+    }
+
+    private var helpText: String {
+        guard let owner = activity.ownerApp else { return "" }
+        return "Jump back to \(AppIcons.name(for: owner))"
     }
 
     @ViewBuilder
@@ -424,22 +529,28 @@ struct ActivityRow: View {
     }
 
     @ViewBuilder
-    private var stateBadge: some View {
+    private var statusBadge: some View {
         switch activity.state {
         case .running:
             if let progress = activity.progress {
                 Text("\(Int(progress * 100))%")
-                    .font(.system(size: 10, weight: .bold, design: .rounded))
+                    .font(Theme.Font.number)
                     .foregroundStyle(activity.agent.tint)
             } else {
-                ArcSpinner(color: activity.agent.tint, size: 12)
+                ArcSpinner(color: activity.agent.tint, size: 10)
             }
         case .attention:
-            Image(systemName: "exclamationmark.circle.fill").foregroundStyle(Palette.amber)
+            Image(systemName: "hand.raised.fill")
+                .font(.system(size: 10, weight: .bold))
+                .foregroundStyle(Palette.amber)
         case .done:
-            Image(systemName: "checkmark.circle.fill").foregroundStyle(Palette.green)
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(Palette.green)
         case .failed:
-            Image(systemName: "xmark.circle.fill").foregroundStyle(Palette.red)
+            Image(systemName: "xmark.circle.fill")
+                .font(.system(size: 11, weight: .bold))
+                .foregroundStyle(Palette.red)
         }
     }
 }
@@ -450,31 +561,29 @@ struct HistoryRow: View {
     @State private var hovering = false
 
     var body: some View {
-        HStack(spacing: 9) {
-            BannerIconView(icon: banner.icon)
-                .frame(width: 22, height: 22)
-                .padding(2)
+        HStack(spacing: 10) {
+            BannerIconView(icon: banner.icon, size: 24)
+                .padding(.leading, 3)
             VStack(alignment: .leading, spacing: 1) {
-                HStack {
-                    Text(banner.title)
-                        .font(.system(size: 11, weight: .semibold, design: .rounded))
-                        .lineLimit(1)
-                    Spacer(minLength: 4)
-                    Text(banner.date, style: .relative)
-                        .font(.system(size: 10, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.4))
-                }
+                Text(banner.title)
+                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                    .lineLimit(1)
                 if !banner.body.isEmpty {
                     Text(banner.body)
-                        .font(.system(size: 11))
-                        .foregroundStyle(.white.opacity(0.55))
+                        .font(Theme.Font.caption)
+                        .foregroundStyle(Theme.inkTertiary)
                         .lineLimit(1)
                 }
             }
+            Spacer(minLength: 4)
+            Text(banner.date, style: .relative)
+                .font(.system(size: 10.5, design: .rounded).monospacedDigit())
+                .foregroundStyle(Theme.inkTertiary)
+                .lineLimit(1)
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 5)
-        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white.opacity(hovering ? 0.09 : 0.03)))
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).fill(hovering ? Theme.surface : Color.clear))
         .contentShape(Rectangle())
         .onHover { hovering = $0 }
         .onTapGesture(perform: onTap)
@@ -488,40 +597,62 @@ struct ShelfPane: View {
 
     var body: some View {
         if model.shelf.isEmpty {
-            VStack(spacing: 8) {
-                Image(systemName: "tray.and.arrow.down.fill")
-                    .font(.system(size: 26))
-                    .foregroundStyle(Palette.blue)
-                Text("Drop files on the notch to park them here")
-                    .font(.system(size: 12, weight: .semibold, design: .rounded))
-                Text("Drag them back out into any app when you need them.")
-                    .font(.system(size: 11))
-                    .foregroundStyle(.white.opacity(0.5))
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .strokeBorder(Color.white.opacity(0.18), style: StrokeStyle(lineWidth: 1.5, dash: [6, 5]))
-            )
+            DropZone(targeted: model.isDropTargeted)
         } else {
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
                 HStack {
-                    Text("SHELF · \(model.shelf.count)")
-                        .font(.system(size: 10, weight: .bold, design: .rounded))
-                        .tracking(0.8)
-                        .foregroundStyle(.white.opacity(0.45))
+                    SectionTitle(title: "Shelf", count: model.shelf.count)
                     Spacer()
+                    Text("Drag files out to use them")
+                        .font(.system(size: 10.5))
+                        .foregroundStyle(Theme.inkTertiary)
                     ChipButton(title: "Clear", systemImage: "trash") { model.clearShelf() }
                 }
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 10) {
+                    HStack(spacing: Theme.Space.s) {
                         ForEach(model.shelf, id: \.self) { url in
                             ShelfItem(url: url, model: model)
                         }
                     }
+                    .padding(.vertical, 6)
+                    .padding(.horizontal, 2)
                 }
+                .frame(maxHeight: .infinity)
+                .background(
+                    RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
+                        .strokeBorder(Palette.blue.opacity(model.isDropTargeted ? 0.7 : 0), lineWidth: 1.5)
+                )
             }
         }
+    }
+}
+
+private struct DropZone: View {
+    let targeted: Bool
+
+    var body: some View {
+        VStack(spacing: Theme.Space.s) {
+            Image(systemName: targeted ? "tray.and.arrow.down.fill" : "tray.and.arrow.down")
+                .font(.system(size: 26, weight: .medium))
+                .foregroundStyle(targeted ? Palette.blue : Theme.inkTertiary)
+                .symbolEffect(.bounce, value: targeted)
+            Text(targeted ? "Drop to keep it here" : "Drop files on the notch to keep them handy")
+                .font(Theme.Font.headline)
+            Text("Screenshots land here automatically. Drag anything back out into any app.")
+                .font(Theme.Font.caption)
+                .foregroundStyle(Theme.inkTertiary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(
+            RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
+                .fill(targeted ? Palette.blue.opacity(0.08) : Color.clear)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
+                .strokeBorder(targeted ? Palette.blue.opacity(0.8) : Color.white.opacity(0.16),
+                              style: StrokeStyle(lineWidth: 1.5, dash: [6, 5]))
+        )
+        .animation(Theme.snappy, value: targeted)
     }
 }
 
@@ -531,24 +662,55 @@ struct ShelfItem: View {
     @State private var hovering = false
 
     var body: some View {
-        VStack(spacing: 5) {
-            FileThumbnail(url: url, size: 52)
-                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+        VStack(spacing: 6) {
+            FileThumbnail(url: url, size: 56)
+                .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.thumb, style: .continuous))
+                .shadow(color: .black.opacity(hovering ? 0.5 : 0), radius: 6, y: 3)
             Text(url.lastPathComponent)
-                .font(.system(size: 10))
+                .font(.system(size: 10.5))
+                .foregroundStyle(Theme.inkSecondary)
                 .lineLimit(2)
+                .truncationMode(.middle)
                 .multilineTextAlignment(.center)
-                .frame(width: 78)
+                .frame(width: 80)
         }
-        .padding(6)
-        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.white.opacity(hovering ? 0.1 : 0)))
+        .padding(8)
+        .background(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).fill(hovering ? Theme.surfaceRaised : Theme.surface))
+        .overlay(alignment: .topTrailing) {
+            if hovering {
+                Button {
+                    model.removeFromShelf(url)
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 8, weight: .heavy))
+                        .foregroundStyle(.black)
+                        .frame(width: 16, height: 16)
+                        .background(Circle().fill(Color.white.opacity(0.85)))
+                }
+                .buttonStyle(PressableStyle())
+                .offset(x: 4, y: -4)
+                .transition(.scale.combined(with: .opacity))
+            }
+        }
+        .offset(y: hovering ? -2 : 0)
+        .animation(Theme.snappy, value: hovering)
         .onHover { hovering = $0 }
         .onDrag { NSItemProvider(contentsOf: url) ?? NSItemProvider() }
         .onTapGesture(count: 2) { NSWorkspace.shared.open(url) }
+        .help(url.path)
         .contextMenu {
             Button("Open") { NSWorkspace.shared.open(url) }
             Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([url]) }
+            Divider()
             Button("Remove from Shelf") { model.removeFromShelf(url) }
         }
+    }
+}
+
+extension String {
+    /// "in 12 min" → "In 12 min", for text that starts a line.
+    var capitalizedFirst: String {
+        guard let first else { return self }
+        return first.uppercased() + dropFirst()
     }
 }
