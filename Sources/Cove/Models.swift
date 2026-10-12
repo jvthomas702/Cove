@@ -1,0 +1,219 @@
+import AppKit
+import SwiftUI
+
+// MARK: - Palette
+
+extension Color {
+    init(hex: UInt32, opacity: Double = 1) {
+        self.init(
+            .sRGB,
+            red: Double((hex >> 16) & 0xFF) / 255,
+            green: Double((hex >> 8) & 0xFF) / 255,
+            blue: Double(hex & 0xFF) / 255,
+            opacity: opacity
+        )
+    }
+}
+
+enum Palette {
+    static let claude = Color(hex: 0xD97757)
+    static let codex = Color(hex: 0x7EE0B5)
+    static let command = Color(hex: 0x8AB4F8)
+    static let green = Color(hex: 0x32D74B)
+    static let amber = Color(hex: 0xFFB340)
+    static let red = Color(hex: 0xFF453A)
+    static let blue = Color(hex: 0x0A84FF)
+    static let spotify = Color(hex: 0x1DB954)
+    static let music = Color(hex: 0xFA2D48)
+    static let card = Color.white.opacity(0.07)
+}
+
+// MARK: - Live activities (agents, long commands)
+
+enum AgentKind: String {
+    case claude, codex, command, custom
+
+    var displayName: String {
+        switch self {
+        case .claude: return "Claude"
+        case .codex: return "Codex"
+        case .command: return "Command"
+        case .custom: return "Task"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .claude: return "sparkle"
+        case .codex: return "chevron.left.forwardslash.chevron.right"
+        case .command: return "terminal"
+        case .custom: return "bell.fill"
+        }
+    }
+
+    var tint: Color {
+        switch self {
+        case .claude: return Palette.claude
+        case .codex: return Palette.codex
+        case .command: return Palette.command
+        case .custom: return .white
+        }
+    }
+
+    var doneTitle: String {
+        switch self {
+        case .claude, .codex: return "\(displayName) is done"
+        case .command: return "Command finished"
+        case .custom: return "Done"
+        }
+    }
+}
+
+enum ActivityState: Equatable {
+    case running, attention, done, failed
+}
+
+struct Activity: Identifiable, Equatable {
+    let id: String
+    var agent: AgentKind
+    var title: String
+    var detail: String
+    var state: ActivityState
+    var progress: Double? = nil
+    var startedAt: Date
+    var updatedAt: Date
+    var finishedAt: Date? = nil
+    /// False for a finished activity you haven't looked at yet (drives the green "new" dot).
+    var seen: Bool = true
+    /// The app that was frontmost when the work started (usually your terminal); clicking jumps back to it.
+    var ownerApp: String? = nil
+
+    var isLive: Bool { state == .running || state == .attention }
+}
+
+// MARK: - Banners (transient notifications)
+
+enum BannerStyle: Equatable {
+    case info, success, attention, failure
+
+    var tint: Color {
+        switch self {
+        case .info: return Palette.blue
+        case .success: return Palette.green
+        case .attention: return Palette.amber
+        case .failure: return Palette.red
+        }
+    }
+}
+
+enum BannerIcon: Equatable {
+    case symbol(String, Color)
+    case app(String)
+}
+
+struct Banner: Identifiable, Equatable {
+    let id = UUID()
+    var title: String
+    var body: String
+    var style: BannerStyle
+    var icon: BannerIcon
+    /// Sticky banners stay until clicked or until you open the island.
+    var sticky: Bool = false
+    var openApp: String? = nil
+    var openURL: URL? = nil
+    var date = Date()
+    var activityID: String? = nil
+}
+
+// MARK: - Event API payload
+
+/// Body of `POST /event`. Only `title` is required.
+struct CoveEvent: Decodable {
+    var id: String?
+    var title: String
+    var body: String?
+    /// info | running | done | error | attention | clear
+    var kind: String?
+    /// claude | codex | command | custom
+    var source: String?
+    /// 0…1 for a progress ring on a running activity.
+    var progress: Double?
+    var sticky: Bool?
+}
+
+// MARK: - Media & power
+
+struct NowPlaying: Equatable {
+    var bundleID: String
+    var title: String
+    var artist: String
+    var isPlaying: Bool
+    var artworkURL: URL?
+
+    var tint: Color { bundleID == "com.spotify.client" ? Palette.spotify : Palette.music }
+}
+
+struct BatteryState: Equatable {
+    var percent: Int
+    var pluggedIn: Bool
+    var charging: Bool
+
+    var symbol: String {
+        if pluggedIn { return "battery.100.bolt" }
+        switch percent {
+        case ..<13: return "battery.0"
+        case ..<38: return "battery.25"
+        case ..<63: return "battery.50"
+        case ..<88: return "battery.75"
+        default: return "battery.100"
+        }
+    }
+}
+
+// MARK: - Helpers
+
+@MainActor
+enum AppIcons {
+    private static var icons: [String: NSImage] = [:]
+    private static var names: [String: String] = [:]
+
+    static func url(for bundleID: String) -> URL? {
+        NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID)
+    }
+
+    static func icon(for bundleID: String) -> NSImage? {
+        if let cached = icons[bundleID] { return cached }
+        guard let url = url(for: bundleID) else { return nil }
+        let image = NSWorkspace.shared.icon(forFile: url.path)
+        icons[bundleID] = image
+        return image
+    }
+
+    static func name(for bundleID: String) -> String {
+        if let cached = names[bundleID] { return cached }
+        let name = url(for: bundleID)
+            .map { FileManager.default.displayName(atPath: $0.path).replacingOccurrences(of: ".app", with: "") }
+            ?? bundleID
+        names[bundleID] = name
+        return name
+    }
+}
+
+extension String {
+    /// Collapses whitespace/newlines and truncates with an ellipsis.
+    func oneLine(max: Int) -> String {
+        let collapsed = self
+            .components(separatedBy: .whitespacesAndNewlines)
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
+        if collapsed.count <= max { return collapsed }
+        return String(collapsed.prefix(max - 1)) + "…"
+    }
+}
+
+func formatDuration(_ interval: TimeInterval) -> String {
+    let s = Int(interval.rounded())
+    if s >= 3600 { return "\(s / 3600)h \((s % 3600) / 60)m" }
+    if s >= 60 { return "\(s / 60)m \(s % 60)s" }
+    return "\(s)s"
+}

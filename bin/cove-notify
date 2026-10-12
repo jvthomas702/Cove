@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+# cove-notify — post anything to the Cove notch island.
+#
+# Usage:
+#   cove-notify [options] TITLE [BODY]
+#
+# Options:
+#   --kind KIND       info (default) | running | done | error | attention | clear
+#   --id ID           ties updates together (running → done) into one live activity
+#   --progress N      0..1, draws a progress ring on a running activity
+#   --source NAME     claude | codex | command | custom (sets the icon)
+#   --sticky          keep the banner up until it is clicked
+#
+# Examples:
+#   cove-notify "Coffee's ready"
+#   cove-notify --kind attention "Robot 3 lost localization" "Battery at 12%"
+#   cove-notify --id sweep --kind running --progress 0.4 "HDC sweep" "dim=10000, 4/10"
+set -u
+PORT="${COVE_PORT:-7777}"
+id=""; kind="info"; progress=""; source="custom"; sticky="false"
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --id) id="${2:-}"; shift 2 ;;
+    --kind) kind="${2:-info}"; shift 2 ;;
+    --progress) progress="${2:-}"; shift 2 ;;
+    --source) source="${2:-custom}"; shift 2 ;;
+    --sticky) sticky="true"; shift ;;
+    -h|--help) awk 'NR > 1 && /^#/ { sub(/^# ?/, ""); print; next } NR > 1 { exit }' "$0"; exit 0 ;;
+    --) shift; break ;;
+    *) break ;;
+  esac
+done
+
+title="${1:-Cove}"
+body="${2:-}"
+
+# Minimal JSON string escaping (backslash, quote, control whitespace).
+esc() { printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' | tr '\t\r\n' '   '; }
+
+case "$progress" in
+  ''|*[!0-9.]*) progress="" ;;
+esac
+
+json="{\"title\":\"$(esc "$title")\",\"body\":\"$(esc "$body")\",\"kind\":\"$(esc "$kind")\",\"source\":\"$(esc "$source")\",\"sticky\":$sticky"
+[ -n "$id" ] && json="$json,\"id\":\"$(esc "$id")\""
+[ -n "$progress" ] && json="$json,\"progress\":$progress"
+json="$json}"
+
+printf '%s' "$json" | curl -s -m 2 -X POST \
+  -H 'Content-Type: application/json' -H 'Expect:' \
+  --data-binary @- "http://127.0.0.1:$PORT/event" >/dev/null 2>&1 || true

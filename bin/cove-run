@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+# cove-run — run any command and get a notch ping when it finishes.
+#
+# Usage:
+#   cove-run [--name LABEL] [--] COMMAND [ARGS...]
+#
+# Examples:
+#   cove-run python train.py --epochs 50
+#   cove-run --name "Gazebo sim" -- ros2 launch swarm sim.launch.py
+#   cove-run make -j8
+#
+# While it runs, the notch shows a live activity with an elapsed timer. Inside the command,
+# $COVE_ACTIVITY_ID is set so your code can push progress to the same activity
+# (see examples/cove_progress.py).
+set -u
+DIR="$(cd "$(dirname "$0")" && pwd)"
+NOTIFY="$DIR/cove-notify"
+command -v "$NOTIFY" >/dev/null 2>&1 || NOTIFY="cove-notify"
+
+name=""
+if [ "${1:-}" = "--name" ]; then name="${2:-}"; shift 2; fi
+[ "${1:-}" = "--" ] && shift
+if [ $# -eq 0 ]; then
+  echo "usage: cove-run [--name LABEL] [--] COMMAND [ARGS...]" >&2
+  exit 2
+fi
+[ -z "$name" ] && name="$*"
+label="$(printf '%s' "$name" | cut -c1-60)"
+
+id="cmd-$$-$(date +%s)"
+export COVE_ACTIVITY_ID="$id"
+start=$(date +%s)
+
+fmt() {
+  local s=$1
+  if [ "$s" -ge 3600 ]; then printf '%dh %dm' $((s / 3600)) $((s % 3600 / 60))
+  elif [ "$s" -ge 60 ]; then printf '%dm %ds' $((s / 60)) $((s % 60))
+  else printf '%ds' "$s"; fi
+}
+
+"$NOTIFY" --id "$id" --kind running --source command "$label" "Running in $(basename "$PWD")"
+
+# Let Ctrl-C reach the command but keep this script alive to report it.
+trap ':' INT
+"$@"
+code=$?
+trap - INT
+
+took="$(fmt $(( $(date +%s) - start )))"
+if [ "$code" -eq 0 ]; then
+  "$NOTIFY" --id "$id" --kind done --source command "$label" "Finished in $took"
+elif [ "$code" -eq 130 ]; then
+  "$NOTIFY" --id "$id" --kind error --source command "$label" "Interrupted after $took"
+else
+  "$NOTIFY" --id "$id" --kind error --source command "$label" "Exited with code $code after $took"
+fi
+exit "$code"

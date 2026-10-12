@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Claude Code hook → Cove.
+# Claude pipes the hook event JSON on stdin; we forward it untouched and print nothing,
+# so the hook never adds context to your conversation and never blocks Claude (1s cap).
+curl -s -m 1 -X POST \
+  -H 'Content-Type: application/json' -H 'Expect:' \
+  --data-binary @- "http://127.0.0.1:${COVE_PORT:-7777}/hook/claude" >/dev/null 2>&1
+exit 0
