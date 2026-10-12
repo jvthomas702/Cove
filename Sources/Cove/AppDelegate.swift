@@ -97,6 +97,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func route(_ exchange: HTTPExchange) {
         let ok = #"{"ok":true}"#
+        if exchange.method == "OPTIONS" {
+            exchange.respond(204, "") // CORS preflight from the browser extension
+            return
+        }
         switch (exchange.method, exchange.path) {
         case ("GET", "/health"):
             exchange.respond(200, #"{"ok":true,"app":"cove"}"#)

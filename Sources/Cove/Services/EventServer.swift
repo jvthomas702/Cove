@@ -111,15 +111,27 @@ final class EventServer {
                     self.receive(connection, buffer: buffer)
                 }
             case .invalid:
-                Self.write(connection, status: 400, body: #"{"error":"bad request"}"#)
+                Self.write(connection, status: 400, body: #"{"error":"bad request"}"#, origin: nil)
             }
         }
     }
 
+    /// Requests from web pages carry an http(s) Origin; only browser extensions and local tools are allowed in,
+    /// so a website you visit can't post fake notifications or permission prompts.
+    static func isAllowed(origin: String?) -> Bool {
+        guard let origin, !origin.isEmpty, origin != "null" else { return true }
+        return origin.hasPrefix("chrome-extension://") || origin.hasPrefix("moz-extension://") || origin.hasPrefix("safari-web-extension://")
+    }
+
     @MainActor
     private func dispatch(_ request: HTTPRequest, on connection: NWConnection) {
+        let origin = request.origin
+        guard Self.isAllowed(origin: origin) else {
+            Self.write(connection, status: 403, body: #"{"error":"forbidden"}"#, origin: nil)
+            return
+        }
         let exchange = HTTPExchange(method: request.method, path: request.path, body: request.body)
-        exchange.send = { status, body in Self.write(connection, status: status, body: body) }
+        exchange.send = { status, body in Self.write(connection, status: status, body: body, origin: origin) }
         handler(exchange)
         if !exchange.finished {
             watchForHangUp(connection, exchange: exchange)
@@ -141,16 +153,24 @@ final class EventServer {
         }
     }
 
-    private static func write(_ connection: NWConnection, status: Int, body: String) {
+    private static func write(_ connection: NWConnection, status: Int, body: String, origin: String?) {
         let reason: String
         switch status {
         case 200: reason = "OK"
+        case 204: reason = "No Content"
+        case 403: reason = "Forbidden"
         case 404: reason = "Not Found"
         case 503: reason = "Service Unavailable"
         default: reason = "Bad Request"
         }
         let payload = Data(body.utf8)
-        let head = "HTTP/1.1 \(status) \(reason)\r\nContent-Type: application/json\r\nContent-Length: \(payload.count)\r\nConnection: close\r\n\r\n"
+        // CORS headers only for the browser extension (dispatch already refused web pages).
+        var cors = ""
+        if let origin, isAllowed(origin: origin), !origin.isEmpty {
+            cors = "Access-Control-Allow-Origin: \(origin)\r\nAccess-Control-Allow-Methods: GET, POST, OPTIONS\r\n"
+                + "Access-Control-Allow-Headers: Content-Type\r\nAccess-Control-Allow-Private-Network: true\r\nVary: Origin\r\n"
+        }
+        let head = "HTTP/1.1 \(status) \(reason)\r\nContent-Type: application/json\r\n\(cors)Content-Length: \(payload.count)\r\nConnection: close\r\n\r\n"
         connection.send(content: Data(head.utf8) + payload, completion: .contentProcessed { _ in
             connection.cancel()
         })
@@ -161,6 +181,8 @@ struct HTTPRequest {
     let method: String
     let path: String
     let body: Data
+    /// The browser's Origin header, if any. Scripts and hooks (curl) don't send one.
+    var origin: String? = nil
 
     enum ParseResult {
         case complete(HTTPRequest)
@@ -182,6 +204,7 @@ struct HTTPRequest {
 
         var contentLength = 0
         var expectsContinue = false
+        var origin: String?
         for line in lines.dropFirst() {
             let parts = line.split(separator: ":", maxSplits: 1)
             guard parts.count == 2 else { continue }
@@ -189,6 +212,7 @@ struct HTTPRequest {
             let value = parts[1].trimmingCharacters(in: .whitespaces)
             if name == "content-length" { contentLength = Int(value) ?? 0 }
             if name == "expect", value.lowercased() == "100-continue" { expectsContinue = true }
+            if name == "origin" { origin = value }
         }
 
         let bodyStart = headerEnd.upperBound
@@ -200,6 +224,6 @@ struct HTTPRequest {
         let body = data.subdata(in: bodyStart..<(bodyStart + contentLength))
         let rawPath = String(requestLine[1])
         let path = rawPath.split(separator: "?", maxSplits: 1).first.map(String.init) ?? rawPath
-        return .complete(HTTPRequest(method: String(requestLine[0]).uppercased(), path: path, body: body))
+        return .complete(HTTPRequest(method: String(requestLine[0]).uppercased(), path: path, body: body, origin: origin))
     }
 }

@@ -35,6 +35,8 @@ struct CompactView: View {
                 .frame(width: 20)
         case .attention(let agent)?:
             agentIcon(agent, mood: .alert)
+        case .napping?:
+            Buddy(mood: .sleepy, size: 24)
         case .event(let event)?, .ongoing(let event)?:
             HStack(spacing: 6) {
                 Capsule().fill(event.color).frame(width: 3, height: 13)
@@ -77,6 +79,8 @@ struct CompactView: View {
         case .hud(let hud)?:
             LevelBar(level: hud.muted ? 0 : hud.level, tint: hud.kind == .brightness ? Palette.amber : Theme.ink)
                 .frame(width: 50, height: 5)
+        case .napping?:
+            EmptyView()
         case .attention?:
             Image(systemName: "exclamationmark.circle.fill")
                 .font(.system(size: 14, weight: .bold))

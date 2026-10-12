@@ -81,6 +81,16 @@ Cove reads the Calendar and Reminders apps, so anything synced there works (iClo
 
 With `"hud": "replace"` (default) and Accessibility allowed, Cove handles the volume, mute, and brightness keys itself and shows a level meter in the notch instead of the system pop-up (hold ⌥⇧ for fine steps). Outputs without software volume (some HDMI) and external displays are left to macOS. `"passive"` shows Cove's meter alongside the system one without needing Accessibility; `"off"` disables it.
 
+## ChatGPT, Claude and Gemini in the browser
+
+The extension in `extension/` watches ChatGPT, Claude and Gemini tabs in Chrome (or Arc, Brave, Edge) and pings the notch when a reply finishes, with the chat's title and the start of the answer. Clicking the ping brings your browser forward.
+
+1. Run `./scripts/install.sh` (it copies the extension to `~/Library/Application Support/Cove/browser-extension`).
+2. Open `chrome://extensions`, turn on **Developer mode**, click **Load unpacked**, and choose that folder.
+3. Click the Cove icon in the toolbar and press **Send a test ping**.
+
+By default it only pings when the tab is in the background; turn on **Ping even when I'm looking** in the popup to always ping. The extension only talks to Cove on your own Mac (`127.0.0.1`), and Cove only accepts requests from extensions and local tools, so web pages can't post to it. Safari isn't supported.
+
 ## Long-running commands
 
 ```bash

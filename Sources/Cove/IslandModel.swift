@@ -12,6 +12,7 @@ final class IslandModel: ObservableObject {
     enum CompactItem: Equatable {
         case hud(HUDState)
         case attention(AgentKind)
+        case napping              // Pip resting beside the notch when nothing is going on
         case event(CalEvent)      // starting soon
         case ongoing(CalEvent)    // happening now
         case running(count: Int, agent: AgentKind)
@@ -140,6 +141,7 @@ final class IslandModel: ObservableObject {
         if let event = countdownEvent { return .event(event) }
         if let end = focusEnd { return .focus(end: end) }
         if let np = nowPlaying, np.isPlaying { return .music(np) }
+        if config.buddy && config.buddyAlwaysVisible { return .napping }
         return nil
     }
 
@@ -406,6 +408,14 @@ final class IslandModel: ObservableObject {
         setExpanded(false)
     }
 
+    /// The browser the extension is most likely running in (the frontmost one, else the first running one).
+    static func runningBrowser() -> String? {
+        let browsers = ["com.google.Chrome", "company.thebrowser.Browser", "com.brave.Browser",
+                        "com.microsoft.edgemac", "com.vivaldi.Vivaldi", "com.operasoftware.Opera", "com.google.Chrome.canary"]
+        if let front = NSWorkspace.shared.frontmostApplication?.bundleIdentifier, browsers.contains(front) { return front }
+        return browsers.first { !NSRunningApplication.runningApplications(withBundleIdentifier: $0).isEmpty }
+    }
+
     /// Brings an app to the front. Uses LaunchServices (like clicking it in the Dock), which works
     /// from a background accessory app even with macOS 14's cooperative activation.
     @discardableResult
@@ -457,13 +467,15 @@ final class IslandModel: ObservableObject {
 
     func ingest(_ e: CoveEvent) {
         let kind = (e.kind ?? "info").lowercased()
-        let agent = AgentKind(rawValue: (e.source ?? "custom").lowercased()) ?? .custom
+        let sourceName = (e.source ?? "custom").lowercased()
+        let agent = AgentKind(rawValue: sourceName == "claude-web" ? "claude" : sourceName) ?? .custom
         let body = e.body ?? ""
         switch kind {
         case "running", "progress", "start", "started":
             let id = e.id ?? "event:\(e.title)"
             if activity(id) == nil {
-                agentStarted(id: id, agent: agent, title: e.title, detail: body, ownerApp: nil)
+                let owner = e.app ?? ((agent.isWeb || e.source?.lowercased() == "claude-web") ? Self.runningBrowser() : nil)
+                agentStarted(id: id, agent: agent, title: e.title, detail: body, ownerApp: owner)
             }
             agentUpdate(id: id, agent: agent, title: e.title, detail: body, progress: e.progress)
         case "done", "success", "finished", "complete":

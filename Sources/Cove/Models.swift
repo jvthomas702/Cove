@@ -31,6 +31,8 @@ enum Palette {
 
 enum AgentKind: String {
     case claude, codex, command, custom
+    /// Chat tabs in the browser (reported by the Cove browser extension).
+    case chatgpt, gemini
 
     var displayName: String {
         switch self {
@@ -38,6 +40,8 @@ enum AgentKind: String {
         case .codex: return "Codex"
         case .command: return "Command"
         case .custom: return "Task"
+        case .chatgpt: return "ChatGPT"
+        case .gemini: return "Gemini"
         }
     }
 
@@ -47,6 +51,8 @@ enum AgentKind: String {
         case .codex: return "chevron.left.forwardslash.chevron.right"
         case .command: return "terminal"
         case .custom: return "bell.fill"
+        case .chatgpt: return "bubble.left.and.bubble.right.fill"
+        case .gemini: return "sparkles"
         }
     }
 
@@ -56,16 +62,21 @@ enum AgentKind: String {
         case .codex: return Palette.codex
         case .command: return Palette.command
         case .custom: return .white
+        case .chatgpt: return Color(hex: 0x10A37F)
+        case .gemini: return Color(hex: 0x8AB4F8)
         }
     }
 
     var doneTitle: String {
         switch self {
-        case .claude, .codex: return "\(displayName) is done"
+        case .claude, .codex, .chatgpt, .gemini: return "\(displayName) is done"
         case .command: return "Command finished"
         case .custom: return "Done"
         }
     }
+
+    /// Chats that live in a browser tab.
+    var isWeb: Bool { self == .chatgpt || self == .gemini }
 }
 
 enum ActivityState: Equatable {
@@ -145,6 +156,8 @@ struct Banner: Identifiable, Equatable {
 
 /// Body of `POST /event`. Only `title` is required.
 struct CoveEvent: Decodable {
+    /// Bundle ID of the app to bring forward when the activity is clicked (e.g. the browser).
+    var app: String?
     var id: String?
     var title: String
     var body: String?

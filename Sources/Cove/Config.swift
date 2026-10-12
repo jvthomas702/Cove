@@ -62,6 +62,8 @@ struct CoveConfig: Codable {
     // MARK: Avatar
     /// Pip, the little avatar that reacts when agents and commands work, finish, fail or need you.
     var buddy: Bool = true
+    /// Keep Pip napping beside the notch even when nothing is happening.
+    var buddyAlwaysVisible: Bool = true
 
     // MARK: Screenshots
     /// Put every new screenshot on the shelf.
@@ -109,6 +111,7 @@ struct CoveConfig: Codable {
         screenshotsToShelf = value(.screenshotsToShelf, d.screenshotsToShelf)
         eventStartAlert = value(.eventStartAlert, d.eventStartAlert)
         buddy = value(.buddy, d.buddy)
+        buddyAlwaysVisible = value(.buddyAlwaysVisible, d.buddyAlwaysVisible)
         hud = value(.hud, d.hud)
         hudSeconds = value(.hudSeconds, d.hudSeconds)
     }
