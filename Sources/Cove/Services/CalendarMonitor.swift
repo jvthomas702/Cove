@@ -160,3 +160,6 @@ final class CalendarMonitor {
         return joinHosts.contains { host == $0 || host.hasSuffix("." + $0) }
     }
 }
+
+/// Only touched from the main thread and its own completion callbacks.
+extension CalendarMonitor: @unchecked Sendable {}

@@ -71,7 +71,7 @@ final class NowPlayingMonitor {
         let spotify = bundleID == "com.spotify.client"
         let artwork = spotify ? "artwork url of t" : "\"\""
         // Spotify reports duration in milliseconds, Music in seconds; both report position in seconds.
-        let duration = spotify ? "round ((duration of t) / 1000)" : "round (duration of t)"
+        let durationScript = spotify ? "round ((duration of t) / 1000)" : "round (duration of t)"
         let source = """
         tell application "\(app)"
             if player state is stopped then return ""
@@ -81,7 +81,7 @@ final class NowPlayingMonitor {
                 set d to 0
                 try
                     set p to round (player position)
-                    set d to \(duration)
+                    set d to \(durationScript)
                 end try
                 return (name of t) & linefeed & (artist of t) & linefeed & (player state as text) & linefeed & (\(artwork)) & linefeed & (p as text) & linefeed & (d as text)
             on error
