@@ -71,8 +71,18 @@ struct CoveConfig: Codable {
     // MARK: Screenshots
     /// Put every new screenshot on the shelf.
     var screenshotsToShelf: Bool = true
+    /// Keep captures quiet unless the user explicitly asks for a banner.
+    var screenshotBanners: Bool = false
     /// Move new screenshots from the Desktop into ~/Pictures/Screenshots, keeping the Desktop clean.
     var screenshotsMoveOffDesktop: Bool = false
+
+    // MARK: Widgets & sports
+    var homeWidget: HomeWidget = .auto
+    var sportsEnabled: Bool = true
+    var sportsLeague: SportsLeague = .nfl
+    var sportsGameID: String? = nil
+    /// "Big games": at least one Top 25 team. Turn off to browse all FBS games.
+    var sportsRankedOnly: Bool = true
 
     // MARK: Volume / brightness HUD
     /// "replace": Cove handles the volume/brightness keys and hides the system pop-up (needs Accessibility).
@@ -115,7 +125,13 @@ struct CoveConfig: Codable {
         dueAlertHours = value(.dueAlertHours, d.dueAlertHours)
         ignoreCalendars = value(.ignoreCalendars, d.ignoreCalendars)
         screenshotsToShelf = value(.screenshotsToShelf, d.screenshotsToShelf)
+        screenshotBanners = value(.screenshotBanners, d.screenshotBanners)
         screenshotsMoveOffDesktop = value(.screenshotsMoveOffDesktop, d.screenshotsMoveOffDesktop)
+        homeWidget = value(.homeWidget, d.homeWidget)
+        sportsEnabled = value(.sportsEnabled, d.sportsEnabled)
+        sportsLeague = value(.sportsLeague, d.sportsLeague)
+        sportsGameID = value(.sportsGameID, d.sportsGameID)
+        sportsRankedOnly = value(.sportsRankedOnly, d.sportsRankedOnly)
         eventStartAlert = value(.eventStartAlert, d.eventStartAlert)
         buddy = value(.buddy, d.buddy)
         buddyAlwaysVisible = value(.buddyAlwaysVisible, d.buddyAlwaysVisible)

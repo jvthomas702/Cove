@@ -6,7 +6,7 @@ import Combine
 @MainActor
 final class IslandModel: ObservableObject {
     enum Presentation: Equatable { case idle, compact, banner, expanded, approval }
-    enum Tab: String, CaseIterable { case home, schedule, shelf }
+    enum Tab: String, CaseIterable { case home, schedule, sports, shelf }
 
     /// What the two "wings" beside the notch show in compact mode, in priority order.
     enum CompactItem: Equatable {
@@ -20,6 +20,7 @@ final class IslandModel: ObservableObject {
         case finished(count: Int, agent: AgentKind, failed: Bool)
         case focus(end: Date)
         case music(NowPlaying)
+        case sports(SportsGame)
     }
 
     // Geometry
@@ -42,6 +43,9 @@ final class IslandModel: ObservableObject {
     @Published var feedStatuses: [FeedStatus] = []
     /// Opens the settings window (set by AppDelegate) so the island can point at a fix.
     var openSettings: ((SettingsPane) -> Void)?
+    var applyConfig: ((CoveConfig) -> Void)?
+    let sports: SportsMonitor
+    private var sportsChanges: AnyCancellable?
     /// When the browser extension last reported in (shown in Settings → Connections).
     @Published private(set) var lastExtensionEvent: Date?
     @Published private(set) var presentation: Presentation = .idle
@@ -63,7 +67,6 @@ final class IslandModel: ObservableObject {
     /// Whether Cove can read the folder screenshots are saved to.
     @Published var screenshotAccess: ScreenshotWatcher.AccessState = .unknown
     private var lastScreenshotAt: Date?
-    private var warnedScreenshotAccess = false
     @Published private(set) var schedule = Schedule()
     @Published private(set) var hud: HUDState?
     @Published private(set) var approvals: [ApprovalRequest] = []
@@ -91,8 +94,16 @@ final class IslandModel: ObservableObject {
         "net.kovidgoyal.kitty", "org.alacritty", "com.microsoft.VSCode", "com.todesktop.230313mzl4w4u92",
     ]
 
-    init(config: CoveConfig) {
+    init(config: CoveConfig, sports: SportsMonitor? = nil) {
         self.config = config
+        self.sports = sports ?? SportsMonitor()
+        // Relay changes from the nested monitor after its published values have changed.
+        sportsChanges = self.sports.objectWillChange.sink { [weak self] _ in
+            Task { @MainActor in
+                self?.objectWillChange.send()
+                self?.recompute()
+            }
+        }
         loadShelf()
         pruneTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.prune() }
@@ -123,6 +134,7 @@ final class IslandModel: ObservableObject {
     var compactWing: CGFloat {
         switch compactItem {
         case .event?, .ongoing?: return 128
+        case .sports?: return 128
         case .hud?: return 74
         case .napping? where nextEventToday != nil:
             return 66   // napping Pip plus the next class time
@@ -152,6 +164,9 @@ final class IslandModel: ObservableObject {
     var compactItem: CompactItem? {
         if let hud { return .hud(hud) }
         if let a = activities.first(where: { $0.state == .attention }) { return .attention(a.agent) }
+        if config.sportsEnabled, config.homeWidget == .sports, let game = sports.selectedGame {
+            return .sports(game)
+        }
         // A class or meeting about to start beats background work.
         if let event = countdownEvent, event.start.timeIntervalSinceNow <= Double(max(config.meetingAlertMinutes, 5)) * 60 {
             return .event(event)
@@ -232,7 +247,8 @@ final class IslandModel: ObservableObject {
         if !value && isHovering { suppressHoverUntilExit = true }
         if value {
             // Just took a screenshot? Open straight to the shelf so it's ready to drag.
-            if let shot = lastScreenshotAt, Date().timeIntervalSince(shot) < 15, !shelf.isEmpty { tab = .shelf }
+            if config.screenshotBanners, let shot = lastScreenshotAt,
+               Date().timeIntervalSince(shot) < 15, !shelf.isEmpty { tab = .shelf }
             // Opening the island shows everything, so pending banners are folded into history.
             bannerTimer?.invalidate()
             bannerTimer = nil
@@ -240,12 +256,33 @@ final class IslandModel: ObservableObject {
             queue.removeAll()
         } else {
             markAllSeen()
-            if tab != .shelf || shelf.isEmpty { tab = .home }
+            if tab == .shelf && shelf.isEmpty { tab = .home }
         }
         recompute()
     }
 
     func toggleExpanded() { setExpanded(!expanded) }
+
+    func chooseSportsLeague(_ league: SportsLeague) {
+        guard league != config.sportsLeague else { return }
+        var next = config
+        next.sportsLeague = league
+        next.sportsGameID = nil
+        applyConfig?(next)
+    }
+
+    func chooseSportsGame(_ game: SportsGame) {
+        var next = config
+        next.sportsLeague = game.league
+        next.sportsGameID = game.id
+        next.homeWidget = .sports
+        next.sportsEnabled = true
+        applyConfig?(next)
+    }
+
+    var visibleSportsGames: [SportsGame] {
+        sports.games.filter { config.sportsLeague != .collegeFootball || !config.sportsRankedOnly || $0.isRanked }
+    }
 
     func setDropTargeted(_ targeted: Bool) {
         isDropTargeted = targeted
@@ -885,8 +922,13 @@ final class IslandModel: ObservableObject {
     /// New screenshots go to the front of the shelf, with a small thumbnail banner.
     func addScreenshots(_ urls: [URL]) {
         guard config.screenshotsToShelf, !urls.isEmpty else { return }
-        let placed = config.screenshotsMoveOffDesktop ? urls.map(Self.moveOffDesktop) : urls
+        // Repeated watcher callbacks must not produce another banner for a capture already on the shelf.
+        var seen = Set<URL>()
+        let fresh = urls.filter { seen.insert($0).inserted && !shelf.contains($0) }
+        guard !fresh.isEmpty else { return }
+        let placed = config.screenshotsMoveOffDesktop ? fresh.map(Self.moveOffDesktop) : fresh
         addToShelf(placed, atFront: true)
+        guard config.screenshotBanners else { return }
         lastScreenshotAt = Date()
         guard let newest = placed.last else { return }
         Haptics.tap()
@@ -903,16 +945,7 @@ final class IslandModel: ObservableObject {
 
     func setScreenshotAccess(_ state: ScreenshotWatcher.AccessState, folder: URL) {
         screenshotAccess = state
-        guard state == .denied, config.screenshotsToShelf, !warnedScreenshotAccess else { return }
-        warnedScreenshotAccess = true
-        show(Banner(
-            title: "Let Cove see your \(folder.lastPathComponent) folder",
-            body: "Screenshots can't reach the shelf until you allow it. Click to open Settings.",
-            style: .attention,
-            icon: .symbol("photo.badge.exclamationmark", Palette.amber),
-            sticky: true,
-            openURL: URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_FilesAndFolders")
-        ))
+        // Permission status belongs in Settings → Permissions, without a persistent popup on wake.
     }
 
     /// ~/Pictures/Screenshots, created on demand.

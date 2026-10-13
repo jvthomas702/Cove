@@ -12,6 +12,7 @@ struct ExpandedView: View {
                 switch model.tab {
                 case .home: HomePane(model: model)
                 case .schedule: SchedulePane(model: model)
+                case .sports: SportsPane(model: model)
                 case .shelf: ShelfPane(model: model)
                 }
             }
@@ -80,6 +81,7 @@ private struct TabSwitcher: View {
         switch tab {
         case .home: return "house.fill"
         case .schedule: return "calendar"
+        case .sports: return "sportscourt.fill"
         case .shelf: return "tray.full.fill"
         }
     }
@@ -88,6 +90,7 @@ private struct TabSwitcher: View {
         switch tab {
         case .home: return "Home"
         case .schedule: return "Schedule"
+        case .sports: return "Sports"
         case .shelf: return "Shelf"
         }
     }
@@ -101,11 +104,23 @@ struct HomePane: View {
     var body: some View {
         HStack(alignment: .top, spacing: Theme.Space.m) {
             VStack(spacing: Theme.Space.s) {
-                UpNextCard(model: model)
-                MediaCard(model: model)
-                FocusCard(model: model)
+                switch model.config.homeWidget {
+                case .sports: SportsWidget(model: model)
+                case .calendar: UpNextCard(model: model)
+                case .music: MediaCard(model: model)
+                case .focus: FocusCard(model: model)
+                case .auto:
+                    if model.config.sportsEnabled, model.sports.selectedGame != nil {
+                        SportsWidget(model: model)
+                    } else {
+                        if model.schedule.nextEvent() != nil || !model.dueSoon.isEmpty { UpNextCard(model: model) }
+                        if model.nowPlaying != nil { MediaCard(model: model) }
+                        FocusCard(model: model)
+                    }
+                }
+                Spacer(minLength: 0)
             }
-            .frame(width: 240)
+            .frame(width: 280)
 
             ActivityList(model: model)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -546,11 +561,11 @@ struct ActivityList: View {
                             .font(.system(size: 20, weight: .medium))
                             .foregroundStyle(Theme.inkTertiary)
                     }
-                    Text("Claude Code, Codex and long commands show up here")
+                    Text("All caught up")
                         .font(Theme.Font.caption)
                         .foregroundStyle(Theme.inkSecondary)
                         .multilineTextAlignment(.center)
-                    Text("Run a command with cove-run, or try the demo from the menu bar")
+                    Text("Agent updates and notifications appear here")
                         .font(.system(size: 10.5))
                         .foregroundStyle(Theme.inkTertiary)
                         .multilineTextAlignment(.center)

@@ -21,8 +21,10 @@ final class ScreenshotWatcher {
     var onAccess: (@MainActor (AccessState, URL) -> Void)?
 
     private let log = Logger(subsystem: "app.cove.island", category: "screenshots")
-    private let startedAt = Date()
+    private var startedAt = Date()
     private var delivered = Set<String>()
+    private var running = false
+    private var generation = UUID()
     private var stream: FSEventStreamRef?
     private var folder: URL?
     private var recheckTimer: Timer?
@@ -61,6 +63,10 @@ final class ScreenshotWatcher {
     // MARK: Lifecycle (main thread)
 
     func start() {
+        stop()
+        startedAt = Date()
+        delivered.removeAll()
+        running = true
         watch(Self.screenshotFolder)
         startSpotlight()
         recheckTimer = Timer.scheduledTimer(withTimeInterval: 20, repeats: true) { [weak self] _ in
@@ -74,6 +80,8 @@ final class ScreenshotWatcher {
     }
 
     func stop() {
+        running = false
+        generation = UUID()
         recheckTimer?.invalidate()
         recheckTimer = nil
         stopStream()
@@ -93,6 +101,12 @@ final class ScreenshotWatcher {
         stopStream()
         self.folder = folder
         checkAccess(folder)
+        // Existing captures are a baseline, including when the save folder changes.
+        if let existing = try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: [.fileResourceIdentifierKey, .creationDateKey]) {
+            for url in existing where Self.isScreenshot(url) {
+                if let identity = Self.captureIdentity(url) { delivered.insert(identity) }
+            }
+        }
 
         var context = FSEventStreamContext(
             version: 0, info: Unmanaged.passUnretained(self).toOpaque(), retain: nil, release: nil, copyDescription: nil
@@ -157,8 +171,9 @@ final class ScreenshotWatcher {
                 && FileManager.default.fileExists(atPath: url.path)
         }
         guard !fresh.isEmpty else { return }
+        let token = generation
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
-            guard let self else { return }
+            guard let self, self.running, self.generation == token else { return }
             let shots = fresh.filter { url in
                 FileManager.default.fileExists(atPath: url.path) && Self.isScreenshot(url) && self.isNew(url)
             }
@@ -167,8 +182,25 @@ final class ScreenshotWatcher {
     }
 
     private func isNew(_ url: URL) -> Bool {
-        let created = (try? url.resourceValues(forKeys: [.creationDateKey]).creationDate) ?? Date()
-        return created >= startedAt.addingTimeInterval(-2)
+        Self.isFreshCapture(url, since: startedAt)
+    }
+
+    static func isFreshCapture(_ url: URL, since start: Date) -> Bool {
+        // Missing metadata is not evidence of a new capture (e.g. an old file being moved or indexed).
+        guard FileManager.default.fileExists(atPath: url.path),
+              let created = try? url.resourceValues(forKeys: [.creationDateKey]).creationDate else { return false }
+        return created >= start && created <= Date().addingTimeInterval(2)
+    }
+
+    static func captureIdentity(_ url: URL) -> String? {
+        guard FileManager.default.fileExists(atPath: url.path),
+              let values = try? url.resourceValues(forKeys: [.fileResourceIdentifierKey, .volumeIdentifierKey, .creationDateKey]),
+              let created = values.creationDate else { return nil }
+        // The file identifier survives renaming/moving, unlike a path. Creation time handles inode reuse.
+        if let file = values.fileResourceIdentifier, let volume = values.volumeIdentifier {
+            return "\(volume):\(file):\(created.timeIntervalSince1970)"
+        }
+        return "\(url.standardizedFileURL.path):\(created.timeIntervalSince1970)"
     }
 
     /// Screenshots carry an extended attribute; their default names start with "Screenshot".
@@ -181,7 +213,12 @@ final class ScreenshotWatcher {
     static func looksLikeScreenshotName(_ name: String) -> Bool {
         let lower = name.lowercased()
         return ["screenshot", "screen shot", "screen recording", "cleanshot", "bildschirmfoto", "captura de pantalla", "capture d’écran", "capture d'écran"]
-            .contains { lower.hasPrefix($0) }
+            .contains { prefix in
+                guard lower.hasPrefix(prefix) else { return false }
+                let suffix = lower.dropFirst(prefix.count).trimmingCharacters(in: .whitespaces)
+                // Default capture names begin with a date. "Screenshot notes.png" isn't a capture.
+                return suffix.first?.isNumber == true
+            }
     }
 
     // MARK: Spotlight backup
@@ -216,11 +253,19 @@ final class ScreenshotWatcher {
     // MARK: Delivery
 
     private func deliver(_ urls: [URL]) {
-        let new = urls.filter { delivered.insert($0.standardizedFileURL.path).inserted }
+        guard running else { return }
+        let new = urls.filter {
+            guard Self.isScreenshot($0), isNew($0), let identity = Self.captureIdentity($0) else { return false }
+            return delivered.insert(identity).inserted
+        }
         guard !new.isEmpty else { return }
         log.info("New screenshot(s): \(new.map(\.lastPathComponent).joined(separator: ", "), privacy: .public)")
         let callback = onNew
-        Task { @MainActor in callback?(new) }
+        let token = generation
+        Task { @MainActor [weak self] in
+            guard let self, self.running, self.generation == token else { return }
+            callback?(new)
+        }
     }
 }
 

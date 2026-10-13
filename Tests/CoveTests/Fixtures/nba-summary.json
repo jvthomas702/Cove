@@ -1,0 +1,117 @@
+{
+  "header": {
+    "id": "401898402",
+    "competitions": [
+      {
+        "id": "401898402",
+        "date": "2026-10-12T23:00Z",
+        "status": {
+          "type": {
+            "id": "3",
+            "name": "STATUS_FINAL",
+            "state": "post",
+            "completed": true,
+            "description": "Final",
+            "detail": "Final",
+            "shortDetail": "Final"
+          }
+        },
+        "competitors": [
+          {
+            "homeAway": "home",
+            "score": "113",
+            "team": {
+              "abbreviation": "ATL",
+              "displayName": "Atlanta Hawks"
+            }
+          },
+          {
+            "homeAway": "away",
+            "score": "110",
+            "team": {
+              "abbreviation": "OKC",
+              "displayName": "Oklahoma City Thunder"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "plays": [
+    {
+      "id": "401898402743",
+      "sequenceNumber": "743",
+      "text": "Kobe Johnson makes running layup (RayJ Dennis assists)",
+      "awayScore": 107,
+      "homeScore": 113,
+      "period": {
+        "number": 4,
+        "displayValue": "4th Quarter"
+      },
+      "clock": {
+        "displayValue": "1.8"
+      },
+      "scoringPlay": true
+    },
+    {
+      "id": "401898402745",
+      "sequenceNumber": "745",
+      "text": "Bennett Stirtz makes 25-foot three point jumper (Josh Dix assists)",
+      "awayScore": 110,
+      "homeScore": 113,
+      "period": {
+        "number": 4,
+        "displayValue": "4th Quarter"
+      },
+      "clock": {
+        "displayValue": "0.5"
+      },
+      "scoringPlay": true
+    },
+    {
+      "id": "401898402749",
+      "sequenceNumber": "749",
+      "text": "(00:00) [Thunder] REF-INITIATED REVIEW (REPLAY SUPPORTS CALL)",
+      "awayScore": 110,
+      "homeScore": 113,
+      "period": {
+        "number": 4,
+        "displayValue": "4th Quarter"
+      },
+      "clock": {
+        "displayValue": "0.0"
+      },
+      "scoringPlay": false
+    },
+    {
+      "id": "401898402747",
+      "sequenceNumber": "747",
+      "text": "End of the 4th Quarter",
+      "awayScore": 110,
+      "homeScore": 113,
+      "period": {
+        "number": 4,
+        "displayValue": "4th Quarter"
+      },
+      "clock": {
+        "displayValue": "0.0"
+      },
+      "scoringPlay": false
+    },
+    {
+      "id": "401898402748",
+      "sequenceNumber": "748",
+      "text": "End of Game",
+      "awayScore": 110,
+      "homeScore": 113,
+      "period": {
+        "number": 4,
+        "displayValue": "4th Quarter"
+      },
+      "clock": {
+        "displayValue": "0.0"
+      },
+      "scoringPlay": false
+    }
+  ]
+}

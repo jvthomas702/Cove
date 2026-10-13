@@ -48,6 +48,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         settingsController = SettingsController(model: model)
         model.openSettings = { [weak self] pane in self?.openSettings(pane: pane) }
+        model.applyConfig = { [weak self] config in self?.updateConfig(config) }
         settingsController.onConfigChange = { [weak self] config in self?.updateConfig(config) }
         settingsController.onRunDemo = { [weak self] in self?.runDemo() }
         settingsController.onCopyDiagnostics = { [weak self] in self?.copyDiagnostics() }
@@ -67,6 +68,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         battery.start()
         if config.calendar { startCalendar(config) }
         startFeeds(config)
+        model.sports.start(config: config)
         if config.screenshotsToShelf { startScreenshots() }
         startHUD(mode: config.hud)
         BrowserExtension.syncFromBundle()
@@ -85,6 +87,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             MainActor.assumeIsolated {
                 self?.calendar?.refresh()
                 self?.feeds?.fetchAll()
+                self?.model.sports.refresh()
                 self?.screenshots?.recheckAccess()
                 self?.windowController.relocate()
             }
@@ -101,6 +104,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         battery.stop()
         calendar?.stop()
         feeds?.stop()
+        model.sports.stop()
         screenshots?.stop()
         volume.stop()
         mediaKeys.stop()
@@ -162,6 +166,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let old = model.config
         CoveConfig.save(new)
         model.config = new
+        model.sports.update(config: new)
 
         if new.calendar != old.calendar {
             if new.calendar {

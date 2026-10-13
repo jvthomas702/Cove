@@ -58,6 +58,11 @@ struct CompactView: View {
                 .foregroundStyle(Palette.amber)
         case .music?:
             ArtworkView(model: model, size: 20, matchID: "art")
+        case .sports(let game)?:
+            Text("\(game.away.abbreviation) \(game.away.score)")
+                .font(Theme.Font.headline.monospacedDigit())
+                .foregroundStyle(Theme.ink)
+                .lineLimit(1)
         case nil:
             EmptyView()
         }
@@ -148,6 +153,14 @@ struct CompactView: View {
                 .minimumScaleFactor(0.7)
         case .music(let np)?:
             EqualizerBars(playing: np.isPlaying, color: model.accent ?? np.appTint)
+        case .sports(let game)?:
+            HStack(spacing: 5) {
+                if game.isLive { Circle().fill(Palette.green).frame(width: 5, height: 5) }
+                Text("\(game.home.abbreviation) \(game.home.score)")
+                    .font(Theme.Font.headline.monospacedDigit())
+                    .foregroundStyle(Theme.ink)
+                    .lineLimit(1)
+            }
         case nil:
             EmptyView()
         }

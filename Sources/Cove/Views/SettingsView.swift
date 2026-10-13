@@ -365,6 +365,9 @@ private struct GeneralPane: View {
                       isOn: Binding(get: { controller.launchAtLogin }, set: { controller.setLaunchAtLogin($0) }))
         }
         SettingsGroup(title: "The island") {
+            Picker("Home widget", selection: controller.binding(\.homeWidget)) {
+                ForEach(HomeWidget.allCases, id: \.self) { Text($0.title).tag($0) }
+            }
             ToggleRow(title: "Open when the pointer rests on the notch",
                       detail: "Off: click the notch to open it", isOn: controller.binding(\.hoverToExpand))
             ToggleRow(title: "Play sounds", detail: "When something finishes, fails or needs you",
@@ -393,6 +396,12 @@ private struct FeaturesPane: View {
     @ObservedObject var controller: SettingsController
 
     var body: some View {
+        SettingsGroup(title: "Sports",
+                      footer: "Choose a game in the Sports tab to pin its score and latest play to the Home widget. Live games refresh about every 15 seconds. ESPN coverage and delays vary.") {
+            ToggleRow(title: "Enable sports", detail: "NBA, NFL and college football", isOn: controller.binding(\.sportsEnabled))
+            ToggleRow(title: "College football: Top 25 games only", detail: "At least one ranked team; turn off to browse all FBS games",
+                      isOn: controller.binding(\.sportsRankedOnly))
+        }
         SettingsGroup(title: "Claude Code permission prompts",
               footer: "Smart shows prompts in the notch unless Claude's terminal is in front or you're away from the Mac. Unanswered prompts go back to the terminal.") {
             Picker("Answer prompts from the notch", selection: controller.binding(\.approvals)) {
@@ -439,6 +448,8 @@ private struct FeaturesPane: View {
               footer: "macOS's floating thumbnail holds each screenshot for about 5 seconds before saving it. Turn on instant screenshots to skip it.") {
             ToggleRow(title: "Put new screenshots on the shelf", isOn: controller.binding(\.screenshotsToShelf))
             SwiftUI.Group {
+                ToggleRow(title: "Show a banner for new screenshots", detail: "Off by default: captures arrive quietly without changing your tab",
+                          isOn: controller.binding(\.screenshotBanners))
                 ToggleRow(title: "Instant screenshots", detail: "Hides macOS's floating thumbnail so the shelf gets them right away",
                           isOn: Binding(get: { controller.instantScreenshots }, set: { controller.setInstantScreenshots($0) }))
                 ToggleRow(title: "Move screenshots off the Desktop", detail: "Into Pictures › Screenshots",

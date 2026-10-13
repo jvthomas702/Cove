@@ -17,6 +17,7 @@ Native Swift and SwiftUI, no dependencies, MIT licensed. Every commit is built, 
 | **Agent pings** | Claude Code and Codex sessions show as live activities with what they're doing right now, then a banner with the final message. Click to jump back to the terminal. |
 | **Browser chat tabs** | A small extension pings you when ChatGPT, Claude or Gemini finishes answering in a background tab (Chrome, Arc, Brave, Edge). |
 | **Classes and due dates** | "CPE 3000 Lecture, 50 min left" beside the notch, a heads-up before each class with a Join button for Zoom, Meet or Teams, and a Due soon list from your D2L or Canvas calendar and Reminders. |
+| **Sports** | Choose an NBA, NFL or college football game to pin its score beside the notch and follow its latest plays. College football defaults to games featuring a Top 25 team. |
 | **Screenshot shelf** | Every screenshot lands on the shelf the moment it's saved, with a thumbnail you can drag straight out of the notch into a doc, Slack or a chat. |
 | **Long commands** | `cove-run python train.py` shows a live timer and pings you with how long it took. Scripts can push progress rings. |
 | **And** | Notifications from other apps, Now Playing with album-art colors, a focus timer, a file shelf, battery alerts, and the volume and brightness meter. |
@@ -49,6 +50,14 @@ Cove opens **Settings** on first launch. Everything is a click from there:
 
 Open Settings any time from the menu bar icon, or by opening Cove.app again.
 
+### Choose your widget
+
+**Settings → General → Home widget** lets you choose Calendar, Music, Focus or Sports. Automatic shows available calendar/media content and hides inactive cards. The island remembers your selected tab when you close it.
+
+Open the **Sports** tab (court icon), choose **NBA**, **NFL** or **College football**, then click a game. This pins its score to the notch and its latest play to Home. The Sports tab shows the latest 100 plays, newest first, with game clock and scoring updates. Selected games and leagues survive a restart.
+
+College football shows games with at least one **Top 25** team by default; turn off **Top 25** to browse all FBS games. NBA shows the day's slate, while NFL and college football show the current week's slate. Live selected games refresh about every 15 seconds; other states refresh every minute. ESPN provides the data, so coverage and delays vary. If a request fails, Cove keeps the last data and indicates that updates have paused. These public feed endpoints are not a documented API contract and may change.
+
 ### Classes from D2L and Google Calendar
 
 Paste each calendar's private link into **Settings → Features → Calendar links**. Cove downloads them every 15 minutes; nothing needs setting up in the Calendar app.
@@ -63,6 +72,8 @@ Calendars already in the Mac's Calendar app (Google added under System Settings 
 ### Screenshots
 
 New screenshots go to the shelf as soon as macOS saves them. macOS's floating thumbnail holds each screenshot for about 5 seconds first; turn on **Instant screenshots** in Settings → Features to skip it. Cove watches whatever folder your screenshots go to (⌘⇧5 → Options), and can move them off the Desktop into Pictures › Screenshots.
+
+Captures arrive **quietly by default**, without a banner or tab switch. Enable **Show a banner for new screenshots** in Settings → Features if you want a thumbnail popup. Existing files, captures with missing creation dates, and captures renamed or moved after delivery do not create repeat popups. Folder permission status appears in Settings → Permissions.
 
 ## Terminal and API
 

@@ -17,7 +17,8 @@ let package = Package(
         .testTarget(
             name: "CoveTests",
             dependencies: ["Cove"],
-            path: "Tests/CoveTests"
+            path: "Tests/CoveTests",
+            resources: [.copy("Fixtures")]
         ),
     ]
 )

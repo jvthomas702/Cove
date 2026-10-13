@@ -273,6 +273,7 @@ final class ShelfBannerTests: XCTestCase {
         var config = CoveConfig()
         config.sounds = false
         config.calendar = false
+        config.screenshotBanners = true
         let model = IslandModel(config: config)
         model.clearShelf()
         let a = URL(fileURLWithPath: "/tmp/Screenshot A.png"), b = URL(fileURLWithPath: "/tmp/Screenshot B.png")

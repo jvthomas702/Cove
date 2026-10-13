@@ -1,0 +1,100 @@
+{
+  "events": [
+    {
+      "id": "401858488",
+      "date": "2026-10-17T16:00Z",
+      "competitions": [
+        {
+          "id": "401858488",
+          "date": "2026-10-17T16:00Z",
+          "status": {
+            "clock": 0.0,
+            "displayClock": "0:00",
+            "period": 0,
+            "type": {
+              "id": "1",
+              "name": "STATUS_SCHEDULED",
+              "state": "pre",
+              "completed": false,
+              "description": "Scheduled",
+              "detail": "Sat, October 17th at 12:00 PM EDT",
+              "shortDetail": "10/17 - 12:00 PM EDT"
+            }
+          },
+          "competitors": [
+            {
+              "homeAway": "home",
+              "score": "0",
+              "curatedRank": {
+                "current": 5
+              },
+              "team": {
+                "abbreviation": "IU",
+                "displayName": "Indiana Hoosiers"
+              }
+            },
+            {
+              "homeAway": "away",
+              "score": "0",
+              "curatedRank": {
+                "current": 4
+              },
+              "team": {
+                "abbreviation": "OSU",
+                "displayName": "Ohio State Buckeyes"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "401871067",
+      "date": "2026-10-13T23:00Z",
+      "competitions": [
+        {
+          "id": "401871067",
+          "date": "2026-10-13T23:00Z",
+          "status": {
+            "clock": 0.0,
+            "displayClock": "0:00",
+            "period": 0,
+            "type": {
+              "id": "1",
+              "name": "STATUS_SCHEDULED",
+              "state": "pre",
+              "completed": false,
+              "description": "Scheduled",
+              "detail": "Tue, October 13th at 7:00 PM EDT",
+              "shortDetail": "10/13 - 7:00 PM EDT"
+            }
+          },
+          "competitors": [
+            {
+              "homeAway": "home",
+              "score": "0",
+              "curatedRank": {
+                "current": 99
+              },
+              "team": {
+                "abbreviation": "MTSU",
+                "displayName": "Middle Tennessee Blue Raiders"
+              }
+            },
+            {
+              "homeAway": "away",
+              "score": "0",
+              "curatedRank": {
+                "current": 99
+              },
+              "team": {
+                "abbreviation": "DEL",
+                "displayName": "Delaware Blue Hens"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

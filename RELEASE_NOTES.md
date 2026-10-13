@@ -1,3 +1,11 @@
+## Upcoming changes
+
+- Choose the Home widget you want: Calendar, Music, Focus or Sports. Automatic hides inactive cards.
+- NBA, NFL and college football game picker, pinned notch scores and a scrollable play-by-play feed. College football defaults to Top 25 matchups.
+- Screenshots arrive quietly by default. Optional thumbnail banners remain available in Features.
+- Old, renamed or moved screenshot files no longer cause repeat popups; denied folder access stays in Permissions.
+- The island keeps your selected tab when you close and reopen it.
+
 ## Install
 
 1. Download **Cove.zip** below and double-click it.
