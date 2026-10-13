@@ -34,12 +34,13 @@ final class UIFeed: URLProtocol {
 
 struct UIHostView: View {
     @ObservedObject var model: IslandModel
+    var showNotch: () -> Void
     var body: some View {
         VStack(spacing: 0) {
             HStack {
                 Text("Isolated UI test · recorded ESPN feeds").font(.caption)
                 Spacer()
-                Button("Show notch") { model.setExpanded(true) }
+                Button("Show notch", action: showNotch)
                 Button("Quiet screenshot") {
                     model.addScreenshots([URL(fileURLWithPath: "/tmp/Cove UI Screenshot.png")])
                     print("CAPTURE tab=\(model.tab.rawValue) banner=\(model.banner != nil)")
@@ -76,10 +77,17 @@ struct UIHostView: View {
         model.setExpanded(true)
         notch = NotchWindowController(model: model)
         notch.panel.title = "Cove Test Notch"
+        notch.panel.orderOut(nil)
         window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 660, height: 320), styleMask: [.titled, .closable], backing: .buffered, defer: false)
         window.title = "Cove UI Test"
         window.isReleasedWhenClosed = false
-        window.contentView = NSHostingView(rootView: UIHostView(model: model))
+        window.contentView = NSHostingView(rootView: UIHostView(model: model, showNotch: { [weak self] in
+            guard let self else { return }
+            self.window.orderOut(nil)
+            self.model.tab = .home
+            self.model.setExpanded(true)
+            self.notch.panel.orderFrontRegardless()
+        }))
         window.center(); window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
     }

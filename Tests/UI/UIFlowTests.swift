@@ -44,7 +44,7 @@ final class UIFlowTests: XCTestCase {
 
     func testRealNotchPopupRemainsOpenOutsideIsland() {
         window.buttons["Show notch"].click()
-        let notch = app.windows["Cove Test Notch"]
+        let notch = app.dialogs["Cove Test Notch"]
         let chooser = notch.popUpButtons["home.widget"]
         XCTAssertTrue(chooser.waitForExistence(timeout: 5))
         chooser.click()
@@ -52,7 +52,7 @@ final class UIFlowTests: XCTestCase {
         Thread.sleep(forTimeInterval: 0.6)
         XCTAssertTrue(chooser.exists)
         app.menuItems["AI work"].click()
-        XCTAssertTrue(window.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "Writing reply")).firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "Writing reply")).firstMatch.waitForExistence(timeout: 5))
     }
 
     func testCollegeFootballRankedFilter() {
