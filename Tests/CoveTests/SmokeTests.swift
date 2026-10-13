@@ -154,6 +154,8 @@ final class IslandModelTests: XCTestCase {
 
     func testAgentLifecycle() {
         let model = makeModel()
+        // The richer AI presentation is covered by AIWidgetTests; this checks the legacy option.
+        model.config.aiWorkInNotch = false
         model.agentStarted(id: "claude:1", agent: .claude, title: "proj", detail: "Thinking", ownerApp: nil)
         XCTAssertEqual(model.compactItem, .running(count: 1, agent: .claude))
 
