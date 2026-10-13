@@ -6,6 +6,11 @@ on:
     tags: ["v*"]
   pull_request:
   workflow_dispatch:
+    inputs:
+      release:
+        description: "Publish a GitHub release for the version in Resources/Info.plist"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -70,13 +75,17 @@ jobs:
           path: build/Cove.zip
 
       - name: Publish release
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: startsWith(github.ref, 'refs/tags/v') || inputs.release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" build/Cove.zip \
-            --title "Cove ${GITHUB_REF_NAME#v}" \
-            --notes-file RELEASE_NOTES.md
+          VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Resources/Info.plist)"
+          TAG="v$VERSION"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" build/Cove.zip --clobber
+          else
+            gh release create "$TAG" build/Cove.zip --target "$GITHUB_SHA" --title "Cove $VERSION" --notes-file RELEASE_NOTES.md
+          fi
 
       # Logs go to the ci-logs branch so they can be read with plain git.
       - name: Publish logs
