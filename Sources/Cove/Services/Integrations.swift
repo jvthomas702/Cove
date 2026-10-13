@@ -275,7 +275,8 @@ enum Permission: String, CaseIterable, Identifiable {
         case .reminders: return EKEventStore.authorizationStatus(for: .reminder) == .fullAccess
         case .accessibility: return AXIsProcessTrusted()
         case .desktop:
-            return (try? FileManager.default.contentsOfDirectory(atPath: ScreenshotWatcher.screenshotFolder.path)) != nil
+            // Probing the folder would pop up macOS's access prompt, so callers use ScreenshotWatcher's result.
+            return false
         case .fullDiskAccess:
             return NotificationMirror.candidatePaths.contains { FileHandle(forReadingAtPath: $0) != nil }
         }
@@ -299,8 +300,7 @@ enum Permission: String, CaseIterable, Identifiable {
         case .accessibility:
             MediaKeyTap.requestTrust()
         case .desktop:
-            _ = isGranted // reading the folder triggers the prompt the first time
-            if isGranted { return }
+            break // handled by SettingsController (it asks the screenshot watcher to re-read the folder)
         case .fullDiskAccess:
             break
         }

@@ -52,6 +52,10 @@ jobs:
             echo "bundle ok"
           } 2>&1 | tee bundle.log
 
+      - name: Run the app and take UI snapshots
+        continue-on-error: true
+        run: ./scripts/ci-snapshots.sh 2>&1 | tee snapshots.log
+
       - name: Test signing identity script
         run: ./scripts/make-signing-identity.sh --test 2>&1 | tee signing.log
 
@@ -80,6 +84,7 @@ jobs:
         run: |
           mkdir -p /tmp/ci-logs
           cp *.log /tmp/ci-logs/ 2>/dev/null || true
+          cp -R snapshots /tmp/ci-logs/ 2>/dev/null || true
           {
             echo "run: ${GITHUB_RUN_ID}"
             echo "commit: ${GITHUB_SHA}"

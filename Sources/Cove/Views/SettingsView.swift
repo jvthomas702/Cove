@@ -10,6 +10,8 @@ final class SettingsController: ObservableObject {
     var onConfigChange: ((CoveConfig) -> Void)?
     var onRunDemo: (() -> Void)?
     var onCopyDiagnostics: (() -> Void)?
+    /// Re-reads the screenshot folder (shows macOS's access prompt the first time).
+    var onRecheckScreenshots: (() -> Void)?
 
     @Published private(set) var granted: [Permission: Bool] = [:]
     @Published private(set) var cliInstalled = false
@@ -44,7 +46,9 @@ final class SettingsController: ObservableObject {
 
     func refresh() {
         var map: [Permission: Bool] = [:]
-        for permission in Permission.allCases { map[permission] = permission.isGranted }
+        for permission in Permission.allCases {
+            map[permission] = permission == .desktop ? model.screenshotAccess == .ok : permission.isGranted
+        }
         if map != granted { granted = map }
         cliInstalled = CLIInstaller.isInstalled
         claudeHooks = ClaudeHooks.isInstalled
@@ -110,6 +114,17 @@ final class SettingsController: ObservableObject {
     }
 
     func request(_ permission: Permission) {
+        if permission == .desktop {
+            onRecheckScreenshots?()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
+                MainActor.assumeIsolated {
+                    guard let self else { return }
+                    self.refresh()
+                    if self.model.screenshotAccess != .ok, let url = permission.settingsURL { NSWorkspace.shared.open(url) }
+                }
+            }
+            return
+        }
         Task {
             await permission.request()
             refresh()

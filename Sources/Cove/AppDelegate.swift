@@ -1,5 +1,6 @@
 import AppKit
 import ServiceManagement
+import SwiftUI
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
@@ -25,6 +26,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var settingsController: SettingsController!
     private var settingsWindow: SettingsWindowController?
 
+    /// Extra routes used by CI to drive the UI for screenshots. Only on with the `--debug-api` launch argument.
+    private let debugAPI = CommandLine.arguments.contains("--debug-api")
+
     private var version: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev" }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -43,6 +47,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         settingsController.onConfigChange = { [weak self] config in self?.updateConfig(config) }
         settingsController.onRunDemo = { [weak self] in self?.runDemo() }
         settingsController.onCopyDiagnostics = { [weak self] in self?.copyDiagnostics() }
+        settingsController.onRecheckScreenshots = { [weak self] in
+            guard let self else { return }
+            if let watcher = self.screenshots { watcher.recheckAccess() } else { self.startScreenshots() }
+        }
 
         startServer(port: config.port)
         startMedia(apps: config.mediaApps)
@@ -201,6 +209,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let ok = #"{"ok":true}"#
         if exchange.method == "OPTIONS" {
             exchange.respond(204, "") // CORS preflight from the browser extension
+            return
+        }
+        if debugAPI, exchange.path.hasPrefix("/debug/") {
+            debugRoute(exchange.path)
+            exchange.respond(200, ok)
             return
         }
         switch (exchange.method, exchange.path) {
@@ -424,13 +437,64 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             "Last extension event: \(model.lastExtensionEvent.map { "\($0)" } ?? "never")",
         ]
         for permission in Permission.allCases {
-            lines.append("Permission \(permission.title): \(permission.isGranted ? "allowed" : "not allowed")")
+            let allowed = permission == .desktop ? model.screenshotAccess == .ok : permission.isGranted
+            lines.append("Permission \(permission.title): \(allowed ? "allowed" : "not allowed")")
         }
         let config = (try? String(contentsOf: CoveConfig.fileURL, encoding: .utf8)) ?? "(no config file)"
         lines.append("Config:\n\(config)")
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(lines.joined(separator: "\n"), forType: .string)
         settingsController.message = "Diagnostics copied to the clipboard."
+    }
+
+    // MARK: - Debug routes (CI screenshots)
+
+    private func debugRoute(_ path: String) {
+        let parts = path.split(separator: "/").map(String.init) // ["debug", command, arg?]
+        let command = parts.count > 1 ? parts[1] : ""
+        let arg = parts.count > 2 ? parts[2] : ""
+        switch command {
+        case "expand":
+            model.setExpanded(true)
+            model.tab = IslandModel.Tab(rawValue: arg) ?? .home
+        case "collapse":
+            model.setExpanded(false)
+            model.dismissBanner()
+        case "settings":
+            openSettings(pane: SettingsPane(rawValue: arg) ?? .general)
+        case "close-settings":
+            settingsWindow?.close()
+        case "approval":
+            let input: [String: Any] = ["file_path": "/Users/you/hdc/eval.py", "old_string": "acc = evaluate(model)", "new_string": "acc = evaluate(model, seeds=3)\nplot_confusion_matrix(model)"]
+            let (action, preview) = AgentBridge.describePermission(tool: "Edit", input: input)
+            model.requestApproval(ApprovalRequest(
+                sessionID: "claude:ci", project: "hdc-classifier", tool: "Edit", action: action, preview: preview,
+                canAlwaysAllow: true, expiresAt: Date().addingTimeInterval(80)
+            )) { _ in }
+        case "deny-approvals":
+            for request in model.approvals { model.resolveApproval(request.id, .deny) }
+        case "music":
+            nowPlaying?.stop()
+            nowPlaying = nil
+            model.setNowPlaying(NowPlaying(bundleID: "com.spotify.client", title: "Pink + White", artist: "Frank Ocean",
+                                           isPlaying: true, artworkURL: nil, position: 81, duration: 184, readAt: Date()))
+        case "schedule":
+            model.config.calendar = true
+            let now = Date()
+            let lecture = CalEvent(id: "1", title: "CPE 3000 Lecture", start: now.addingTimeInterval(-25 * 60), end: now.addingTimeInterval(50 * 60),
+                                   location: "Atrium 210", calendar: "Classes", color: Color(hex: 0x5AC8FA), joinURL: nil)
+            let lab = CalEvent(id: "2", title: "Swarm robotics lab", start: now.addingTimeInterval(95 * 60), end: now.addingTimeInterval(215 * 60),
+                               location: "ICSR Lab", calendar: "Research", color: Color(hex: 0xFF9F0A), joinURL: URL(string: "https://zoom.us/j/1"))
+            let due = [
+                DueItem(id: "a", title: "Lab 5 report", due: now.addingTimeInterval(20 * 3600), source: "D2L", color: Color(hex: 0xFF453A)),
+                DueItem(id: "b", title: "HW 7: Sequential circuits", due: now.addingTimeInterval(3 * 86_400), source: "D2L", color: Color(hex: 0xFF453A)),
+            ]
+            model.setSchedule(Schedule(events: [lecture, lab], due: due))
+        case "hud":
+            model.showHUD(.volume, level: 0.62)
+        default:
+            break
+        }
     }
 
     // MARK: - Demo
