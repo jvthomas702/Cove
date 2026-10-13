@@ -48,3 +48,8 @@ Building from source (`./scripts/install.sh`) signs Cove with a local certificat
 - Keep the island open while popup menus track outside its bounds; recheck actual pointer position after tracking-area resize events.
 - Add a Home widget chooser and a scrollable widget column; correct failed AI task icons.
 - Add an isolated native UI host and XCUITest coverage for tabs, widget choice, game selection, quiet screenshots, and offline recovery.
+
+- Upgrade sports to an ESPN-style Gamecast with the complete available play feed, quarter/overtime and scoring filters, richer NBA player/scoring context, and football down-and-distance/field position/yardage.
+- Add expandable football drives, quarter scores, team stats, game leaders and an ESPN Gamecast link.
+- Grow the Sports panel, preserve a reading position, and poll live detail every 10 seconds independently of the slate. Show update age and keep rich data during connection failures.
+- Add recorded NBA/NFL/CFB full-game regressions and native UI flows for quarter/scoring filters, stats and drives.

@@ -73,6 +73,39 @@ final class UIFlowTests: XCTestCase {
         XCTAssertFalse(text("Updates paused.").exists)
     }
 
+    func testBasketballGamecastQuarterScoringAndStats() {
+        window.buttons["tab.sports"].click()
+        window.buttons["sports.game.401810946"].click()
+        let period = window.popUpButtons["sports.period"]
+        XCTAssertTrue(period.waitForExistence(timeout: 5))
+        period.click(); app.menuItems["Q1"].click()
+        window.checkBoxes["sports.scoring"].click()
+        let row = window.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH %@", "sports.play.")).firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 5))
+        XCTAssertTrue((row.label + String(describing: row.value ?? "")).contains("Q1"))
+        XCTAssertTrue((row.label + String(describing: row.value ?? "")).contains("+"))
+        window.radioButtons["Stats"].click()
+        XCTAssertTrue(window.scrollViews["sports.stats"].waitForExistence(timeout: 5))
+        XCTAssertTrue(text("Team stats").exists)
+        XCTAssertTrue(text("MIA").exists)
+    }
+
+    func testFootballGamecastDrivesAndDownDistance() {
+        window.buttons["tab.sports"].click()
+        window.radioButtons["NFL"].click()
+        let game = window.buttons["sports.game.401772918"]
+        XCTAssertTrue(game.waitForExistence(timeout: 5)); game.click()
+        window.checkBoxes["sports.scoring"].click()
+        let row = window.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH %@", "sports.play.")).firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 5))
+        let content = row.label + String(describing: row.value ?? "")
+        XCTAssertTrue(content.contains("Field Goal"))
+        XCTAssertTrue(content.contains("&"))
+        window.radioButtons["Drives"].click()
+        XCTAssertTrue(window.scrollViews["sports.drives"].waitForExistence(timeout: 5))
+        XCTAssertTrue(text("Drive chart").exists)
+    }
+
     func testAllTabsRemainUsable() {
         for tab in ["schedule", "sports", "shelf", "home"] {
             window.buttons["tab.\(tab)"].click()

@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import Combine
 
 final class UIFeed: URLProtocol {
     static var root = URL(fileURLWithPath: "")
@@ -12,10 +13,19 @@ final class UIFeed: URLProtocol {
         let league = url.path.contains("nba") ? "nba" : url.path.contains("college-football") ? "cfb" : "nfl"
         let file = league + (url.path.hasSuffix("summary") ? "-summary.json" : "-scoreboard.json")
         do {
+            let eventID = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first(where: { $0.name == "event" })?.value
+            let rich = try JSONSerialization.jsonObject(with: Data(contentsOf: Self.root.appendingPathComponent(league + "-gamecast.json"))) as! [String: Any]
+            let richHeader = rich["header"] as! [String: Any]
             var data = try Data(contentsOf: Self.root.appendingPathComponent(file))
-            // A fixture summary for every selectable fixture game. Scores/teams follow the selected row.
-            if url.path.hasSuffix("summary"),
-               let id = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first(where: { $0.name == "event" })?.value,
+            if url.path.hasSuffix("scoreboard"), var slate = try JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                let competition = (richHeader["competitions"] as! [[String: Any]])[0]
+                let event: [String: Any] = ["id": richHeader["id"]!, "date": competition["date"] ?? "", "competitions": [competition]]
+                var events = slate["events"] as? [[String: Any]] ?? []
+                events.append(event); slate["events"] = events
+                data = try JSONSerialization.data(withJSONObject: slate)
+            } else if eventID == richHeader["id"] as? String {
+                data = try JSONSerialization.data(withJSONObject: rich)
+            } else if let id = eventID,
                var summary = try JSONSerialization.jsonObject(with: data) as? [String: Any],
                let slate = try JSONSerialization.jsonObject(with: Data(contentsOf: Self.root.appendingPathComponent(league + "-scoreboard.json"))) as? [String: Any],
                let event = (slate["events"] as? [[String: Any]])?.first(where: { $0["id"] as? String == id }),
@@ -47,7 +57,7 @@ struct UIHostView: View {
                 }
                 Button("Offline") { UIFeed.offline.toggle(); model.sports.refresh() }
             }.padding(8)
-            ExpandedView(model: model).frame(width: 660, height: 284).background(Color.black)
+            ExpandedView(model: model).frame(width: model.size(for: .expanded).width, height: model.size(for: .expanded).height).background(Color.black)
         }
         .environment(\.colorScheme, .dark)
     }
@@ -57,6 +67,7 @@ struct UIHostView: View {
     var window: NSWindow!
     var model: IslandModel!
     var notch: NotchWindowController!
+    var resizeSubscription: AnyCancellable?
     func applicationDidFinishLaunching(_ notification: Notification) {
         setbuf(stdout, nil)
         let fixturePath = CommandLine.arguments.dropFirst().first { $0.hasPrefix("/") && FileManager.default.fileExists(atPath: $0) }
@@ -65,7 +76,7 @@ struct UIHostView: View {
         sessionConfig.protocolClasses = [UIFeed.self]
         var config = CoveConfig()
         config.calendar = false; config.sounds = false; config.desktopAIActivity = false
-        config.homeWidget = .sports; config.sportsLeague = .nba; config.sportsGameID = "401898402"
+        config.homeWidget = .sports; config.sportsLeague = .nba; config.sportsGameID = "401810946"
         model = IslandModel(config: config, sports: SportsMonitor(session: URLSession(configuration: sessionConfig)))
         model.applyConfig = { [weak self] config in
             guard let self else { return }
@@ -88,6 +99,13 @@ struct UIHostView: View {
             self.model.setExpanded(true)
             self.notch.panel.orderFrontRegardless()
         }))
+        resizeSubscription = model.$tab.dropFirst().sink { [weak self] _ in
+            DispatchQueue.main.async {
+                guard let self else { return }
+                let size = self.model.size(for: .expanded)
+                self.window.setContentSize(NSSize(width: size.width, height: size.height + 36))
+            }
+        }
         window.center(); window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
     }

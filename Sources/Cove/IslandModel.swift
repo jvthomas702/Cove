@@ -52,7 +52,7 @@ final class IslandModel: ObservableObject {
     @Published var desktopAIStatus = "Checking ChatGPT app…"
     @Published private(set) var presentation: Presentation = .idle
     @Published private(set) var expanded = false
-    @Published var tab: Tab = .home
+    @Published var tab: Tab = .home { didSet { recompute() } }
     @Published private(set) var activities: [Activity] = []
     @Published private(set) var banner: Banner?
     @Published private(set) var history: [Banner] = []
@@ -125,7 +125,9 @@ final class IslandModel: ObservableObject {
         case .idle: return n
         case .compact: return CGSize(width: n.width + compactWing * 2, height: n.height)
         case .banner: return CGSize(width: max(n.width + 250, 440), height: n.height + 72)
-        case .expanded: return CGSize(width: max(n.width + 450, 660), height: n.height + 252)
+        case .expanded: return tab == .sports
+            ? CGSize(width: max(n.width + 530, 760), height: n.height + 380)
+            : CGSize(width: max(n.width + 450, 660), height: n.height + 252)
         case .approval:
             // Grows with the preview (a one-line command vs. an 8-line diff).
             let lines = CGFloat(max(approvals.first?.preview.lines.count ?? 1, 1))

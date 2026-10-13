@@ -156,3 +156,9 @@ xcodebuild test -project "$UI_PROJECT" -scheme CoveUI -destination 'platform=mac
 ```
 
 CI runs these XCUITest flows and publishes the result bundle with failure screenshots. Team logos load from provider metadata, use fixed dimensions and a memory cache, and fall back to abbreviations when unavailable. Native popup menu tracking keeps the island open while choosing outside its bounds.
+
+### ESPN-style Gamecast
+
+The Sports panel grows to give the full feed room. Plays keeps all plays returned by ESPN, rather than the newest 100; filter by quarter/overtime or scoring and use Latest play to return to the top. Reading older plays keeps a scroll anchor while updates arrive. NBA plays show scoring values and participant names resolved from the game roster. Football shows down-and-distance, field position, yardage, penalties/turnovers, and expandable drive summaries. Stats includes quarter scores, team comparisons and game leaders. ESPN ↗ opens the complete Gamecast.
+
+Live detail checks every 10 seconds, independently of the slower scoreboard refresh. The timestamp and paused/delayed state describe feed freshness; provider data can still lag. Failed requests retain the last successful plays, drives and stats. These are public, undocumented ESPN JSON feeds, so no claim is made of official push updates or guaranteed coverage.

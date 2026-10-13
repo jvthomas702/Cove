@@ -121,62 +121,7 @@ struct SportsPane: View {
 
 private struct SportsDetail: View {
     @ObservedObject var sports: SportsMonitor
-    private func scoreTint(_ play: SportsPlay, game: SportsGame) -> Color {
-        guard let id = play.teamID else { return Palette.green }
-        if id == game.away.id { return game.away.tint }
-        if id == game.home.id { return game.home.tint }
-        return Palette.green
-    }
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            if let game = sports.selectedGame {
-                SportsScoreHeader(game: game)
-                if let error = sports.detailError {
-                    Text(error).font(Theme.Font.caption).foregroundStyle(Palette.amber)
-                }
-                HStack {
-                    SectionTitle(title: "Play-by-play")
-                    Spacer()
-                    if let date = sports.updatedAt {
-                        Text(date, format: .dateTime.hour().minute().second())
-                            .font(.system(size: 9)).foregroundStyle(Theme.inkTertiary)
-                            .help("Last successful update · ESPN · live games refresh about every 15 seconds")
-                    }
-                }
-                if sports.plays.isEmpty {
-                    SportsEmpty(title: sports.loading ? "Loading plays…" : "No plays yet",
-                                detail: game.state == "pre" ? "Play-by-play appears once the game starts." : "ESPN has not provided play-by-play for this game yet.")
-                } else {
-                    ScrollView {
-                        LazyVStack(alignment: .leading, spacing: 8) {
-                            ForEach(sports.plays) { play in
-                                VStack(alignment: .leading, spacing: 3) {
-                                    HStack {
-                                        Text(play.timeLabel).foregroundStyle(Theme.inkTertiary)
-                                        Spacer()
-                                        if play.scoring, let score = play.score { Text(score).foregroundStyle(scoreTint(play, game: game)) }
-                                    }
-                                    .font(Theme.Font.number)
-                                    Text(play.text).font(Theme.Font.body)
-                                        .foregroundStyle(Theme.inkSecondary)
-                                        .fixedSize(horizontal: false, vertical: true)
-                                }
-                                .padding(8)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .background(RoundedRectangle(cornerRadius: 10).fill(Theme.surface))
-                            }
-                        }
-                    }
-                    .id(game.id) // Reset scroll position when switching games, but not on live refresh.
-                    .accessibilityIdentifier("sports.plays")
-                }
-            } else {
-                SportsEmpty(title: sports.loading && sports.enabled ? "Loading your game…" : "Choose a game",
-                            detail: sports.detailError ?? "Select a matchup to pin its score and latest play to your widget.")
-            }
-            Text("ESPN · updates may be delayed").font(.system(size: 9)).foregroundStyle(Theme.inkTertiary)
-        }
-    }
+    var body: some View { SportsGamecastPane(sports: sports) }
 }
 
 struct SportsWidget: View {
@@ -200,7 +145,13 @@ struct SportsWidget: View {
                 if let error = sports.detailError {
                     Text(error).font(Theme.Font.caption).foregroundStyle(Palette.amber)
                 } else if let play = sports.plays.first {
-                    Text(play.timeLabel).font(Theme.Font.number).foregroundStyle(Theme.inkTertiary)
+                    HStack {
+                        if let team = game.team(play.teamID) { TeamLogo(team: team, size: 16) }
+                        Text(play.timeLabel).font(Theme.Font.number).foregroundStyle(Theme.inkTertiary)
+                        Spacer(minLength: 0)
+                        if let badge = play.badge { Text(badge).font(Theme.Font.number).foregroundStyle(game.team(play.teamID)?.tint ?? Palette.green).lineLimit(1) }
+                    }
+                    if !play.context.isEmpty { Text(play.context).font(Theme.Font.caption).foregroundStyle(Theme.inkSecondary).lineLimit(1) }
                     Text(play.text).font(Theme.Font.body).foregroundStyle(Theme.inkSecondary).lineLimit(3)
                 } else {
                     Text(sports.loading ? "Loading plays…" : game.state == "pre" ? "Waiting for tip-off or kickoff" : "Play-by-play unavailable")
@@ -210,7 +161,7 @@ struct SportsWidget: View {
                     Button("Play-by-play →") { model.tab = .sports }
                         .buttonStyle(.plain).font(Theme.Font.caption).foregroundStyle(Palette.blue)
                     Spacer()
-                    Text("ESPN").font(.system(size: 9)).foregroundStyle(Theme.inkTertiary)
+                    Text(game.isLive ? "ESPN · 10s updates" : "ESPN").font(.system(size: 9)).foregroundStyle(Theme.inkTertiary)
                 }
             } else {
                 SportsEmpty(title: sports.loading ? "Loading…" : "Follow a game",
@@ -227,7 +178,7 @@ struct SportsWidget: View {
     }
 }
 
-private struct SportsScoreHeader: View {
+struct SportsScoreHeader: View {
     let game: SportsGame
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
@@ -262,7 +213,7 @@ private struct SportsScoreHeader: View {
     }
 }
 
-private struct SportsEmpty: View {
+struct SportsEmpty: View {
     let title: String
     let detail: String
     var body: some View {
