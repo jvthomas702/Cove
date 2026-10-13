@@ -502,6 +502,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case "hud":
             model.showHUD(.volume, level: 0.62)
         case "future-class":
+            model.setNowPlaying(nil)
             model.config.calendar = true
             let start = Date().addingTimeInterval(3 * 3600)
             model.setSchedule(Schedule(events: [CalEvent(id: "f", title: "CPE 3000 Lecture", start: start, end: start.addingTimeInterval(75 * 60),

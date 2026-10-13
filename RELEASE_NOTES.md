@@ -7,7 +7,14 @@
 
 Building from source (`./scripts/install.sh`) signs Cove with a local certificate so macOS keeps its permissions across updates.
 
-## In this release
+## What's new in 1.0.1
+
+- Classes show up even if you allowed calendar access after Cove started (no restart needed)
+- D2L and Canvas feeds: timed classes show as classes, assignments as due dates
+- Settings → Features → Calendar shows which calendars Cove sees and your next class
+- Pip is bigger and bolder beside the notch, and shows your next class time while napping
+
+## Everything in Cove 1.0
 
 - Pip, an animated buddy that naps beside the notch and reacts when agents work, finish, fail or need you
 - Approve Claude Code permission prompts from the notch
