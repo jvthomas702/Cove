@@ -87,6 +87,7 @@ struct CompactView: View {
                         .font(Theme.Font.number)
                         .foregroundStyle(Theme.inkSecondary)
                         .lineLimit(1)
+                        .fixedSize()
                 }
                 .help("Next: \(next.title)")
             }

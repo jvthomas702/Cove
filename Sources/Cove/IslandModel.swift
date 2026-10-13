@@ -120,6 +120,8 @@ final class IslandModel: ObservableObject {
         switch compactItem {
         case .event?, .ongoing?: return 128
         case .hud?: return 74
+        case .napping? where nextEventToday != nil:
+            return 66   // napping Pip plus the next class time
         case .napping?, .attention?, .running?, .progress?, .finished?:
             return config.buddy ? 56 : Self.wing   // room for a Pip you can actually see
         default: return Self.wing
