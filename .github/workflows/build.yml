@@ -35,6 +35,19 @@ jobs:
       - name: Test
         run: swift test 2>&1 | tee test.log
 
+      - name: Native UI flows
+        run: |
+          UI_PROJECT="$(python3 scripts/ui-test-xcode.py)"
+          xcodebuild test -project "$UI_PROJECT" -scheme CoveUI -destination 'platform=macOS' -resultBundlePath ui-tests.xcresult 2>&1 | tee ui-tests.log
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Cove-ui-test-results
+          path: |
+            ui-tests.xcresult
+            ui-tests.log
+
       - name: Package app
         run: ./scripts/build-app.sh 2>&1 | tee package.log
 

@@ -34,7 +34,54 @@
                 "displayName": "Dallas Cowboys",
                 "id": "6",
                 "color": "002a5c",
-                "alternateColor": "b0b7bc"
+                "alternateColor": "b0b7bc",
+                "logos": [
+                  {
+                    "href": "https://a.espncdn.com/i/teamlogos/nfl/500/dal.png",
+                    "width": 500,
+                    "height": 500,
+                    "alt": "",
+                    "rel": [
+                      "full",
+                      "default"
+                    ],
+                    "lastUpdated": "2024-06-25T18:47Z"
+                  },
+                  {
+                    "href": "https://a.espncdn.com/i/teamlogos/nfl/500-dark/dal.png",
+                    "width": 500,
+                    "height": 500,
+                    "alt": "",
+                    "rel": [
+                      "full",
+                      "dark"
+                    ],
+                    "lastUpdated": "2024-06-25T18:59Z"
+                  },
+                  {
+                    "href": "https://a.espncdn.com/i/teamlogos/nfl/500/scoreboard/dal.png",
+                    "width": 500,
+                    "height": 500,
+                    "alt": "",
+                    "rel": [
+                      "full",
+                      "scoreboard"
+                    ],
+                    "lastUpdated": "2024-06-25T18:48Z"
+                  },
+                  {
+                    "href": "https://a.espncdn.com/i/teamlogos/nfl/500-dark/scoreboard/dal.png",
+                    "width": 500,
+                    "height": 500,
+                    "alt": "",
+                    "rel": [
+                      "full",
+                      "scoreboard",
+                      "dark"
+                    ],
+                    "lastUpdated": "2024-06-25T18:59Z"
+                  }
+                ]
               }
             },
             {
@@ -48,7 +95,54 @@
                 "displayName": "Tampa Bay Buccaneers",
                 "id": "27",
                 "color": "bd1c36",
-                "alternateColor": "3e3a35"
+                "alternateColor": "3e3a35",
+                "logos": [
+                  {
+                    "href": "https://a.espncdn.com/i/teamlogos/nfl/500/tb.png",
+                    "width": 500,
+                    "height": 500,
+                    "alt": "",
+                    "rel": [
+                      "full",
+                      "default"
+                    ],
+                    "lastUpdated": "2024-06-25T18:57Z"
+                  },
+                  {
+                    "href": "https://a.espncdn.com/i/teamlogos/nfl/500-dark/tb.png",
+                    "width": 500,
+                    "height": 500,
+                    "alt": "",
+                    "rel": [
+                      "full",
+                      "dark"
+                    ],
+                    "lastUpdated": "2024-06-25T18:57Z"
+                  },
+                  {
+                    "href": "https://a.espncdn.com/i/teamlogos/nfl/500/scoreboard/tb.png",
+                    "width": 500,
+                    "height": 500,
+                    "alt": "",
+                    "rel": [
+                      "full",
+                      "scoreboard"
+                    ],
+                    "lastUpdated": "2024-06-25T18:57Z"
+                  },
+                  {
+                    "href": "https://a.espncdn.com/i/teamlogos/nfl/500-dark/scoreboard/tb.png",
+                    "width": 500,
+                    "height": 500,
+                    "alt": "",
+                    "rel": [
+                      "full",
+                      "scoreboard",
+                      "dark"
+                    ],
+                    "lastUpdated": "2024-06-25T18:57Z"
+                  }
+                ]
               }
             }
           ]

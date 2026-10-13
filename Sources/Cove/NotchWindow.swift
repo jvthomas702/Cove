@@ -55,7 +55,8 @@ final class IslandHostingView: NSHostingView<IslandRootView> {
 
     override func mouseExited(with event: NSEvent) {
         super.mouseExited(with: event)
-        model?.setHovering(false)
+        // Resizing a tracking area can emit an exit even while the pointer remains over the island.
+        update(with: event)
     }
 
     private func update(with event: NSEvent) {
@@ -69,7 +70,7 @@ final class IslandHostingView: NSHostingView<IslandRootView> {
             width: island.width,
             height: island.height + 4
         )
-        model.setHovering(rect.contains(event.locationInWindow))
+        model.setHovering(rect.contains(window.mouseLocationOutsideOfEventStream))
     }
 }
 
@@ -119,6 +120,12 @@ final class NotchWindowController {
         ) { [weak self] _ in
             MainActor.assumeIsolated { self?.relocate() }
         })
+
+        for (name, tracking) in [(NSMenu.didBeginTrackingNotification, true), (NSMenu.didEndTrackingNotification, false)] {
+            observers.append(NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak model] _ in
+                MainActor.assumeIsolated { model?.setMenuTracking(tracking) }
+            })
+        }
 
         // recompute() sets `presentation` before `currentSize`, so the presentation is current here.
         model.$currentSize

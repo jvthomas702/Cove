@@ -43,3 +43,8 @@ Building from source (`./scripts/install.sh`) signs Cove with a local certificat
 - Screenshots land on the shelf the moment they're saved, with a draggable thumbnail
 - Settings window with live permission status and one-click connections
 - Volume and brightness meter, Now Playing tinted by album art, focus timer, battery alerts
+
+- Add team logos to sports cards, the score header, and the compact notch, with cached images and offline abbreviation fallbacks.
+- Keep the island open while popup menus track outside its bounds; recheck actual pointer position after tracking-area resize events.
+- Add a Home widget chooser and a scrollable widget column; correct failed AI task icons.
+- Add an isolated native UI host and XCUITest coverage for tabs, widget choice, game selection, quiet screenshots, and offline recovery.

@@ -71,6 +71,8 @@ private struct TabSwitcher: View {
                 }
                 .buttonStyle(PressableStyle())
                 .help(label(for: tab))
+                .accessibilityLabel(label(for: tab))
+                .accessibilityIdentifier("tab.\(tab.rawValue)")
             }
         }
         .padding(2)
@@ -104,24 +106,41 @@ struct HomePane: View {
     var body: some View {
         HStack(alignment: .top, spacing: Theme.Space.m) {
             VStack(spacing: Theme.Space.s) {
-                switch model.config.homeWidget {
-                case .sports: SportsWidget(model: model)
-                case .calendar: UpNextCard(model: model)
-                case .music: MediaCard(model: model)
-                case .focus: FocusCard(model: model)
-                case .ai: AIWorkWidget(model: model)
-                case .auto:
-                    if model.aiActivities.contains(where: \.isLive) {
-                        AIWorkWidget(model: model)
-                    } else if model.config.sportsEnabled, model.sports.selectedGame != nil {
-                        SportsWidget(model: model)
-                    } else {
-                        if model.schedule.nextEvent() != nil || !model.dueSoon.isEmpty { UpNextCard(model: model) }
-                        if model.nowPlaying != nil { MediaCard(model: model) }
-                        FocusCard(model: model)
+                HStack {
+                    Text("Widget").font(Theme.Font.caption).foregroundStyle(Theme.inkTertiary)
+                    Picker("Home widget", selection: Binding(get: { model.config.homeWidget }, set: { widget in
+                        var next = model.config
+                        next.homeWidget = widget
+                        model.applyConfig?(next)
+                    })) {
+                        ForEach(HomeWidget.allCases, id: \.self) { Text($0.title).tag($0) }
                     }
+                    .labelsHidden().pickerStyle(.menu)
+                    .accessibilityIdentifier("home.widget")
                 }
-                Spacer(minLength: 0)
+                ScrollView {
+                    VStack(spacing: Theme.Space.s) {
+                        switch model.config.homeWidget {
+                        case .sports: SportsWidget(model: model)
+                        case .calendar: UpNextCard(model: model)
+                        case .music: MediaCard(model: model)
+                        case .focus: FocusCard(model: model)
+                        case .ai: AIWorkWidget(model: model)
+                        case .auto:
+                            if model.aiActivities.contains(where: \.isLive) {
+                                AIWorkWidget(model: model)
+                            } else if model.config.sportsEnabled, model.sports.selectedGame != nil {
+                                SportsWidget(model: model)
+                            } else {
+                                if model.schedule.nextEvent() != nil || !model.dueSoon.isEmpty { UpNextCard(model: model) }
+                                if model.nowPlaying != nil { MediaCard(model: model) }
+                                FocusCard(model: model)
+                            }
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                }
+                .scrollIndicators(.automatic)
             }
             .frame(width: 280)
 

@@ -83,6 +83,7 @@ final class IslandModel: ObservableObject {
     private var pruneTimer: Timer?
     private var hoverWork: DispatchWorkItem?
     private var isHovering = false
+    private var menuTrackingDepth = 0
     private var suppressHoverUntilExit = false
     private var artworkKey: String?
     private var lastAgentSignal: Date?
@@ -238,12 +239,20 @@ final class IslandModel: ObservableObject {
             MainActor.assumeIsolated {
                 guard let self else { return }
                 self.hoverWork = nil
-                guard !self.isHovering, !self.isDropTargeted else { return }
+                guard !self.isHovering, !self.isDropTargeted, self.menuTrackingDepth == 0 else { return }
                 self.setExpanded(false)
             }
         }
         hoverWork = work
         DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
+    }
+
+    /// Native popup menus extend outside the island. Keep the parent alive until tracking ends.
+    func setMenuTracking(_ tracking: Bool) {
+        menuTrackingDepth = tracking ? menuTrackingDepth + 1 : max(0, menuTrackingDepth - 1)
+        hoverWork?.cancel()
+        hoverWork = nil
+        if menuTrackingDepth == 0, !isHovering { scheduleCollapse(after: 0.3) }
     }
 
     func setExpanded(_ value: Bool) {

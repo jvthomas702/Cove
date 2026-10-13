@@ -29,7 +29,8 @@ struct SportsPane: View {
                 Picker("League", selection: Binding(get: { model.config.sportsLeague }, set: { model.chooseSportsLeague($0) })) {
                     ForEach(SportsLeague.allCases, id: \.self) { Text($0.title).tag($0) }
                 }
-                .pickerStyle(.segmented)
+                .pickerStyle(.segmented).labelsHidden()
+                .accessibilityIdentifier("sports.league")
                 .frame(width: 305)
                 if model.config.sportsLeague == .collegeFootball {
                     Toggle("Top 25", isOn: Binding(get: { model.config.sportsRankedOnly }, set: {
@@ -38,6 +39,7 @@ struct SportsPane: View {
                         model.applyConfig?(config)
                     }))
                     .toggleStyle(.checkbox)
+                    .accessibilityIdentifier("sports.top25")
                     .font(Theme.Font.caption)
                     .help("Games featuring at least one Top 25 team")
                 }
@@ -45,6 +47,7 @@ struct SportsPane: View {
                 if sports.loading { ProgressView().controlSize(.mini) }
                 IconButton(systemImage: "arrow.clockwise", size: 12, hit: 24) { sports.refresh() }
                     .help("Refresh games")
+                    .accessibilityLabel("Refresh games")
                     .disabled(sports.loading || !sports.enabled)
             }
             if !sports.enabled {
@@ -79,11 +82,11 @@ struct SportsPane: View {
                                 VStack(alignment: .leading, spacing: 4) {
                                     HStack {
                                         HStack(spacing: 5) {
-                                            Circle().fill(game.away.tint).frame(width: 5, height: 5)
+                                            TeamLogo(team: game.away, size: 19)
                                             Text(game.away.label).foregroundStyle(game.away.tint)
                                             Text("@").foregroundStyle(Theme.inkTertiary)
                                             Text(game.home.label).foregroundStyle(game.home.tint)
-                                            Circle().fill(game.home.tint).frame(width: 5, height: 5)
+                                            TeamLogo(team: game.home, size: 19)
                                         }
                                         .font(Theme.Font.headline).lineLimit(1).minimumScaleFactor(0.8)
                                         Spacer(minLength: 0)
@@ -107,6 +110,7 @@ struct SportsPane: View {
                             }
                             .buttonStyle(.plain)
                             .help("Follow \(game.away.name) at \(game.home.name)")
+                            .accessibilityIdentifier("sports.game.\(game.id)")
                         }
                     }
                 }
@@ -163,6 +167,8 @@ private struct SportsDetail: View {
                             }
                         }
                     }
+                    .id(game.id) // Reset scroll position when switching games, but not on live refresh.
+                    .accessibilityIdentifier("sports.plays")
                 }
             } else {
                 SportsEmpty(title: sports.loading && sports.enabled ? "Loading your game…" : "Choose a game",
@@ -236,6 +242,7 @@ private struct SportsScoreHeader: View {
                 Text("–").font(Theme.Font.caption).foregroundStyle(Theme.inkTertiary)
                 teamScore(game.home)
             }
+            .accessibilityElement(children: .ignore)
             .accessibilityLabel("\(game.away.name) \(game.away.score), \(game.home.name) \(game.home.score), \(game.status)")
         }
     }
@@ -244,6 +251,7 @@ private struct SportsScoreHeader: View {
         VStack(spacing: 5) {
             Capsule().fill(team.tint).frame(height: 3)
             HStack(spacing: 6) {
+                TeamLogo(team: team, size: 28)
                 Text(team.label).font(Theme.Font.headline).foregroundStyle(team.tint)
                 Spacer(minLength: 0)
                 Text(team.score).font(.system(size: 20, weight: .bold, design: .rounded).monospacedDigit())

@@ -143,3 +143,16 @@ CI (`.github/workflows/build.yml`) builds, runs the tests, packages and verifies
 ## License
 
 MIT © 2026 Jason Thomas
+
+### Native UI testing
+
+Run `./scripts/ui-test-host.sh` to open an isolated native test app with the production Cove views and recorded sports feeds. It uses its own preferences and starts no screenshot watcher, calendar, notification reader, or desktop AI monitor. Use Home’s widget menu, each tab, game selection, the Offline control, and Quiet screenshot to check visible behavior. The fixture summary adapts to the selected fixture team pair; these are repeatable scenarios, not current game data.
+
+With full Xcode installed, run:
+
+```sh
+UI_PROJECT="$(python3 scripts/ui-test-xcode.py)"
+xcodebuild test -project "$UI_PROJECT" -scheme CoveUI -destination 'platform=macOS' -resultBundlePath ui-tests.xcresult
+```
+
+CI runs these XCUITest flows and publishes the result bundle with failure screenshots. Team logos load from provider metadata, use fixed dimensions and a memory cache, and fall back to abbreviations when unavailable. Native popup menu tracking keeps the island open while choosing outside its bounds.

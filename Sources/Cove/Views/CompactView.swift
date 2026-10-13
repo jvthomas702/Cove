@@ -164,6 +164,7 @@ struct CompactView: View {
         case .ai(let activity, _)?:
             HStack(spacing: 5) {
                 if activity.isLive { ArcSpinner(color: activity.agent.tint, size: 10) }
+                else if activity.state == .failed { Image(systemName: "xmark.circle.fill").foregroundStyle(Palette.red) }
                 else { Image(systemName: "checkmark.circle.fill").foregroundStyle(Palette.green) }
                 Text(activity.phase ?? (activity.isLive ? "Working…" : "Finished"))
                     .font(Theme.Font.number).foregroundStyle(Theme.inkSecondary).lineLimit(1)
@@ -175,7 +176,7 @@ struct CompactView: View {
 
     private func compactTeam(_ team: SportsTeam) -> some View {
         HStack(spacing: 5) {
-            Capsule().fill(team.tint).frame(width: 3, height: 16)
+            TeamLogo(team: team, size: 18)
             Text(team.abbreviation).foregroundStyle(team.tint)
             Text(team.score).foregroundStyle(Theme.ink)
         }

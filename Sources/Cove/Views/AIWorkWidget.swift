@@ -32,7 +32,9 @@ struct AIWorkWidget: View {
                         Text(activity.originLabel).font(Theme.Font.caption).foregroundStyle(Theme.inkTertiary)
                     }
                     Spacer()
-                    if activity.isLive { ArcSpinner(color: activity.agent.tint, size: 13) }
+                    if activity.state == .running { ArcSpinner(color: activity.agent.tint, size: 13) }
+                    else if activity.state == .failed { Image(systemName: "xmark.circle.fill").foregroundStyle(Palette.red) }
+                    else if activity.state == .attention { Image(systemName: "hand.raised.fill").foregroundStyle(Palette.amber) }
                     else { Image(systemName: "checkmark.circle.fill").foregroundStyle(Palette.green) }
                 }
                 Text(activity.title).font(Theme.Font.headline).lineLimit(1)

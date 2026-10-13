@@ -160,3 +160,46 @@ final class TeamColorTests: XCTestCase {
         XCTAssertEqual(alternate.accentHex, 0xFFFFFF)
     }
 }
+
+final class TeamLogoTests: XCTestCase {
+    func testSummaryAndScoreboardLogoShapes() throws {
+        let summary = try XCTUnwrap(Bundle.module.url(forResource: "nba-summary", withExtension: "json", subdirectory: "Fixtures"))
+        let (game, _) = try SportsParser.summary(Data(contentsOf: summary), league: .nba)
+        XCTAssertEqual(game?.home.logoURL?.lastPathComponent, "atl.png")
+        let scoreboard = try XCTUnwrap(Bundle.module.url(forResource: "nba-scoreboard", withExtension: "json", subdirectory: "Fixtures"))
+        let games = try SportsParser.scoreboard(Data(contentsOf: scoreboard), league: .nba)
+        XCTAssertTrue(games.contains { $0.home.logoURL != nil || $0.away.logoURL != nil })
+    }
+    func testMissingAndInvalidLogosKeepFallback() {
+        XCTAssertNil(SportsTeam.logoURL(nil))
+        XCTAssertNil(SportsTeam.logoURL("http://a.espncdn.com/a.png"))
+        XCTAssertNil(SportsTeam.logoURL("https://espncdn.com.evil.example/a.png"))
+        XCTAssertNil(SportsTeam.logoURL("https://a.espncdn.com/a.html"))
+        XCTAssertNotNil(SportsTeam.logoURL("https://a.espncdn.com/i/teamlogos/nfl/500/dal.png"))
+    }
+}
+
+@MainActor final class PopupMenuTests: XCTestCase {
+    func testPopupOutsideIslandKeepsItExpandedUntilMenuEnds() async throws {
+        var config = CoveConfig(); config.calendar = false; config.sounds = false
+        let model = IslandModel(config: config)
+        model.setHovering(true); model.setExpanded(true)
+        model.setMenuTracking(true); model.setHovering(false)
+        try await Task.sleep(nanoseconds: 450_000_000)
+        XCTAssertTrue(model.expanded)
+        model.setMenuTracking(false)
+        try await Task.sleep(nanoseconds: 450_000_000)
+        XCTAssertFalse(model.expanded)
+    }
+    func testNestedMenusAndPointerReturnDoNotCollapse() async throws {
+        var config = CoveConfig(); config.calendar = false; config.sounds = false
+        let model = IslandModel(config: config)
+        model.setExpanded(true); model.setMenuTracking(true); model.setMenuTracking(true)
+        model.setHovering(false); model.setMenuTracking(false)
+        try await Task.sleep(nanoseconds: 450_000_000)
+        XCTAssertTrue(model.expanded)
+        model.setHovering(true); model.setMenuTracking(false)
+        try await Task.sleep(nanoseconds: 450_000_000)
+        XCTAssertTrue(model.expanded)
+    }
+}

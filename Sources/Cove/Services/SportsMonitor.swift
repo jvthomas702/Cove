@@ -54,6 +54,7 @@ struct SportsTeam: Equatable {
     var id: String? = nil
     var primaryHex: UInt32? = nil
     var alternateHex: UInt32? = nil
+    var logoURL: URL? = nil
     var label: String { rank.map { "#\($0) \(abbreviation)" } ?? abbreviation }
 
     /// Use the supplied brand hue, lifting very dark colors so labels remain legible on black.
@@ -66,6 +67,16 @@ struct SportsTeam: Equatable {
             if Self.contrastOnBlack(lifted) >= 4.5 { return lifted }
         }
         return 0xFFFFFF
+    }
+
+    /// Team image addresses supplied by ESPN; ignore non-image or untrusted endpoints.
+    static func logoURL(_ value: Any?) -> URL? {
+        guard let text = value as? String, let url = URL(string: text),
+              url.scheme == "https", let host = url.host?.lowercased(),
+              host == "espncdn.com" || host.hasSuffix(".espncdn.com"),
+              url.user == nil, url.password == nil,
+              ["png", "jpg", "jpeg", "webp"].contains(url.pathExtension.lowercased()) else { return nil }
+        return url
     }
 
     static func colorHex(_ value: Any?) -> UInt32? {
@@ -187,7 +198,8 @@ enum SportsParser {
         return SportsTeam(name: name, abbreviation: team["abbreviation"] as? String ?? name,
                           score: string(competitor["score"]) ?? "–", rank: rank.flatMap { (1...25).contains($0) ? $0 : nil },
                           id: team["id"] as? String, primaryHex: SportsTeam.colorHex(team["color"]),
-                          alternateHex: SportsTeam.colorHex(team["alternateColor"]))
+                          alternateHex: SportsTeam.colorHex(team["alternateColor"]),
+                          logoURL: SportsTeam.logoURL(team["logo"]) ?? (team["logos"] as? [[String: Any]])?.compactMap { SportsTeam.logoURL($0["href"]) }.first)
     }
     private static func string(_ value: Any?) -> String? {
         if let text = value as? String { return text }
@@ -300,6 +312,8 @@ final class SportsMonitor: ObservableObject {
                 game.away.alternateHex = game.away.alternateHex ?? self.selectedGame?.away.alternateHex
                 game.home.primaryHex = game.home.primaryHex ?? self.selectedGame?.home.primaryHex
                 game.home.alternateHex = game.home.alternateHex ?? self.selectedGame?.home.alternateHex
+                game.away.logoURL = game.away.logoURL ?? self.selectedGame?.away.logoURL
+                game.home.logoURL = game.home.logoURL ?? self.selectedGame?.home.logoURL
                 self.selectedGame = game
                 self.plays = plays
                 self.detailError = nil
