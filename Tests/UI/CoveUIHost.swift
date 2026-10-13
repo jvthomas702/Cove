@@ -58,7 +58,8 @@ struct UIHostView: View {
     var notch: NotchWindowController!
     func applicationDidFinishLaunching(_ notification: Notification) {
         setbuf(stdout, nil)
-        UIFeed.root = URL(fileURLWithPath: CommandLine.arguments.count > 1 ? CommandLine.arguments[1] : Bundle.main.resourceURL!.appendingPathComponent("Fixtures").path)
+        let fixturePath = CommandLine.arguments.dropFirst().first { $0.hasPrefix("/") && FileManager.default.fileExists(atPath: $0) }
+        UIFeed.root = URL(fileURLWithPath: fixturePath ?? Bundle.main.resourceURL!.appendingPathComponent("Fixtures").path)
         let sessionConfig = URLSessionConfiguration.ephemeral
         sessionConfig.protocolClasses = [UIFeed.self]
         var config = CoveConfig()

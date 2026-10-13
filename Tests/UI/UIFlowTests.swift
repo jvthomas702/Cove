@@ -55,6 +55,19 @@ final class UIFlowTests: XCTestCase {
         XCTAssertTrue(window.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "Writing reply")).firstMatch.waitForExistence(timeout: 5))
     }
 
+    func testCollegeFootballRankedFilter() {
+        window.buttons["tab.sports"].click()
+        window.radioButtons["College football"].click()
+        let ranked = window.buttons["sports.game.401858488"]
+        XCTAssertTrue(ranked.waitForExistence(timeout: 8))
+        XCTAssertFalse(window.buttons["sports.game.401871067"].exists)
+        window.checkBoxes["sports.top25"].click()
+        XCTAssertTrue(window.buttons["sports.game.401871067"].waitForExistence(timeout: 5))
+        ranked.click()
+        XCTAssertTrue(text("Play-by-play").waitForExistence(timeout: 5))
+        XCTAssertFalse(text("Updates paused.").exists)
+    }
+
     func testAllTabsRemainUsable() {
         for tab in ["schedule", "sports", "shelf", "home"] {
             window.buttons["tab.\(tab)"].click()
