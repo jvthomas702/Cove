@@ -568,10 +568,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case "clear-schedule":
             model.setSchedule(Schedule())
         case "add-feeds":
-            // CI serves sample D2L-style and class feeds on this port.
+            // CI writes sample D2L-style and Google-style feeds to ~/cove-ci-feeds (files, so no
+            // local-network prompt gets in the way).
+            let root = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("cove-ci-feeds")
             var config = model.config
-            config.calendarFeeds = ["http://127.0.0.1:\(arg)/d2l/le/calendar/feed/user/feed.ics",
-                                    "http://127.0.0.1:\(arg)/calendar/ical/classes/private-abc/basic.ics"]
+            config.calendarFeeds = [root.appendingPathComponent("d2l/le/calendar/feed/user/feed.ics").absoluteString,
+                                    root.appendingPathComponent("calendar/ical/classes/private-abc/basic.ics").absoluteString]
             updateConfig(config)
         case "hud":
             model.showHUD(.volume, level: 0.62)

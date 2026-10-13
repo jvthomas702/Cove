@@ -416,6 +416,8 @@ final class ICSFeedMonitor {
             text = "https://" + text.dropFirst(prefix.count)
             break
         }
+        // A saved .ics file works too.
+        if text.lowercased().hasPrefix("file://") { return URL(string: text) }
         guard var components = URLComponents(string: text), let scheme = components.scheme?.lowercased(),
               scheme == "https" || scheme == "http", let host = components.host, !host.isEmpty else { return nil }
         let local = host == "localhost" || host == "127.0.0.1" || host == "::1"
@@ -484,7 +486,7 @@ final class ICSFeedMonitor {
         if host.contains("google") { return "Google Calendar" }
         if host.contains("outlook") || host.contains("office") { return "Outlook" }
         if host.contains("icloud") { return "iCloud" }
-        return host
+        return host.isEmpty ? "Calendar" : host
     }
 
     private func rebuild() {

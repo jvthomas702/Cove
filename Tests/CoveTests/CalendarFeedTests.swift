@@ -184,6 +184,7 @@ final class CalendarLinkTests: XCTestCase {
         XCTAssertEqual(ICSFeedMonitor.normalize("http://127.0.0.1:8765/feed.ics")?.scheme, "http")
         XCTAssertNil(ICSFeedMonitor.normalize("my calendar"))
         XCTAssertNil(ICSFeedMonitor.normalize("ftp://example.com/feed.ics"))
+        XCTAssertEqual(ICSFeedMonitor.normalize("file:///Users/me/classes.ics")?.isFileURL, true)
     }
 
     func testFriendlyNames() {

@@ -53,7 +53,8 @@ debug clear-schedule; debug expand/schedule; sleep 1; island 08b-schedule-connec
 check "schedule tab asks to connect calendars" "curl -s -m 2 $API/debug/schedule-state | grep -q '\"events\":0'"
 
 # Calendar links: serve feeds shaped like D2L's and Google's secret iCal address from this machine.
-FEEDS="$(mktemp -d)"
+FEEDS="$HOME/cove-ci-feeds"
+rm -rf "$FEEDS"; mkdir -p "$FEEDS"
 python3 - "$FEEDS" <<'PY'
 import datetime as dt, os, sys
 from zoneinfo import ZoneInfo
@@ -105,16 +106,13 @@ for path, text in [("d2l/le/calendar/feed/user/feed.ics", d2l), ("calendar/ical/
     os.makedirs(os.path.dirname(full), exist_ok=True)
     open(full, "w").write(text)
 PY
-python3 -m http.server 8765 --bind 127.0.0.1 --directory "$FEEDS" >/dev/null 2>&1 &
-FEED_SERVER=$!
-sleep 1
-debug add-feeds/8765
+debug add-feeds
 for _ in $(seq 1 20); do curl -s -m 1 "$API/debug/schedule-state" | grep -q '"feeds":"ok' && break; sleep 0.5; done
 curl -s -m 2 "$API/debug/schedule-state"; echo
 check "calendar links load (classes and due dates)" "curl -s -m 2 $API/debug/schedule-state | grep -q '\"events\":2,\"due\":2,\"feeds\":\"ok:2,ok:2\"'"
 debug expand/schedule; sleep 1; island 08c-schedule-from-links
 debug expand/home; sleep 1; island 07b-home-from-links
-debug settings/features; sleep 1.2; full 03b-settings-calendar-links
+debug collapse; debug settings/features; sleep 1.2; full 03b-settings-calendar-links
 debug close-settings
 debug collapse; sleep 1
 
@@ -158,7 +156,6 @@ if [ -n "$PID" ]; then
 fi
 
 osascript -e 'quit app "Cove"' 2>/dev/null || pkill -x Cove
-kill "$FEED_SERVER" 2>/dev/null || true
 rm -f "$SHOT"
 echo "failures: $failures"
 exit "$failures"
