@@ -116,7 +116,7 @@ final class IslandModel: ObservableObject {
     /// Width of each wing in compact mode. Wider for things that need words (a class name, a level bar).
     var compactWing: CGFloat {
         switch compactItem {
-        case .event?, .ongoing?: return 112
+        case .event?, .ongoing?: return 128
         case .hud?: return 74
         default: return Self.wing
         }

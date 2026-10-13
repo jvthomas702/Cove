@@ -9,7 +9,8 @@ struct Buddy: View {
     var badge: AgentKind? = nil
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30, paused: Theme.reduceMotion)) { context in
+        // Napping Pip is on screen all day, so it breathes at a low frame rate to save battery.
+        TimelineView(.animation(minimumInterval: mood == .sleepy ? 1.0 / 6 : 1.0 / 30, paused: Theme.reduceMotion)) { context in
             BuddyFigure(mood: mood, size: size, t: Theme.reduceMotion ? 0 : context.date.timeIntervalSinceReferenceDate)
         }
         .frame(width: size, height: size)

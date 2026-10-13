@@ -48,8 +48,5 @@ case ":$PATH:" in
   *":$BIN_DIR:"*) ;;
   *) echo "  Add the CLI tools to your PATH:  echo 'export PATH=\"$BIN_DIR:\$PATH\"' >> ~/.zshrc" ;;
 esac
-echo "  macOS will ask for Calendars, Reminders and Accessibility (for the volume/brightness HUD) — allow them."
-echo "  Mirror notifications: System Settings → Privacy & Security → Full Disk Access → add Cove, then relaunch it."
-echo "  Try it: menu bar icon → Run demo"
-echo "  Chat tabs: chrome://extensions → Developer mode → Load unpacked → choose"
-echo "             $EXT_DIR"
+echo "  Cove's Settings window walks you through permissions and connections"
+echo "  (menu bar icon → Settings…). Try it: menu bar icon → Run demo"

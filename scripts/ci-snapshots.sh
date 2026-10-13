@@ -72,6 +72,18 @@ post /event '{"id":"train","title":"x","kind":"clear"}'
 post /event '{"id":"claude:ci","title":"x","kind":"clear"}'
 sleep 2; island 14-class-now
 
+# Idle cost: Pip napping beside the notch, nothing else going on.
+debug collapse; sleep 3
+PID="$(pgrep -x Cove | head -1)"
+if [ -n "$PID" ]; then
+  total=0
+  for _ in $(seq 1 10); do c="$(ps -p "$PID" -o %cpu= | tr -d ' ')"; total="$(echo "$total + $c" | bc)"; sleep 1; done
+  avg="$(echo "scale=1; $total / 10" | bc)"
+  echo "idle CPU: ${avg}% (average over 10 s)"
+  echo "memory: $(ps -p "$PID" -o rss= | awk '{printf "%.0f MB", $1/1024}')"
+  check "idle CPU under 5%" "[ \"\$(echo \"$avg < 5\" | bc)\" = 1 ]"
+fi
+
 osascript -e 'quit app "Cove"' 2>/dev/null || pkill -x Cove
 rm -f "$SHOT"
 echo "failures: $failures"
