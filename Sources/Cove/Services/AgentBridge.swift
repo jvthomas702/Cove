@@ -65,7 +65,7 @@ final class AgentBridge {
         }
     }
 
-    static func describe(tool: String, input: [String: Any]) -> String {
+    nonisolated static func describe(tool: String, input: [String: Any]) -> String {
         func file(_ key: String = "file_path") -> String {
             ((input[key] as? String).map { ($0 as NSString).lastPathComponent }) ?? "a file"
         }
@@ -130,7 +130,7 @@ final class AgentBridge {
         }
     }
 
-    static func permissionResponse(_ decision: ApprovalDecision, suggestions: [Any]?) -> String {
+    nonisolated static func permissionResponse(_ decision: ApprovalDecision, suggestions: [Any]?) -> String {
         var body: [String: Any]
         switch decision {
         case .ask:
@@ -152,7 +152,7 @@ final class AgentBridge {
     }
 
     /// Turns the tool call into a short verb phrase plus a few preview lines (command, diff, file head…).
-    static func describePermission(tool: String, input: [String: Any]) -> (String, ApprovalPreview) {
+    nonisolated static func describePermission(tool: String, input: [String: Any]) -> (String, ApprovalPreview) {
         var lines: [(String, ApprovalPreview.Style)] = []
         func file(_ key: String = "file_path") -> String {
             ((input[key] as? String).map { ($0 as NSString).lastPathComponent }) ?? "a file"
