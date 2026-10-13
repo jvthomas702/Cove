@@ -58,9 +58,14 @@ security import "$WORK/cert.p12" -k "$KEYCHAIN" -P "$PASS" -T /usr/bin/codesign 
 
 if [ "$TEST" = 1 ]; then
   security set-key-partition-list -S apple-tool:,apple: -s -k test "$KEYCHAIN" >/dev/null 2>&1 || true
+  # codesign only searches keychains in the user's search list.
+  ORIGINAL_LIST="$(security list-keychains -d user | tr -d '"' | xargs)"
+  security list-keychains -d user -s "$KEYCHAIN" $ORIGINAL_LIST
+  echo "identities (all):"; security find-identity -p codesigning "$KEYCHAIN" || true
   # Prove codesign can use it.
   cp /bin/ls "$WORK/ls-copy"
-  codesign --force --keychain "$KEYCHAIN" --sign "$NAME" "$WORK/ls-copy"
+  codesign --force --sign "$NAME" "$WORK/ls-copy"
+  security list-keychains -d user -s $ORIGINAL_LIST
   codesign --display --verbose=2 "$WORK/ls-copy" 2>&1 | grep -E "Authority|Identifier"
   echo "signing identity self-test ok"
   security delete-keychain "$KEYCHAIN"
