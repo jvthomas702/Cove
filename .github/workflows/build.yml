@@ -2,8 +2,17 @@ name: build
 
 on:
   push:
+    branches: [main]
+    tags: ["v*"]
   pull_request:
   workflow_dispatch:
+
+permissions:
+  contents: write
+
+defaults:
+  run:
+    shell: bash -o pipefail -e {0}
 
 jobs:
   build:
@@ -13,8 +22,7 @@ jobs:
 
       - name: Toolchain
         run: |
-          sw_vers
-          swift --version
+          { sw_vers; swift --version; } 2>&1 | tee toolchain.log
 
       - name: Build
         run: swift build -c release 2>&1 | tee build.log
@@ -23,14 +31,29 @@ jobs:
         run: swift test 2>&1 | tee test.log
 
       - name: Package app
-        run: ./scripts/build-app.sh
+        run: ./scripts/build-app.sh 2>&1 | tee package.log
 
-      - name: Check scripts
+      - name: Check scripts and extension
         run: |
-          for f in bin/* scripts/*.sh; do bash -n "$f"; done
-          node --check extension/content.js
-          node --check extension/background.js
-          node --check extension/popup.js
+          {
+            for f in bin/* scripts/*.sh; do bash -n "$f" && echo "ok $f"; done
+            for f in extension/*.js; do node --check "$f" && echo "ok $f"; done
+            python3 -c "import json; json.load(open('extension/manifest.json')); print('ok manifest.json')"
+          } 2>&1 | tee scripts.log
+
+      - name: Verify app bundle
+        run: |
+          {
+            plutil -lint build/Cove.app/Contents/Info.plist
+            codesign --verify --deep --strict --verbose=2 build/Cove.app
+            ls build/Cove.app/Contents/Resources build/Cove.app/Contents/Resources/bin
+            test -f build/Cove.app/Contents/Resources/AppIcon.icns
+            test -f build/Cove.app/Contents/Resources/extension/manifest.json
+            echo "bundle ok"
+          } 2>&1 | tee bundle.log
+
+      - name: Test signing identity script
+        run: ./scripts/make-signing-identity.sh --test 2>&1 | tee signing.log
 
       - name: Zip app
         run: |
@@ -42,10 +65,30 @@ jobs:
           name: Cove-app
           path: build/Cove.zip
 
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: logs
-          path: |
-            build.log
-            test.log
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" build/Cove.zip \
+            --title "Cove ${GITHUB_REF_NAME#v}" \
+            --notes-file RELEASE_NOTES.md
+
+      # Logs go to the ci-logs branch so they can be read with plain git.
+      - name: Publish logs
+        if: always() && github.event_name != 'pull_request'
+        run: |
+          mkdir -p /tmp/ci-logs
+          cp *.log /tmp/ci-logs/ 2>/dev/null || true
+          {
+            echo "run: ${GITHUB_RUN_ID}"
+            echo "commit: ${GITHUB_SHA}"
+            echo "ref: ${GITHUB_REF_NAME}"
+            echo "status: ${{ job.status }}"
+          } > /tmp/ci-logs/summary.txt
+          cd /tmp/ci-logs
+          git init -q
+          git checkout -q -b ci-logs
+          git add -A
+          git -c user.name=ci -c user.email=ci@users.noreply.github.com commit -q -m "Logs for ${GITHUB_SHA::7} (${{ job.status }})"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}.git" ci-logs
