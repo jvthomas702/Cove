@@ -3,20 +3,49 @@ name: build
 on:
   push:
   pull_request:
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
+
+      - name: Toolchain
+        run: |
+          sw_vers
+          swift --version
+
       - name: Build
-        run: swift build -c release
+        run: swift build -c release 2>&1 | tee build.log
+
+      - name: Test
+        run: swift test 2>&1 | tee test.log
+
       - name: Package app
         run: ./scripts/build-app.sh
+
       - name: Check scripts
         run: |
           for f in bin/* scripts/*.sh; do bash -n "$f"; done
+          node --check extension/content.js
+          node --check extension/background.js
+          node --check extension/popup.js
+
+      - name: Zip app
+        run: |
+          cd build
+          ditto -c -k --keepParent Cove.app Cove.zip
+
       - uses: actions/upload-artifact@v4
         with:
-          name: Cove.app
-          path: build/Cove.app
+          name: Cove-app
+          path: build/Cove.zip
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: logs
+          path: |
+            build.log
+            test.log

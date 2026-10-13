@@ -13,6 +13,11 @@ let package = Package(
                 .linkedFramework("IOKit"),
                 .linkedFramework("ServiceManagement"),
             ]
-        )
+        ),
+        .testTarget(
+            name: "CoveTests",
+            dependencies: ["Cove"],
+            path: "Tests/CoveTests"
+        ),
     ]
 )
