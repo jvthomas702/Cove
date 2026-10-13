@@ -266,3 +266,21 @@ final class NotificationDecodeTests: XCTestCase {
         XCTAssertEqual(item.body, "Meeting moved to 3")
     }
 }
+
+@MainActor
+final class ShelfBannerTests: XCTestCase {
+    func testScreenshotBannersCoalesceAndStayOutOfHistory() {
+        var config = CoveConfig()
+        config.sounds = false
+        config.calendar = false
+        let model = IslandModel(config: config)
+        model.clearShelf()
+        let a = URL(fileURLWithPath: "/tmp/Screenshot A.png"), b = URL(fileURLWithPath: "/tmp/Screenshot B.png")
+        model.addScreenshots([a])
+        model.addScreenshots([b])
+        XCTAssertEqual(model.banner?.icon, .file(b))
+        XCTAssertTrue(model.history.isEmpty)
+        XCTAssertEqual(model.shelf.prefix(2), [b, a])
+        model.clearShelf()
+    }
+}

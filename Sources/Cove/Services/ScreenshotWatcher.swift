@@ -188,7 +188,11 @@ final class ScreenshotWatcher {
 
     private func startSpotlight() {
         query.predicate = NSPredicate(format: "kMDItemIsScreenCapture == 1 AND kMDItemFSCreationDate >= %@", startedAt as NSDate)
-        query.searchScopes = [NSMetadataQueryUserHomeScope]
+        // Only where screenshots normally land, so captures made by other tools elsewhere aren't picked up.
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        let scopes = [Self.screenshotFolder, home.appendingPathComponent("Desktop"),
+                      home.appendingPathComponent("Pictures/Screenshots"), home.appendingPathComponent("Downloads")]
+        query.searchScopes = Array(Set(scopes.map(\.standardizedFileURL))).filter { FileManager.default.fileExists(atPath: $0.path) }
         observers.append(NotificationCenter.default.addObserver(
             forName: .NSMetadataQueryDidUpdate, object: query, queue: .main
         ) { [weak self] _ in

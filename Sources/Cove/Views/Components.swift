@@ -345,7 +345,7 @@ struct ChipButton: View {
             .font(.system(size: 11, weight: .semibold, design: .rounded))
             .foregroundStyle(tint)
             .fixedSize()
-            .padding(.horizontal, 9)
+            .padding(.horizontal, 7)
             .padding(.vertical, 5)
             .background(Capsule().fill(hovering ? Color.white.opacity(0.17) : Theme.surfaceRaised))
             .contentShape(Capsule())

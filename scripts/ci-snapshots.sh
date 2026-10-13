@@ -4,7 +4,7 @@
 set -uo pipefail
 
 APP="build/Cove.app"
-OUT="snapshots"
+OUT="$PWD/snapshots"
 PORT=7777
 API="http://127.0.0.1:$PORT"
 mkdir -p "$OUT"
@@ -58,8 +58,10 @@ debug deny-approvals; debug collapse; sleep 1
 
 # A "screenshot" appears the way macOS writes one: hidden temp file, then renamed into place.
 SHOT="$HOME/Desktop/Screenshot 2026-10-12 at 9.00.00 PM.png"
-screencapture -x -R 0,0,640,400 "$HOME/Desktop/.tmp-shot.png"
+screencapture -x -R 0,0,640,400 "$TMPDIR/fake-shot.png"
+cp "$TMPDIR/fake-shot.png" "$HOME/Desktop/.tmp-shot.png"
 mv "$HOME/Desktop/.tmp-shot.png" "$SHOT"
+ls -la "$HOME/Desktop" | head
 sleep 1.2; island 11-screenshot-banner
 check "screenshot reached the shelf" "defaults read app.cove.island shelf 2>/dev/null | grep -q 'Screenshot 2026-10-12'"
 debug expand/shelf; sleep 1; island 12-shelf

@@ -181,7 +181,7 @@ struct FocusCard: View {
     @ObservedObject var model: IslandModel
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 8) {
             if let end = model.focusEnd {
                 TimelineView(.periodic(from: .now, by: 1)) { context in
                     let remaining = max(0, end.timeIntervalSince(context.date))
@@ -200,9 +200,9 @@ struct FocusCard: View {
                 Image(systemName: "timer")
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(Palette.amber)
-                Text("Focus").font(Theme.Font.headline).lineLimit(1)
-                Spacer(minLength: 4)
-                HStack(spacing: 5) {
+                Text("Focus").font(Theme.Font.headline).lineLimit(1).fixedSize()
+                Spacer(minLength: 2)
+                HStack(spacing: 4) {
                     ForEach(model.config.focusMinutes.prefix(3), id: \.self) { minutes in
                         ChipButton(title: "\(minutes)m") { model.startFocus(minutes: minutes) }
                     }

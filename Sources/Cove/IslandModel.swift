@@ -240,8 +240,16 @@ final class IslandModel: ObservableObject {
     // MARK: - Banners
 
     func show(_ b: Banner) {
-        history.insert(b, at: 0)
-        if history.count > 40 { history.removeLast(history.count - 40) }
+        if b.logged {
+            history.insert(b, at: 0)
+            if history.count > 40 { history.removeLast(history.count - 40) }
+        }
+        // A newer shelf banner replaces the one on screen instead of queueing behind it.
+        if b.showsShelf, let current = banner, current.showsShelf, !expanded {
+            queue.removeAll { $0.showsShelf }
+            present(b)
+            return
+        }
         playSound(for: b)
         if expanded { return }
         if banner == nil {
@@ -845,7 +853,8 @@ final class IslandModel: ObservableObject {
             style: .info,
             icon: .file(newest),
             duration: 4,
-            showsShelf: true
+            showsShelf: true,
+            logged: false
         ))
     }
 
