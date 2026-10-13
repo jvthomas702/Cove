@@ -52,6 +52,17 @@ test('shows live reply updates and keeps watched completions quietly', () => {
   assert.equal(tab.events.at(-1).url, 'https://chatgpt.com/c/chat-one');
 });
 
+test('long replies keep updating the live preview after the first 160 characters', () => {
+  const tab = content(); tab.state.busy = true; tab.tick();
+  tab.state.reply = 'Opening paragraph. '.repeat(20) + 'Newest text one'; tab.tick(2100);
+  assert.ok(tab.events.at(-1).body.endsWith('Newest text one'));
+  tab.state.reply += ' and newest text two'; tab.tick(2100);
+  assert.ok(tab.events.at(-1).body.endsWith('and newest text two'));
+  assert.ok(tab.events.at(-1).body.length <= 160);
+  tab.state.busy = false; tab.tick(); tab.tick(1600);
+  assert.ok(tab.events.at(-1).body.startsWith('Opening paragraph.'));
+});
+
 test('background completion can notify and opt-out keeps content private', () => {
   const tab = content({ looking: false, previews: false });
   tab.state.busy = true; tab.tick();

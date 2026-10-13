@@ -96,6 +96,7 @@
   }
 
   const clip = (s, n) => (s.length > n ? s.slice(0, n - 1) + "…" : s);
+  const liveClip = (s, n) => (s.length > n ? "…" + s.slice(-(n - 1)) : s);
 
   function send(event) {
     try {
@@ -139,7 +140,7 @@
     const phase = writing ? "Writing reply" : "Generating response";
     const prompt = includePreviews ? clip(lastText(PROMPT_SELECTORS[site]), 90) : "";
     const body = writing
-      ? (includePreviews ? clip(reply, 160) : `${reply.length} characters written`)
+      ? (includePreviews ? liveClip(reply, 160) : `${reply.length} characters written`)
       : (prompt ? `“${prompt}”` : `${NAMES[site]} is working…`);
     const changed = `${phase}:${body}` !== lastPublishedBody;
     if (force || (changed && now - lastPublishedAt >= 2000) || now - lastPublishedAt >= 6000) {
