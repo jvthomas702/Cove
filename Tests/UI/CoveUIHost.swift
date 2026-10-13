@@ -83,7 +83,7 @@ struct UIHostView: View {
         window.isReleasedWhenClosed = false
         window.contentView = NSHostingView(rootView: UIHostView(model: model, showNotch: { [weak self] in
             guard let self else { return }
-            self.window.orderOut(nil)
+            self.window.setFrameOrigin(NSPoint(x: 80, y: 30))
             self.model.tab = .home
             self.model.setExpanded(true)
             self.notch.panel.orderFrontRegardless()

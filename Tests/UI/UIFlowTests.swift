@@ -4,7 +4,7 @@ final class UIFlowTests: XCTestCase {
     var app: XCUIApplication!
     var window: XCUIElement { app.windows["Cove UI Test"] }
     func text(_ value: String) -> XCUIElement {
-        window.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", value)).firstMatch
+        window.staticTexts.matching(NSPredicate(format: "label CONTAINS %@ OR value CONTAINS %@", value, value)).firstMatch
     }
     override func setUpWithError() throws {
         continueAfterFailure = false
@@ -12,7 +12,12 @@ final class UIFlowTests: XCTestCase {
         app.launch()
         XCTAssertTrue(window.waitForExistence(timeout: 10))
     }
-    override func tearDownWithError() throws { app.terminate() }
+    override func tearDownWithError() throws {
+        let hierarchy = XCTAttachment(string: app.debugDescription)
+        hierarchy.name = "Native accessibility hierarchy"; hierarchy.lifetime = .keepAlways
+        add(hierarchy)
+        app.terminate()
+    }
 
     func testSportsSelectionAndOfflineRecovery() {
         window.buttons["tab.sports"].click()
@@ -52,7 +57,7 @@ final class UIFlowTests: XCTestCase {
         Thread.sleep(forTimeInterval: 0.6)
         XCTAssertTrue(chooser.exists)
         app.menuItems["AI work"].click()
-        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "Writing reply")).firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@ OR value CONTAINS %@", "Writing reply", "Writing reply")).firstMatch.waitForExistence(timeout: 5))
     }
 
     func testCollegeFootballRankedFilter() {
