@@ -47,17 +47,9 @@
     gemini: ["user-query .query-text", "user-query"],
   };
 
-  // Settings (from the extension popup)
+  let enabled = false;
   let notifyWhenLooking = false;
-  chrome.storage.sync.get({ notifyWhenLooking: false, enabled: true }, (s) => {
-    notifyWhenLooking = s.notifyWhenLooking;
-    if (!s.enabled) stop();
-  });
-  chrome.storage.onChanged.addListener((changes) => {
-    if (changes.notifyWhenLooking) notifyWhenLooking = changes.notifyWhenLooking.newValue;
-    if (changes.enabled) changes.enabled.newValue ? start() : stop();
-  });
-
+  let includePreviews = true;
   const visible = (el) => {
     if (!el || !el.isConnected) return false;
     const r = el.getBoundingClientRect();
@@ -67,7 +59,7 @@
   function isBusy() {
     for (const sel of BUSY_SELECTORS[site]) {
       for (const el of document.querySelectorAll(sel)) {
-        if (sel.startsWith("[data-is-streaming") || sel.startsWith(".") || visible(el)) return true;
+        if (visible(el)) return true;
       }
     }
     // Generic fallback: a visible button that says "Stop …" near the composer.
@@ -113,80 +105,126 @@
     }
   }
 
-  // State machine: idle → busy (after it's been busy ~0.6 s) → idle (after it's been quiet ~1.5 s).
+  // Stop controls identify real work; a quiet debounce prevents transient UI gaps from finishing it.
   let busy = false;
-  let busySince = 0;
   let quietSince = 0;
   let startedAt = 0;
   let currentId = null;
+  let currentTitle = "";
+  let currentURL = "";
+  let baselineReply = "";
+  let idleReply = "";
+  let lastPublishedAt = 0;
+  let lastPublishedBody = "";
   let timer = null;
+  let mutationTimer = null;
+  let observer = null;
+
+  function reset() {
+    busy = false;
+    quietSince = 0;
+    currentId = null;
+    lastPublishedAt = 0;
+    lastPublishedBody = "";
+  }
+
+  function event(kind, body, phase, silent = false) {
+    return { id: currentId, kind, source: site === "claude" ? "claude-web" : site,
+      title: currentTitle, body, phase, url: currentURL, silent };
+  }
+
+  function publish(now, force = false) {
+    const reply = lastText(REPLY_SELECTORS[site]);
+    const writing = reply && reply !== baselineReply;
+    const phase = writing ? "Writing reply" : "Generating response";
+    const prompt = includePreviews ? clip(lastText(PROMPT_SELECTORS[site]), 90) : "";
+    const body = writing
+      ? (includePreviews ? clip(reply, 160) : `${reply.length} characters written`)
+      : (prompt ? `“${prompt}”` : `${NAMES[site]} is working…`);
+    const changed = `${phase}:${body}` !== lastPublishedBody;
+    if (force || (changed && now - lastPublishedAt >= 2000) || now - lastPublishedAt >= 6000) {
+      send(event("running", body, phase));
+      lastPublishedAt = now;
+      lastPublishedBody = `${phase}:${body}`;
+    }
+  }
 
   function tick() {
+    if (!enabled) return;
     const now = Date.now();
-    const nowBusy = isBusy();
-
-    if (nowBusy) {
+    if (busy && chatId() !== currentId) {
+      send(event("clear", "Chat changed"));
+      reset();
+      idleReply = lastText(REPLY_SELECTORS[site]);
+    }
+    if (isBusy()) {
       quietSince = 0;
       if (!busy) {
-        busySince = busySince || now;
-        if (now - busySince > 600) {
-          busy = true;
-          startedAt = now;
-          currentId = chatId();
-          const prompt = clip(lastText(PROMPT_SELECTORS[site]), 90);
-          send({
-            id: currentId,
-            kind: "running",
-            source: site === "claude" ? "claude-web" : site,
-            title: chatTitle(),
-            body: prompt ? `“${prompt}”` : `${NAMES[site]} is answering…`,
-          });
-        }
+        busy = true;
+        startedAt = now;
+        currentId = chatId();
+        currentTitle = chatTitle();
+        currentURL = location.href;
+        baselineReply = idleReply;
+        publish(now, true);
+      } else { publish(now); }
+    } else if (busy) {
+      quietSince = quietSince || now;
+      if (now - quietSince >= 1500) {
+        finish(now);
+        reset();
+        idleReply = lastText(REPLY_SELECTORS[site]);
       }
-    } else {
-      busySince = 0;
-      if (busy) {
-        quietSince = quietSince || now;
-        if (now - quietSince > 1500) {
-          busy = false;
-          finish(now);
-        }
-      }
-    }
+    } else { idleReply = lastText(REPLY_SELECTORS[site]); }
   }
 
   function finish(now) {
-    const id = currentId || chatId();
     const looking = document.visibilityState === "visible" && document.hasFocus();
-    const seconds = Math.round((now - startedAt) / 1000);
-    if (looking && !notifyWhenLooking) {
-      // You watched it finish; just clear the live activity.
-      send({ id, kind: "clear", title: chatTitle() });
-      return;
-    }
-    const reply = clip(lastText(REPLY_SELECTORS[site]), 160);
-    send({
-      id,
-      kind: "done",
-      source: site === "claude" ? "claude-web" : site,
-      title: chatTitle(),
-      body: reply || `Answered in ${seconds}s`,
-    });
+    const seconds = Math.max(1, Math.round((now - startedAt) / 1000));
+    const text = lastText(REPLY_SELECTORS[site]);
+    const reply = includePreviews && text !== baselineReply ? clip(text, 160) : "";
+    // A watched completion stays in the widget; only its interrupting banner is suppressed.
+    send(event("done", reply || `Answered in ${seconds}s`, "Finished", looking && !notifyWhenLooking));
   }
 
   function start() {
-    if (timer) return;
+    if (timer || !enabled) return;
+    idleReply = lastText(REPLY_SELECTORS[site]);
     timer = setInterval(tick, 400);
+    observer = new MutationObserver(() => {
+      if (mutationTimer) return;
+      mutationTimer = setTimeout(() => { mutationTimer = null; tick(); }, 80);
+    });
+    observer.observe(document.documentElement, { childList: true, subtree: true, attributes: true, characterData: true });
+    tick();
   }
   function stop() {
+    if (busy && currentId) send(event("clear", "Tracking paused"));
     clearInterval(timer);
+    clearTimeout(mutationTimer);
+    observer?.disconnect();
     timer = null;
+    mutationTimer = null;
+    observer = null;
+    reset();
   }
 
-  start();
-
-  // If you leave the page mid-answer, don't leave a spinner running in the notch.
-  window.addEventListener("pagehide", () => {
-    if (busy && currentId) send({ id: currentId, kind: "clear", title: chatTitle() });
+  chrome.storage.sync.get({ notifyWhenLooking: false, enabled: true, includePreviews: true }, (settings) => {
+    enabled = settings.enabled;
+    notifyWhenLooking = settings.notifyWhenLooking;
+    includePreviews = settings.includePreviews;
+    if (enabled) start();
   });
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area && area !== "sync") return;
+    if (changes.notifyWhenLooking) notifyWhenLooking = changes.notifyWhenLooking.newValue;
+    if (changes.includePreviews) includePreviews = changes.includePreviews.newValue;
+    if (changes.enabled) {
+      enabled = changes.enabled.newValue;
+      enabled ? start() : stop();
+    }
+  });
+
+  window.addEventListener("pagehide", stop);
+  window.addEventListener("pageshow", () => { if (enabled) start(); });
 })();

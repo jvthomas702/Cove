@@ -21,6 +21,7 @@ final class IslandModel: ObservableObject {
         case focus(end: Date)
         case music(NowPlaying)
         case sports(SportsGame)
+        case ai(Activity, count: Int)
     }
 
     // Geometry
@@ -48,6 +49,7 @@ final class IslandModel: ObservableObject {
     private var sportsChanges: AnyCancellable?
     /// When the browser extension last reported in (shown in Settings → Connections).
     @Published private(set) var lastExtensionEvent: Date?
+    @Published var desktopAIStatus = "Checking ChatGPT app…"
     @Published private(set) var presentation: Presentation = .idle
     @Published private(set) var expanded = false
     @Published var tab: Tab = .home
@@ -135,6 +137,7 @@ final class IslandModel: ObservableObject {
         switch compactItem {
         case .event?, .ongoing?: return 128
         case .sports?: return 128
+        case .ai?: return 112
         case .hud?: return 74
         case .napping? where nextEventToday != nil:
             return 66   // napping Pip plus the next class time
@@ -164,6 +167,9 @@ final class IslandModel: ObservableObject {
     var compactItem: CompactItem? {
         if let hud { return .hud(hud) }
         if let a = activities.first(where: { $0.state == .attention }) { return .attention(a.agent) }
+        let workingAI = aiActivities.filter(\.isLive)
+        if config.aiWorkInNotch, let work = workingAI.first { return .ai(work, count: workingAI.count) }
+        if config.homeWidget == .ai, let work = aiActivities.first { return .ai(work, count: workingAI.count) }
         if config.sportsEnabled, config.homeWidget == .sports, let game = sports.selectedGame {
             return .sports(game)
         }
@@ -398,6 +404,7 @@ final class IslandModel: ObservableObject {
         a.title = title
         a.detail = detail
         a.state = .running
+        a.phase = "Working"
         a.progress = nil
         a.finishedAt = nil
         a.seen = true
@@ -409,8 +416,8 @@ final class IslandModel: ObservableObject {
     func agentUpdate(id: String, agent: AgentKind, title: String, detail: String, progress: Double? = nil) {
         let now = Date()
         var a = activity(id) ?? Activity(id: id, agent: agent, title: title, detail: detail, state: .running, startedAt: now, updatedAt: now)
-        if a.state == .attention { dropBanners(forActivity: id) }
-        if !a.isLive { a.startedAt = now; a.finishedAt = nil; a.seen = true }
+        if a.state == .attention { dropBanners(forActivity: id); a.phase = "Working" }
+        if !a.isLive { a.startedAt = now; a.finishedAt = nil; a.seen = true; a.phase = "Working" }
         a.state = .running
         a.title = title
         a.detail = detail
@@ -423,6 +430,7 @@ final class IslandModel: ObservableObject {
         let now = Date()
         var a = activity(id) ?? Activity(id: id, agent: agent, title: title, detail: message, state: .attention, startedAt: now, updatedAt: now)
         a.state = .attention
+        a.phase = "Needs you"
         a.title = title
         a.detail = message
         a.updatedAt = now
@@ -439,7 +447,7 @@ final class IslandModel: ObservableObject {
         ))
     }
 
-    func agentFinished(id: String, agent: AgentKind, title: String, summary: String?, failed: Bool = false) {
+    func agentFinished(id: String, agent: AgentKind, title: String, summary: String?, failed: Bool = false, notify: Bool = true) {
         let now = Date()
         var a = activity(id) ?? Activity(id: id, agent: agent, title: title, detail: "", state: .done, startedAt: now, updatedAt: now)
         // Ignore a duplicate of the same outcome (a failure right after "done" still gets through).
@@ -452,10 +460,12 @@ final class IslandModel: ObservableObject {
         a.finishedAt = now
         a.updatedAt = now
         a.progress = nil
+        a.phase = failed ? "Failed" : "Finished"
         a.seen = expanded
         a.detail = summaryText ?? took.map { "Finished in \(formatDuration($0))" } ?? "Finished"
         put(a)
         lastAgentSignal = now
+        guard notify else { return }
         show(Banner(
             title: failed ? "\(agent.displayName) failed · \(title)" : "\(agent.doneTitle) · \(title)",
             body: a.detail,
@@ -475,7 +485,11 @@ final class IslandModel: ObservableObject {
 
     func open(_ a: Activity) {
         markSeen(a.id)
-        if let owner = a.ownerApp, activateApp(owner) {
+        if let url = a.openURL {
+            if let owner = a.ownerApp, let appURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: owner) {
+                NSWorkspace.shared.open([url], withApplicationAt: appURL, configuration: NSWorkspace.OpenConfiguration())
+            } else { NSWorkspace.shared.open(url) }
+        } else if let owner = a.ownerApp, activateApp(owner) {
             // jumped back to the terminal / editor that started it
         } else if let terminal = Self.terminalApps.first(where: { !NSRunningApplication.runningApplications(withBundleIdentifier: $0).isEmpty }) {
             activateApp(terminal)
@@ -543,7 +557,7 @@ final class IslandModel: ObservableObject {
     func ingest(_ e: CoveEvent) {
         let kind = (e.kind ?? "info").lowercased()
         let sourceName = (e.source ?? "custom").lowercased()
-        if ["chatgpt", "gemini", "claude-web"].contains(sourceName) { lastExtensionEvent = Date() }
+        if ["chatgpt", "gemini", "claude-web"].contains(sourceName), e.id?.hasPrefix("desktop:") != true { lastExtensionEvent = Date() }
         let agent = AgentKind(rawValue: sourceName == "claude-web" ? "claude" : sourceName) ?? .custom
         let body = e.body ?? ""
         switch kind {
@@ -554,9 +568,14 @@ final class IslandModel: ObservableObject {
                 agentStarted(id: id, agent: agent, title: e.title, detail: body, ownerApp: owner)
             }
             agentUpdate(id: id, agent: agent, title: e.title, detail: body, progress: e.progress)
+            updateAIContext(id: id, phase: e.phase, url: e.url)
         case "done", "success", "finished", "complete":
-            if let id = e.id, activity(id) != nil {
-                agentFinished(id: id, agent: activity(id)?.agent ?? agent, title: e.title, summary: body)
+            if let id = e.id, activity(id) != nil || agent.isAI {
+                if activity(id) == nil {
+                    agentStarted(id: id, agent: agent, title: e.title, detail: body, ownerApp: e.app ?? Self.runningBrowser())
+                    updateAIContext(id: id, phase: e.phase, url: e.url)
+                }
+                agentFinished(id: id, agent: activity(id)?.agent ?? agent, title: e.title, summary: body, notify: !(e.silent ?? false))
             } else {
                 let icon: BannerIcon = config.buddy
                     ? .buddy(.happy, agent == .custom ? nil : agent)
@@ -582,6 +601,26 @@ final class IslandModel: ObservableObject {
         default:
             show(Banner(title: e.title, body: body, style: .info, icon: .symbol("bell.fill", Palette.blue), sticky: e.sticky ?? false))
         }
+    }
+
+    var aiActivities: [Activity] {
+        activities.filter { $0.agent.isAI }.sorted {
+            if $0.isLive != $1.isLive { return $0.isLive }
+            return $0.updatedAt > $1.updatedAt
+        }
+    }
+
+    private func updateAIContext(id: String, phase: String?, url: String?) {
+        guard let index = activities.firstIndex(where: { $0.id == id }) else { return }
+        if let phase { activities[index].phase = phase.oneLine(max: 60) }
+        if let url = Self.chatURL(url) { activities[index].openURL = url }
+        recompute()
+    }
+
+    static func chatURL(_ text: String?) -> URL? {
+        guard let text, let url = URL(string: text), url.scheme == "https", url.user == nil, url.password == nil,
+              ["chatgpt.com", "chat.openai.com", "claude.ai", "gemini.google.com"].contains(url.host?.lowercased() ?? "") else { return nil }
+        return url
     }
 
     // MARK: - Mirrored macOS notifications

@@ -1,13 +1,15 @@
 const $ = (id) => document.getElementById(id);
 
-chrome.storage.sync.get({ enabled: true, notifyWhenLooking: false, port: 7777 }, (s) => {
+chrome.storage.sync.get({ enabled: true, notifyWhenLooking: false, includePreviews: true, port: 7777 }, (s) => {
   $("enabled").checked = s.enabled;
   $("notifyWhenLooking").checked = s.notifyWhenLooking;
   $("port").value = s.port;
+  $("includePreviews").checked = s.includePreviews;
 });
 
 $("enabled").addEventListener("change", (e) => chrome.storage.sync.set({ enabled: e.target.checked }));
 $("notifyWhenLooking").addEventListener("change", (e) => chrome.storage.sync.set({ notifyWhenLooking: e.target.checked }));
+$("includePreviews").addEventListener("change", (e) => chrome.storage.sync.set({ includePreviews: e.target.checked }));
 $("port").addEventListener("change", (e) => chrome.storage.sync.set({ port: Number(e.target.value) || 7777 }));
 
 async function check() {

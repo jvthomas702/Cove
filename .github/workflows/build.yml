@@ -43,6 +43,7 @@ jobs:
           {
             for f in bin/* scripts/*.sh; do bash -n "$f" && echo "ok $f"; done
             for f in extension/*.js; do node --check "$f" && echo "ok $f"; done
+            node --test Tests/Browser/extension.test.cjs
             python3 -c "import json; json.load(open('extension/manifest.json')); print('ok manifest.json')"
           } 2>&1 | tee scripts.log
 

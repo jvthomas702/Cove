@@ -368,6 +368,8 @@ private struct GeneralPane: View {
             Picker("Home widget", selection: controller.binding(\.homeWidget)) {
                 ForEach(HomeWidget.allCases, id: \.self) { Text($0.title).tag($0) }
             }
+            ToggleRow(title: "Show live AI work beside the notch", detail: "Temporarily shows active AI work, then returns to your sports score",
+                      isOn: controller.binding(\.aiWorkInNotch))
             ToggleRow(title: "Open when the pointer rests on the notch",
                       detail: "Off: click the notch to open it", isOn: controller.binding(\.hoverToExpand))
             ToggleRow(title: "Play sounds", detail: "When something finishes, fails or needs you",
@@ -396,6 +398,14 @@ private struct FeaturesPane: View {
     @ObservedObject var controller: SettingsController
 
     var body: some View {
+        SettingsGroup(title: "AI activity",
+                      footer: "Choose AI work as your Home widget in General. App tracking reads visible window titles and generation controls locally; it needs Accessibility. Keep ChatGPT's chat window open. Browser reply previews can be turned off in the extension.") {
+            ToggleRow(title: "Follow the ChatGPT desktop app", isOn: controller.binding(\.desktopAIActivity))
+            Text(controller.model.desktopAIStatus).font(.caption).foregroundStyle(.secondary)
+            if controller.model.config.desktopAIActivity && !Permission.accessibility.isGranted {
+                Button("Allow Accessibility…") { controller.request(.accessibility) }
+            }
+        }
         SettingsGroup(title: "Sports",
                       footer: "Choose a game in the Sports tab to pin its score and latest play to the Home widget. Live games refresh about every 15 seconds. ESPN coverage and delays vary.") {
             ToggleRow(title: "Enable sports", detail: "NBA, NFL and college football", isOn: controller.binding(\.sportsEnabled))
@@ -704,7 +714,7 @@ private struct ConnectionsPane: View {
             }
         }
         SettingsGroup(title: "Browser chat tabs",
-              footer: "Works in Chrome, Arc, Brave and Edge. Pings when ChatGPT, Claude or Gemini finishes answering in a background tab.") {
+              footer: "Works in Chrome, Arc, Brave and Edge. Shows live work and reply previews for ChatGPT, Claude and Gemini. After updating Cove, reload the unpacked extension and refresh your chat tabs.") {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Cove extension")

@@ -77,6 +77,7 @@ enum AgentKind: String {
 
     /// Chats that live in a browser tab.
     var isWeb: Bool { self == .chatgpt || self == .gemini }
+    var isAI: Bool { [.claude, .codex, .chatgpt, .gemini].contains(self) }
 }
 
 enum ActivityState: Equatable {
@@ -97,6 +98,14 @@ struct Activity: Identifiable, Equatable {
     var seen: Bool = true
     /// The app that was frontmost when the work started (usually your terminal); clicking jumps back to it.
     var ownerApp: String? = nil
+    var phase: String? = nil
+    var openURL: URL? = nil
+
+    var originLabel: String {
+        if id.hasPrefix("web:") { return "Browser tab" }
+        if id.hasPrefix("desktop:") { return "Desktop app" }
+        return "Agent"
+    }
 
     var isLive: Bool { state == .running || state == .attention }
 }
@@ -172,6 +181,10 @@ struct CoveEvent: Decodable {
     /// 0…1 for a progress ring on a running activity.
     var progress: Double?
     var sticky: Bool?
+    var phase: String? = nil
+    var url: String? = nil
+    /// Keep the finished activity in the widget without an interrupting banner.
+    var silent: Bool? = nil
 }
 
 // MARK: - Media & power

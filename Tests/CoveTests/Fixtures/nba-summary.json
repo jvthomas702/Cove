@@ -22,7 +22,10 @@
             "score": "113",
             "team": {
               "abbreviation": "ATL",
-              "displayName": "Atlanta Hawks"
+              "displayName": "Atlanta Hawks",
+              "id": "1",
+              "color": "c8102e",
+              "alternateColor": "fdb927"
             }
           },
           {
@@ -30,7 +33,10 @@
             "score": "110",
             "team": {
               "abbreviation": "OKC",
-              "displayName": "Oklahoma City Thunder"
+              "displayName": "Oklahoma City Thunder",
+              "id": "25",
+              "color": "007ac1",
+              "alternateColor": "ef3b24"
             }
           }
         ]

@@ -27,7 +27,10 @@
               "score": "0",
               "team": {
                 "abbreviation": "ORL",
-                "displayName": "Orlando Magic"
+                "displayName": "Orlando Magic",
+                "id": "19",
+                "color": "0150b5",
+                "alternateColor": "9ca0a3"
               }
             },
             {
@@ -35,7 +38,10 @@
               "score": "0",
               "team": {
                 "abbreviation": "CLE",
-                "displayName": "Cleveland Cavaliers"
+                "displayName": "Cleveland Cavaliers",
+                "id": "5",
+                "color": "860038",
+                "alternateColor": "bc945c"
               }
             }
           ]
@@ -69,7 +75,10 @@
               "score": "0",
               "team": {
                 "abbreviation": "TOR",
-                "displayName": "Toronto Raptors"
+                "displayName": "Toronto Raptors",
+                "id": "28",
+                "color": "d91244",
+                "alternateColor": "000000"
               }
             },
             {
@@ -77,7 +86,10 @@
               "score": "0",
               "team": {
                 "abbreviation": "NY",
-                "displayName": "New York Knicks"
+                "displayName": "New York Knicks",
+                "id": "18",
+                "color": "1d428a",
+                "alternateColor": "f58426"
               }
             }
           ]

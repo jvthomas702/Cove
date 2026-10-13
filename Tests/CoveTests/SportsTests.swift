@@ -140,3 +140,23 @@ final class QuietScreenshotTests: XCTestCase {
         XCTAssertFalse(ScreenshotWatcher.looksLikeScreenshotName("Screenshot notes.png"))
     }
 }
+
+final class TeamColorTests: XCTestCase {
+    func testReadsProviderColorsAndRejectsMalformedHex() throws {
+        let url = try XCTUnwrap(Bundle.module.url(forResource: "nba-summary", withExtension: "json", subdirectory: "Fixtures"))
+        let (game, _) = try SportsParser.summary(Data(contentsOf: url), league: .nba)
+        XCTAssertNotNil(game?.away.primaryHex)
+        XCTAssertNotNil(game?.home.primaryHex)
+        XCTAssertNotEqual(game?.away.primaryHex, game?.home.primaryHex)
+        XCTAssertEqual(SportsTeam.colorHex("#006BB6"), 0x006BB6)
+        XCTAssertNil(SportsTeam.colorHex("not-a-color"))
+        XCTAssertNil(SportsTeam.colorHex("FFF"))
+    }
+
+    func testDarkTeamColorsRemainReadableOnBlack() {
+        let team = SportsTeam(name: "Test", abbreviation: "TST", score: "0", rank: nil, primaryHex: 0x001122)
+        XCTAssertGreaterThanOrEqual(SportsTeam.contrastOnBlack(team.accentHex), 4.5)
+        let alternate = SportsTeam(name: "Test", abbreviation: "TST", score: "0", rank: nil, primaryHex: 0x000000, alternateHex: 0xFFFFFF)
+        XCTAssertEqual(alternate.accentHex, 0xFFFFFF)
+    }
+}

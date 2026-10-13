@@ -2,7 +2,7 @@ import Combine
 import Foundation
 
 enum HomeWidget: String, Codable, CaseIterable {
-    case auto, calendar, music, focus, sports
+    case auto, calendar, music, focus, sports, ai
     var title: String {
         switch self {
         case .auto: return "Automatic"
@@ -10,6 +10,7 @@ enum HomeWidget: String, Codable, CaseIterable {
         case .music: return "Music"
         case .focus: return "Focus"
         case .sports: return "Sports · play-by-play"
+        case .ai: return "AI work"
         }
     }
 }
@@ -50,7 +51,44 @@ struct SportsTeam: Equatable {
     var abbreviation: String
     var score: String
     var rank: Int?
+    var id: String? = nil
+    var primaryHex: UInt32? = nil
+    var alternateHex: UInt32? = nil
     var label: String { rank.map { "#\($0) \(abbreviation)" } ?? abbreviation }
+
+    /// Use the supplied brand hue, lifting very dark colors so labels remain legible on black.
+    var accentHex: UInt32 {
+        let primary = primaryHex ?? 0xA1A1AA
+        if Self.contrastOnBlack(primary) >= 4.5 { return primary }
+        if let alternateHex, Self.contrastOnBlack(alternateHex) >= 4.5 { return alternateHex }
+        for amount in stride(from: 0.1, through: 0.9, by: 0.1) {
+            let lifted = Self.lift(primary, by: amount)
+            if Self.contrastOnBlack(lifted) >= 4.5 { return lifted }
+        }
+        return 0xFFFFFF
+    }
+
+    static func colorHex(_ value: Any?) -> UInt32? {
+        guard let text = value as? String else { return nil }
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let hex = trimmed.hasPrefix("#") ? String(trimmed.dropFirst()) : trimmed
+        guard hex.count == 6, hex.allSatisfy({ $0.isHexDigit }) else { return nil }
+        return UInt32(hex, radix: 16)
+    }
+
+    static func contrastOnBlack(_ hex: UInt32) -> Double {
+        let channels = [Double((hex >> 16) & 255), Double((hex >> 8) & 255), Double(hex & 255)].map { value -> Double in
+            let s = value / 255
+            return s <= 0.04045 ? s / 12.92 : pow((s + 0.055) / 1.055, 2.4)
+        }
+        return (channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722 + 0.05) / 0.05
+    }
+    private static func lift(_ hex: UInt32, by amount: Double) -> UInt32 {
+        let channels = [16, 8, 0].map { shift in
+            UInt32((Double((hex >> shift) & 255) * (1 - amount) + 255 * amount).rounded())
+        }
+        return (channels[0] << 16) | (channels[1] << 8) | channels[2]
+    }
 }
 
 struct SportsGame: Identifiable, Equatable {
@@ -76,6 +114,7 @@ struct SportsPlay: Identifiable, Equatable {
     var clock: String
     var scoring: Bool
     var score: String?
+    var teamID: String? = nil
     var timeLabel: String {
         [period > 4 ? "\(period - 4)OT" : period > 0 ? "Q\(period)" : "", clock].filter { !$0.isEmpty }.joined(separator: " · ")
     }
@@ -125,7 +164,8 @@ enum SportsParser {
             if let away = string(item["awayScore"]), let home = string(item["homeScore"]) { score = "\(away)–\(home)" }
             else { score = nil }
             return SportsPlay(id: id, sequence: Int(string(item["sequenceNumber"]) ?? "") ?? index,
-                              text: text, period: period, clock: clock, scoring: item["scoringPlay"] as? Bool ?? false, score: score)
+                              text: text, period: period, clock: clock, scoring: item["scoringPlay"] as? Bool ?? false, score: score,
+                              teamID: (item["team"] as? [String: Any])?["id"] as? String)
         }.sorted { $0.sequence > $1.sequence }
         // No fallback to scoringPlays: a scoring recap must never be presented as full play-by-play.
         return (updated, Array(plays.prefix(100)))
@@ -145,7 +185,9 @@ enum SportsParser {
               let name = team["displayName"] as? String else { return nil }
         let rank = (competitor["curatedRank"] as? [String: Any])?["current"] as? Int
         return SportsTeam(name: name, abbreviation: team["abbreviation"] as? String ?? name,
-                          score: string(competitor["score"]) ?? "–", rank: rank.flatMap { (1...25).contains($0) ? $0 : nil })
+                          score: string(competitor["score"]) ?? "–", rank: rank.flatMap { (1...25).contains($0) ? $0 : nil },
+                          id: team["id"] as? String, primaryHex: SportsTeam.colorHex(team["color"]),
+                          alternateHex: SportsTeam.colorHex(team["alternateColor"]))
     }
     private static func string(_ value: Any?) -> String? {
         if let text = value as? String { return text }
@@ -254,6 +296,10 @@ final class SportsMonitor: ObservableObject {
                 guard var game, game.id == id else { throw SportsParser.ParseError.invalidResponse }
                 game.away.rank = game.away.rank ?? self.selectedGame?.away.rank
                 game.home.rank = game.home.rank ?? self.selectedGame?.home.rank
+                game.away.primaryHex = game.away.primaryHex ?? self.selectedGame?.away.primaryHex
+                game.away.alternateHex = game.away.alternateHex ?? self.selectedGame?.away.alternateHex
+                game.home.primaryHex = game.home.primaryHex ?? self.selectedGame?.home.primaryHex
+                game.home.alternateHex = game.home.alternateHex ?? self.selectedGame?.home.alternateHex
                 self.selectedGame = game
                 self.plays = plays
                 self.detailError = nil

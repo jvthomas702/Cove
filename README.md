@@ -15,7 +15,7 @@ Native Swift and SwiftUI, no dependencies, MIT licensed. Every commit is built, 
 | **Pip** | Naps beside the notch, works along with your agents, hops with confetti when something finishes, waves an amber "!" when something needs you, and droops when something fails. |
 | **Approve from the notch** | When Claude Code asks permission, the island drops down with exactly what it wants to do (the command, or a red and green diff) and **Allow**, **Always allow**, **Deny** and **Answer in terminal**. |
 | **Agent pings** | Claude Code and Codex sessions show as live activities with what they're doing right now, then a banner with the final message. Click to jump back to the terminal. |
-| **Browser chat tabs** | A small extension pings you when ChatGPT, Claude or Gemini finishes answering in a background tab (Chrome, Arc, Brave, Edge). |
+| **AI work** | Follow ChatGPT desktop activity, ChatGPT/Claude/Gemini browser replies, Claude Code and Codex. Live status, elapsed time and browser reply previews appear in a selectable widget. |
 | **Classes and due dates** | "CPE 3000 Lecture, 50 min left" beside the notch, a heads-up before each class with a Join button for Zoom, Meet or Teams, and a Due soon list from your D2L or Canvas calendar and Reminders. |
 | **Sports** | Choose an NBA, NFL or college football game to pin its score beside the notch and follow its latest plays. College football defaults to games featuring a Top 25 team. |
 | **Screenshot shelf** | Every screenshot lands on the shelf the moment it's saved, with a thumbnail you can drag straight out of the notch into a doc, Slack or a chat. |
@@ -52,11 +52,19 @@ Open Settings any time from the menu bar icon, or by opening Cove.app again.
 
 ### Choose your widget
 
-**Settings → General → Home widget** lets you choose Calendar, Music, Focus or Sports. Automatic shows available calendar/media content and hides inactive cards. The island remembers your selected tab when you close it.
+**Settings → General → Home widget** lets you choose Calendar, Music, Focus, Sports or AI work. Automatic shows available calendar/media content and hides inactive cards. The island remembers your selected tab when you close it. Sports widgets use each team’s provider colors in labels, score accents and card backgrounds, with readable accents for dark colors.
 
 Open the **Sports** tab (court icon), choose **NBA**, **NFL** or **College football**, then click a game. This pins its score to the notch and its latest play to Home. The Sports tab shows the latest 100 plays, newest first, with game clock and scoring updates. Selected games and leagues survive a restart.
 
 College football shows games with at least one **Top 25** team by default; turn off **Top 25** to browse all FBS games. NBA shows the day's slate, while NFL and college football show the current week's slate. Live selected games refresh about every 15 seconds; other states refresh every minute. ESPN provides the data, so coverage and delays vary. If a request fails, Cove keeps the last data and indicates that updates have paused. These public feed endpoints are not a documented API contract and may change.
+
+### AI work from apps and browser tabs
+
+Choose **Settings → General → Home widget → AI work**. Live AI work can temporarily replace a sports score beside the notch, then return to it when the work finishes; turn this off with **Show live AI work beside the notch**. The expanded island keeps all activities on the right. The AI widget’s list menu lets you choose which activity to inspect.
+
+- **ChatGPT desktop app:** enable **Settings → Features → Follow the ChatGPT desktop app**, and grant Cove **Accessibility** in Permissions. Keep the chat window open. Cove reads only window titles and generation/composer button metadata; it does not read the app’s chat database, text-field contents, screenshots or hidden reasoning. Two consistent observations are required to start or finish work. If controls cannot be read, Cove reports that status rather than claiming a reply finished. Desktop tracking is a best-effort observer of visible windows; it cannot follow chats whose generation controls are not exposed, and UI updates may change those controls. Desktop completion opens the app to read the response rather than copying its contents.
+- **Browser tabs:** use **Settings → Connections → Browser chat tabs → Set up** to install the bundled Cove extension in Chrome, Arc, Brave or Edge. After a Cove update, reload the unpacked extension and refresh already-open chat tabs. The extension reports ChatGPT, Claude and Gemini generation status, live visible reply excerpts and completion. Turn off **Include reply previews** in its popup to send status and character counts instead. These events go only to Cove’s loopback server. A reply you watched finish stays in the widget quietly; the popup’s notification toggle controls whether it also shows a banner.
+- **Claude Code and Codex:** existing hooks/notify integration continues to appear in the same AI widget.
 
 ### Classes from D2L and Google Calendar
 

@@ -1,5 +1,9 @@
 ## Upcoming changes
 
+- Sports widgets use team colors in score accents, game cards and the compact notch display.
+- AI work widget with live browser reply previews, elapsed time, retained completions and activity selection.
+- Best-effort ChatGPT desktop monitoring through visible Accessibility controls, with clear permission and unavailable states.
+
 - Choose the Home widget you want: Calendar, Music, Focus or Sports. Automatic hides inactive cards.
 - NBA, NFL and college football game picker, pinned notch scores and a scrollable play-by-play feed. College football defaults to Top 25 matchups.
 - Screenshots arrive quietly by default. Optional thumbnail banners remain available in Features.

@@ -59,10 +59,13 @@ struct CompactView: View {
         case .music?:
             ArtworkView(model: model, size: 20, matchID: "art")
         case .sports(let game)?:
-            Text("\(game.away.abbreviation) \(game.away.score)")
-                .font(Theme.Font.headline.monospacedDigit())
-                .foregroundStyle(Theme.ink)
-                .lineLimit(1)
+            compactTeam(game.away)
+        case .ai(let activity, let count)?:
+            HStack(spacing: 6) {
+                AgentGlyph(agent: activity.agent, animating: activity.isLive)
+                Text(activity.agent.displayName).font(Theme.Font.headline).lineLimit(1)
+                if count > 1 { Text("+\(count - 1)").font(Theme.Font.number).foregroundStyle(Theme.inkSecondary) }
+            }
         case nil:
             EmptyView()
         }
@@ -156,13 +159,27 @@ struct CompactView: View {
         case .sports(let game)?:
             HStack(spacing: 5) {
                 if game.isLive { Circle().fill(Palette.green).frame(width: 5, height: 5) }
-                Text("\(game.home.abbreviation) \(game.home.score)")
-                    .font(Theme.Font.headline.monospacedDigit())
-                    .foregroundStyle(Theme.ink)
-                    .lineLimit(1)
+                compactTeam(game.home)
+            }
+        case .ai(let activity, _)?:
+            HStack(spacing: 5) {
+                if activity.isLive { ArcSpinner(color: activity.agent.tint, size: 10) }
+                else { Image(systemName: "checkmark.circle.fill").foregroundStyle(Palette.green) }
+                Text(activity.phase ?? (activity.isLive ? "Working…" : "Finished"))
+                    .font(Theme.Font.number).foregroundStyle(Theme.inkSecondary).lineLimit(1)
             }
         case nil:
             EmptyView()
         }
+    }
+
+    private func compactTeam(_ team: SportsTeam) -> some View {
+        HStack(spacing: 5) {
+            Capsule().fill(team.tint).frame(width: 3, height: 16)
+            Text(team.abbreviation).foregroundStyle(team.tint)
+            Text(team.score).foregroundStyle(Theme.ink)
+        }
+        .font(Theme.Font.headline.monospacedDigit())
+        .lineLimit(1)
     }
 }

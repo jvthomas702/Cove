@@ -109,8 +109,11 @@ struct HomePane: View {
                 case .calendar: UpNextCard(model: model)
                 case .music: MediaCard(model: model)
                 case .focus: FocusCard(model: model)
+                case .ai: AIWorkWidget(model: model)
                 case .auto:
-                    if model.config.sportsEnabled, model.sports.selectedGame != nil {
+                    if model.aiActivities.contains(where: \.isLive) {
+                        AIWorkWidget(model: model)
+                    } else if model.config.sportsEnabled, model.sports.selectedGame != nil {
                         SportsWidget(model: model)
                     } else {
                         if model.schedule.nextEvent() != nil || !model.dueSoon.isEmpty { UpNextCard(model: model) }
@@ -546,7 +549,7 @@ struct ActivityList: View {
                     Circle()
                         .fill(connected ? Palette.green : Palette.red)
                         .frame(width: 5, height: 5)
-                    Text(connected ? "Hooks connected" : model.serverStatus)
+                    Text(connected ? "Cove online" : model.serverStatus)
                         .font(.system(size: 10.5))
                         .foregroundStyle(Theme.inkTertiary)
                 }
@@ -620,6 +623,9 @@ struct ActivityRow: View {
                 }
                 HStack(spacing: 6) {
                     statusBadge
+                    if activity.id.hasPrefix("web:") || activity.id.hasPrefix("desktop:") {
+                        Text(activity.originLabel).font(.system(size: 9)).foregroundStyle(Theme.inkTertiary)
+                    }
                     Text(activity.detail)
                         .font(Theme.Font.caption)
                         .foregroundStyle(Theme.inkSecondary)

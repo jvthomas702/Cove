@@ -1,5 +1,18 @@
 import SwiftUI
 
+extension SportsTeam {
+    var tint: Color { Color(hex: accentHex) }
+    var brandColor: Color { Color(hex: primaryHex ?? 0x71717A) }
+}
+
+private struct TeamMatchupBackground: View {
+    let game: SportsGame
+    var body: some View {
+        LinearGradient(colors: [game.away.brandColor.opacity(0.24), Theme.surface, game.home.brandColor.opacity(0.24)],
+                       startPoint: .leading, endPoint: .trailing)
+    }
+}
+
 /// A dedicated, scrollable game picker. Choosing a game pins it to the Home widget and notch.
 struct SportsPane: View {
     @ObservedObject var model: IslandModel
@@ -65,7 +78,14 @@ struct SportsPane: View {
                             Button { model.chooseSportsGame(game) } label: {
                                 VStack(alignment: .leading, spacing: 4) {
                                     HStack {
-                                        Text(game.matchup).font(Theme.Font.headline).lineLimit(1)
+                                        HStack(spacing: 5) {
+                                            Circle().fill(game.away.tint).frame(width: 5, height: 5)
+                                            Text(game.away.label).foregroundStyle(game.away.tint)
+                                            Text("@").foregroundStyle(Theme.inkTertiary)
+                                            Text(game.home.label).foregroundStyle(game.home.tint)
+                                            Circle().fill(game.home.tint).frame(width: 5, height: 5)
+                                        }
+                                        .font(Theme.Font.headline).lineLimit(1).minimumScaleFactor(0.8)
                                         Spacer(minLength: 0)
                                         if game.id == model.config.sportsGameID {
                                             Image(systemName: "pin.fill").font(.system(size: 10)).foregroundStyle(Palette.blue)
@@ -81,7 +101,8 @@ struct SportsPane: View {
                                 }
                                 .padding(9)
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                                .background(RoundedRectangle(cornerRadius: 12).fill(game.id == model.config.sportsGameID ? Theme.surfaceRaised : Theme.surface))
+                                .background { TeamMatchupBackground(game: game).clipShape(RoundedRectangle(cornerRadius: 12)) }
+                                .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(game.id == model.config.sportsGameID ? game.away.tint.opacity(0.65) : Theme.hairline, lineWidth: 1) }
                                 .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
@@ -96,6 +117,12 @@ struct SportsPane: View {
 
 private struct SportsDetail: View {
     @ObservedObject var sports: SportsMonitor
+    private func scoreTint(_ play: SportsPlay, game: SportsGame) -> Color {
+        guard let id = play.teamID else { return Palette.green }
+        if id == game.away.id { return game.away.tint }
+        if id == game.home.id { return game.home.tint }
+        return Palette.green
+    }
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             if let game = sports.selectedGame {
@@ -123,7 +150,7 @@ private struct SportsDetail: View {
                                     HStack {
                                         Text(play.timeLabel).foregroundStyle(Theme.inkTertiary)
                                         Spacer()
-                                        if play.scoring, let score = play.score { Text(score).foregroundStyle(Palette.green) }
+                                        if play.scoring, let score = play.score { Text(score).foregroundStyle(scoreTint(play, game: game)) }
                                     }
                                     .font(Theme.Font.number)
                                     Text(play.text).font(Theme.Font.body)
@@ -186,7 +213,11 @@ struct SportsWidget: View {
         }
         .padding(12)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .card()
+        .background {
+            if let game = sports.selectedGame {
+                TeamMatchupBackground(game: game).clipShape(RoundedRectangle(cornerRadius: Theme.Radius.card))
+            } else { RoundedRectangle(cornerRadius: Theme.Radius.card).fill(Theme.surface) }
+        }
     }
 }
 
@@ -200,17 +231,26 @@ private struct SportsScoreHeader: View {
                 Text(game.status).font(Theme.Font.number)
                     .foregroundStyle(game.isLive ? Palette.green : Theme.inkSecondary).lineLimit(1)
             }
-            HStack(spacing: 8) {
-                Text(game.away.label)
-                Text(game.away.score).foregroundStyle(Theme.ink)
-                Text("–").foregroundStyle(Theme.inkTertiary)
-                Text(game.home.score).foregroundStyle(Theme.ink)
-                Text(game.home.label)
+            HStack(spacing: 12) {
+                teamScore(game.away)
+                Text("–").font(Theme.Font.caption).foregroundStyle(Theme.inkTertiary)
+                teamScore(game.home)
             }
-            .font(.system(size: 17, weight: .semibold, design: .rounded).monospacedDigit())
-            .lineLimit(1).minimumScaleFactor(0.75)
             .accessibilityLabel("\(game.away.name) \(game.away.score), \(game.home.name) \(game.home.score), \(game.status)")
         }
+    }
+
+    private func teamScore(_ team: SportsTeam) -> some View {
+        VStack(spacing: 5) {
+            Capsule().fill(team.tint).frame(height: 3)
+            HStack(spacing: 6) {
+                Text(team.label).font(Theme.Font.headline).foregroundStyle(team.tint)
+                Spacer(minLength: 0)
+                Text(team.score).font(.system(size: 20, weight: .bold, design: .rounded).monospacedDigit())
+            }
+            .lineLimit(1).minimumScaleFactor(0.75)
+        }
+        .frame(maxWidth: .infinity)
     }
 }
 

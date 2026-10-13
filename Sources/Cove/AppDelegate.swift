@@ -11,6 +11,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var nowPlaying: NowPlayingMonitor?
     private var mirror: NotificationMirror?
     private let battery = BatteryMonitor()
+    private let desktopAI = DesktopAIActivityMonitor()
     private var calendar: CalendarMonitor?
     private var feeds: ICSFeedMonitor?
     private var eventKitSchedule = Schedule()
@@ -69,6 +70,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if config.calendar { startCalendar(config) }
         startFeeds(config)
         model.sports.start(config: config)
+        desktopAI.onEvent = { [weak self] event in self?.model.ingest(event) }
+        desktopAI.onStatus = { [weak self] status in
+            if self?.model.desktopAIStatus != status { self?.model.desktopAIStatus = status }
+        }
+        desktopAI.start(enabled: config.desktopAIActivity)
         if config.screenshotsToShelf { startScreenshots() }
         startHUD(mode: config.hud)
         BrowserExtension.syncFromBundle()
@@ -105,6 +111,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         calendar?.stop()
         feeds?.stop()
         model.sports.stop()
+        desktopAI.stop()
         screenshots?.stop()
         volume.stop()
         mediaKeys.stop()
@@ -167,6 +174,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         CoveConfig.save(new)
         model.config = new
         model.sports.update(config: new)
+        if new.desktopAIActivity != old.desktopAIActivity { desktopAI.start(enabled: new.desktopAIActivity) }
 
         if new.calendar != old.calendar {
             if new.calendar {
@@ -499,6 +507,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             "Claude hooks: \(ClaudeHooks.isInstalled ? "connected" : "not connected"); Codex: \(CodexNotify.state)",
             "CLI tools: \(CLIInstaller.isInstalled ? "installed" : "missing"); extension: \(BrowserExtension.installedVersion ?? "not copied")",
             "Last extension event: \(model.lastExtensionEvent.map { "\($0)" } ?? "never")",
+            "ChatGPT app: \(model.desktopAIStatus)",
         ]
         for permission in Permission.allCases {
             let allowed = permission == .desktop ? model.screenshotAccess == .ok : permission.isGranted

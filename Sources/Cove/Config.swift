@@ -78,6 +78,8 @@ struct CoveConfig: Codable {
 
     // MARK: Widgets & sports
     var homeWidget: HomeWidget = .auto
+    var desktopAIActivity: Bool = true
+    var aiWorkInNotch: Bool = true
     var sportsEnabled: Bool = true
     var sportsLeague: SportsLeague = .nfl
     var sportsGameID: String? = nil
@@ -128,6 +130,8 @@ struct CoveConfig: Codable {
         screenshotBanners = value(.screenshotBanners, d.screenshotBanners)
         screenshotsMoveOffDesktop = value(.screenshotsMoveOffDesktop, d.screenshotsMoveOffDesktop)
         homeWidget = value(.homeWidget, d.homeWidget)
+        desktopAIActivity = value(.desktopAIActivity, d.desktopAIActivity)
+        aiWorkInNotch = value(.aiWorkInNotch, d.aiWorkInNotch)
         sportsEnabled = value(.sportsEnabled, d.sportsEnabled)
         sportsLeague = value(.sportsLeague, d.sportsLeague)
         sportsGameID = value(.sportsGameID, d.sportsGameID)

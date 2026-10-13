@@ -23,7 +23,10 @@
             "score": "16",
             "team": {
               "abbreviation": "DAL",
-              "displayName": "Dallas Cowboys"
+              "displayName": "Dallas Cowboys",
+              "id": "6",
+              "color": "002a5c",
+              "alternateColor": "b0b7bc"
             }
           },
           {
@@ -31,7 +34,10 @@
             "score": "24",
             "team": {
               "abbreviation": "TB",
-              "displayName": "Tampa Bay Buccaneers"
+              "displayName": "Tampa Bay Buccaneers",
+              "id": "27",
+              "color": "bd1c36",
+              "alternateColor": "3e3a35"
             }
           }
         ]

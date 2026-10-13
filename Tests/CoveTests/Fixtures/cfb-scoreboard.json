@@ -30,7 +30,10 @@
               },
               "team": {
                 "abbreviation": "IU",
-                "displayName": "Indiana Hoosiers"
+                "displayName": "Indiana Hoosiers",
+                "id": "84",
+                "color": "970310",
+                "alternateColor": "ffffff"
               }
             },
             {
@@ -41,7 +44,10 @@
               },
               "team": {
                 "abbreviation": "OSU",
-                "displayName": "Ohio State Buckeyes"
+                "displayName": "Ohio State Buckeyes",
+                "id": "194",
+                "color": "ba0c2f",
+                "alternateColor": "a8adb4"
               }
             }
           ]
@@ -78,7 +84,10 @@
               },
               "team": {
                 "abbreviation": "MTSU",
-                "displayName": "Middle Tennessee Blue Raiders"
+                "displayName": "Middle Tennessee Blue Raiders",
+                "id": "2393",
+                "color": "036eb7",
+                "alternateColor": "ffffff"
               }
             },
             {
@@ -89,7 +98,10 @@
               },
               "team": {
                 "abbreviation": "DEL",
-                "displayName": "Delaware Blue Hens"
+                "displayName": "Delaware Blue Hens",
+                "id": "48",
+                "color": "00539f",
+                "alternateColor": "ffd200"
               }
             }
           ]
