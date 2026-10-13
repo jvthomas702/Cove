@@ -12,7 +12,7 @@ failures=0
 check() { if eval "$2"; then echo "PASS $1"; else echo "FAIL $1"; failures=$((failures + 1)); fi; }
 
 # Quiet config: nothing that would pop up a system permission prompt over the screenshots.
-mkdir -p ~/.config/cove
+mkdir -p ~/.config/cove ~/Desktop
 cat > ~/.config/cove/config.json <<'JSON'
 { "calendar": false, "mirrorNotifications": false, "hud": "passive", "mediaApps": [], "sounds": false,
   "screenshotsToShelf": true, "bannerSeconds": 6 }
@@ -66,6 +66,8 @@ debug expand/shelf; sleep 1; island 12-shelf
 debug collapse; sleep 1
 
 debug hud; sleep 0.3; island 13-hud
+post /event '{"id":"train","title":"x","kind":"clear"}'
+post /event '{"id":"claude:ci","title":"x","kind":"clear"}'
 sleep 2; island 14-class-now
 
 osascript -e 'quit app "Cove"' 2>/dev/null || pkill -x Cove

@@ -122,7 +122,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 title: "Hi, I'm Pip",
                 body: "Hover the notch to open Cove. Let's set up permissions.",
                 style: .success,
-                icon: .buddy(.happy, nil)
+                icon: .buddy(.happy, nil),
+                source: "Welcome to Cove"
             ))
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
                 MainActor.assumeIsolated { self?.openSettings(pane: .permissions) }
@@ -132,7 +133,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 title: "Cove updated to \(version)",
                 body: "Hover the notch to see what's new.",
                 style: .success,
-                icon: .buddy(.happy, nil)
+                icon: .buddy(.happy, nil),
+                source: "Updated"
             ))
         }
     }

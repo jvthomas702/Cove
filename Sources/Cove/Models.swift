@@ -150,6 +150,8 @@ struct Banner: Identifiable, Equatable {
     var duration: TimeInterval? = nil
     /// Clicking opens the shelf tab.
     var showsShelf: Bool = false
+    /// Overrides the small label above the title ("Finished", "Needs you", an app name…).
+    var source: String? = nil
 }
 
 // MARK: - Event API payload

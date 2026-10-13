@@ -125,6 +125,7 @@ struct MediaCard: View {
                         ArtworkView(model: model, size: 44, matchID: "art")
                         VStack(alignment: .leading, spacing: 1) {
                             Text(np.title)
+                                .help("\(np.title) — \(np.artist)")
                                 .font(.system(size: 12.5, weight: .semibold, design: .rounded))
                                 .lineLimit(1)
                             Text(np.artist)
@@ -134,12 +135,13 @@ struct MediaCard: View {
                         }
                         Spacer(minLength: 0)
                         HStack(spacing: 0) {
-                            IconButton(systemImage: "backward.fill", size: 11) { model.media("previous track") }
-                            IconButton(systemImage: np.isPlaying ? "pause.fill" : "play.fill", size: 16) { model.media("playpause") }
+                            IconButton(systemImage: "backward.fill", size: 10, hit: 22) { model.media("previous track") }
+                            IconButton(systemImage: np.isPlaying ? "pause.fill" : "play.fill", size: 15, hit: 26) { model.media("playpause") }
                                 .contentTransition(.symbolEffect(.replace))
-                            IconButton(systemImage: "forward.fill", size: 11) { model.media("next track") }
+                            IconButton(systemImage: "forward.fill", size: 10, hit: 22) { model.media("next track") }
                         }
-                        .padding(.trailing, -6)
+                        .padding(.trailing, -4)
+                        .layoutPriority(1)
                     }
                     PlaybackBar(nowPlaying: np, tint: tint)
                 }
@@ -198,11 +200,14 @@ struct FocusCard: View {
                 Image(systemName: "timer")
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(Palette.amber)
-                Text("Focus").font(Theme.Font.headline)
-                Spacer(minLength: 0)
-                ForEach(model.config.focusMinutes.prefix(3), id: \.self) { minutes in
-                    ChipButton(title: "\(minutes)m") { model.startFocus(minutes: minutes) }
+                Text("Focus").font(Theme.Font.headline).lineLimit(1)
+                Spacer(minLength: 4)
+                HStack(spacing: 5) {
+                    ForEach(model.config.focusMinutes.prefix(3), id: \.self) { minutes in
+                        ChipButton(title: "\(minutes)m") { model.startFocus(minutes: minutes) }
+                    }
                 }
+                .layoutPriority(1)
             }
         }
         .padding(.horizontal, Theme.Space.m)

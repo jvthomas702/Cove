@@ -357,6 +357,7 @@ private struct FeaturesPane: View {
         SettingsGroup(title: "Calendar") {
             ToggleRow(title: "Classes and meetings", detail: "From the Calendar app, including Google and iCloud calendars",
                       isOn: controller.binding(\.calendar))
+            SwiftUI.Group {
             Picker("Start the countdown", selection: controller.binding(\.countdownMinutes)) {
                 Text("15 minutes before").tag(15)
                 Text("30 minutes before").tag(30)
@@ -374,14 +375,19 @@ private struct FeaturesPane: View {
                 Text("1 week").tag(7)
                 Text("2 weeks").tag(14)
             }
+            }
+            .disabled(!controller.model.config.calendar)
         }
         SettingsGroup(title: "Screenshots",
               footer: "macOS's floating thumbnail holds each screenshot for about 5 seconds before saving it. Turn on instant screenshots to skip it.") {
             ToggleRow(title: "Put new screenshots on the shelf", isOn: controller.binding(\.screenshotsToShelf))
-            ToggleRow(title: "Instant screenshots", detail: "Hides macOS's floating thumbnail so the shelf gets them right away",
-                      isOn: Binding(get: { controller.instantScreenshots }, set: { controller.setInstantScreenshots($0) }))
-            ToggleRow(title: "Move screenshots off the Desktop", detail: "Into Pictures › Screenshots",
-                      isOn: controller.binding(\.screenshotsMoveOffDesktop))
+            SwiftUI.Group {
+                ToggleRow(title: "Instant screenshots", detail: "Hides macOS's floating thumbnail so the shelf gets them right away",
+                          isOn: Binding(get: { controller.instantScreenshots }, set: { controller.setInstantScreenshots($0) }))
+                ToggleRow(title: "Move screenshots off the Desktop", detail: "Into Pictures › Screenshots",
+                          isOn: controller.binding(\.screenshotsMoveOffDesktop))
+            }
+            .disabled(!controller.model.config.screenshotsToShelf)
         }
         SettingsGroup(title: "Volume and brightness") {
             Picker("Show changes", selection: controller.binding(\.hud)) {

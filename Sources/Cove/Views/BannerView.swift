@@ -87,6 +87,7 @@ struct BannerView: View {
 
     /// The small line above the title: the app's name for mirrored notifications, the event type otherwise.
     private var sourceName: String? {
+        if let source = banner.source { return source }
         switch banner.icon {
         case .app(let bundleID): return AppIcons.name(for: bundleID)
         case .file: return "Shelf"

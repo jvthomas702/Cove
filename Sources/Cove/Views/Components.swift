@@ -340,11 +340,12 @@ struct ChipButton: View {
         Button(action: action) {
             HStack(spacing: 4) {
                 if let systemImage { Image(systemName: systemImage).font(.system(size: 10, weight: .bold)) }
-                Text(title)
+                Text(title).lineLimit(1)
             }
             .font(.system(size: 11, weight: .semibold, design: .rounded))
             .foregroundStyle(tint)
-            .padding(.horizontal, 10)
+            .fixedSize()
+            .padding(.horizontal, 9)
             .padding(.vertical, 5)
             .background(Capsule().fill(hovering ? Color.white.opacity(0.17) : Theme.surfaceRaised))
             .contentShape(Capsule())
@@ -357,6 +358,8 @@ struct ChipButton: View {
 struct IconButton: View {
     var systemImage: String
     var size: CGFloat = 14
+    /// Size of the round hit area (defaults to the glyph plus padding).
+    var hit: CGFloat? = nil
     var action: () -> Void
     @State private var hovering = false
 
@@ -364,7 +367,7 @@ struct IconButton: View {
         Button(action: action) {
             Image(systemName: systemImage)
                 .font(.system(size: size, weight: .semibold))
-                .frame(width: size + 16, height: size + 16)
+                .frame(width: hit ?? size + 16, height: hit ?? size + 16)
                 .background(Circle().fill(Color.white.opacity(hovering ? 0.12 : 0)))
                 .contentShape(Circle())
         }
