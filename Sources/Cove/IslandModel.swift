@@ -36,6 +36,8 @@ final class IslandModel: ObservableObject {
     @Published var config: CoveConfig {
         didSet { recompute() }
     }
+    /// What Cove can see in Calendar (Settings → Features → Calendar).
+    @Published var calendarStatus = CalendarStatus()
     /// When the browser extension last reported in (shown in Settings → Connections).
     @Published private(set) var lastExtensionEvent: Date?
     @Published private(set) var presentation: Presentation = .idle
@@ -118,8 +120,20 @@ final class IslandModel: ObservableObject {
         switch compactItem {
         case .event?, .ongoing?: return 128
         case .hud?: return 74
+        case .napping?, .attention?, .running?, .progress?, .finished?:
+            return config.buddy ? 56 : Self.wing   // room for a Pip you can actually see
         default: return Self.wing
         }
+    }
+
+    /// Pip's size beside the notch: as tall as the notch allows.
+    var compactBuddySize: CGFloat { min(max(notchSize.height - 3, 24), 34) }
+
+    /// Today's next class or meeting within 12 hours, shown next to napping Pip.
+    var nextEventToday: CalEvent? {
+        guard config.calendar, let next = schedule.upcomingEvent(),
+              next.start.timeIntervalSinceNow < 12 * 3600 else { return nil }
+        return next
     }
 
     /// The next event worth a countdown, if it starts within `countdownMinutes` (or started < 5 min ago).

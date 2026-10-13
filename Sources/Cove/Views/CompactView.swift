@@ -36,7 +36,7 @@ struct CompactView: View {
         case .attention(let agent)?:
             agentIcon(agent, mood: .alert)
         case .napping?:
-            Buddy(mood: .sleepy, size: 24)
+            Buddy(mood: .sleepy, size: model.compactBuddySize)
         case .event(let event)?, .ongoing(let event)?:
             HStack(spacing: 6) {
                 Capsule().fill(event.color).frame(width: 3, height: 13)
@@ -67,7 +67,7 @@ struct CompactView: View {
     @ViewBuilder
     private func agentIcon(_ agent: AgentKind, mood: BuddyMood) -> some View {
         if model.config.buddy {
-            Buddy(mood: mood, size: 24)
+            Buddy(mood: mood, size: model.compactBuddySize)
         } else {
             AgentGlyph(agent: agent, animating: mood == .working)
         }
@@ -80,7 +80,16 @@ struct CompactView: View {
             LevelBar(level: hud.muted ? 0 : hud.level, tint: hud.kind == .brightness ? Palette.amber : Theme.ink)
                 .frame(width: 50, height: 5)
         case .napping?:
-            EmptyView()
+            if let next = model.nextEventToday {
+                HStack(spacing: 4) {
+                    Circle().fill(next.color).frame(width: 6, height: 6)
+                    Text(next.start, format: .dateTime.hour(.defaultDigits(amPM: .omitted)).minute())
+                        .font(Theme.Font.number)
+                        .foregroundStyle(Theme.inkSecondary)
+                        .lineLimit(1)
+                }
+                .help("Next: \(next.title)")
+            }
         case .attention?:
             Image(systemName: "exclamationmark.circle.fill")
                 .font(.system(size: 14, weight: .bold))

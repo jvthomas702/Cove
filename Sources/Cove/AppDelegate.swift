@@ -47,6 +47,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         settingsController.onConfigChange = { [weak self] config in self?.updateConfig(config) }
         settingsController.onRunDemo = { [weak self] in self?.runDemo() }
         settingsController.onCopyDiagnostics = { [weak self] in self?.copyDiagnostics() }
+        settingsController.onPermissionChanged = { [weak self] permission in
+            guard let self, permission == .calendars || permission == .reminders else { return }
+            if let calendar = self.calendar { calendar.refresh() } else if self.model.config.calendar { self.startCalendar(self.model.config) }
+        }
         settingsController.onRecheckScreenshots = { [weak self] in
             guard let self else { return }
             if let watcher = self.screenshots { watcher.recheckAccess() } else { self.startScreenshots() }
@@ -245,6 +249,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         calendar?.stop()
         let monitor = CalendarMonitor(config: config)
         monitor.onUpdate = { [weak self] schedule in self?.model.setSchedule(schedule) }
+        monitor.onStatus = { [weak self] status in
+            if self?.model.calendarStatus != status { self?.model.calendarStatus = status }
+        }
         monitor.onAccessDenied = { [weak self] in
             self?.model.show(Banner(
                 title: "Calendar access is off",
@@ -494,6 +501,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             model.setSchedule(Schedule(events: [lecture, lab], due: due))
         case "hud":
             model.showHUD(.volume, level: 0.62)
+        case "future-class":
+            model.config.calendar = true
+            let start = Date().addingTimeInterval(3 * 3600)
+            model.setSchedule(Schedule(events: [CalEvent(id: "f", title: "CPE 3000 Lecture", start: start, end: start.addingTimeInterval(75 * 60),
+                                                         location: "Atrium 210", calendar: "Classes", color: Color(hex: 0x5AC8FA), joinURL: nil)]))
         default:
             break
         }

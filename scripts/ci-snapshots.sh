@@ -14,7 +14,7 @@ check() { if eval "$2"; then echo "PASS $1"; else echo "FAIL $1"; failures=$((fa
 # Quiet config: nothing that would pop up a system permission prompt over the screenshots.
 mkdir -p ~/.config/cove ~/Desktop
 cat > ~/.config/cove/config.json <<'JSON'
-{ "calendar": false, "mirrorNotifications": false, "hud": "passive", "mediaApps": [], "sounds": false,
+{ "calendar": false, "mirrorNotifications": false, "assignmentCalendars": [], "hud": "passive", "mediaApps": [], "sounds": false,
   "screenshotsToShelf": true, "bannerSeconds": 6 }
 JSON
 defaults delete app.cove.island 2>/dev/null || true
@@ -71,6 +71,10 @@ debug hud; sleep 0.3; island 13-hud
 post /event '{"id":"train","title":"x","kind":"clear"}'
 post /event '{"id":"claude:ci","title":"x","kind":"clear"}'
 sleep 2; island 14-class-now
+
+debug future-class; debug collapse; sleep 2; island 15-napping-next-class
+zoom() { sips -c 60 420 --cropOffset 0 170 "$OUT/$1.png" --out "$OUT/$1-zoom.png" >/dev/null 2>&1 && sips -Z 1260 "$OUT/$1-zoom.png" >/dev/null 2>&1; }
+zoom 15-napping-next-class; zoom 06-working
 
 # Idle cost: Pip napping beside the notch, nothing else going on.
 debug collapse; sleep 3

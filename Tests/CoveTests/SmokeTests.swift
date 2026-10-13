@@ -284,3 +284,37 @@ final class ShelfBannerTests: XCTestCase {
         model.clearShelf()
     }
 }
+
+final class CalendarClassifierTests: XCTestCase {
+    private let now = Date()
+    private func kind(_ title: String, _ calendar: String, minutes: Double, allDay: Bool = false) -> CalendarClassifier.Kind {
+        CalendarClassifier.classify(title: title, calendarTitle: calendar, start: now,
+                                    end: now.addingTimeInterval(minutes * 60), isAllDay: allDay, extraLMS: [])
+    }
+
+    func testClassesInD2LFeedStayClasses() {
+        XCTAssertEqual(kind("CPE 3000 Lecture", "D2L", minutes: 75), .event)
+        XCTAssertEqual(kind("CPE 3000 - Section 01", "KSU D2L Calendar", minutes: 50), .event)
+    }
+
+    func testAssignmentsInD2LFeedAreDue() {
+        XCTAssertEqual(kind("Lab 5 Report - Due", "D2L", minutes: 0), .due)
+        XCTAssertEqual(kind("Homework 7", "D2L", minutes: 0), .due)
+        XCTAssertEqual(kind("Quiz 3 - Availability Ends", "D2L", minutes: 0), .due)
+        XCTAssertEqual(kind("Project proposal due", "Brightspace", minutes: 30), .due)
+        XCTAssertEqual(kind("Final paper", "Canvas", minutes: 0, allDay: true), .due)
+    }
+
+    func testRegularCalendars() {
+        XCTAssertEqual(kind("Swarm lab meeting", "jvthomas702@gmail.com", minutes: 60), .event)
+        XCTAssertEqual(kind("Columbus Day", "jvthomas702@gmail.com", minutes: 1440, allDay: true), .skip)
+        XCTAssertEqual(kind("Scholarship deadline", "Personal", minutes: 0), .due)
+        XCTAssertEqual(kind("Call with Dr. Imam", "Work", minutes: 0), .event)
+    }
+
+    func testCleanDueTitle() {
+        XCTAssertEqual(CalendarMonitor.cleanDueTitle("Lab 5 Report - Due"), "Lab 5 Report")
+        XCTAssertEqual(CalendarMonitor.cleanDueTitle("Quiz 3 - Availability Ends"), "Quiz 3")
+        XCTAssertEqual(CalendarMonitor.cleanDueTitle("Homework 7"), "Homework 7")
+    }
+}

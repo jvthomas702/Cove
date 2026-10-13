@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import ServiceManagement
 import SwiftUI
 
@@ -12,6 +13,8 @@ final class SettingsController: ObservableObject {
     var onCopyDiagnostics: (() -> Void)?
     /// Re-reads the screenshot folder (shows macOS's access prompt the first time).
     var onRecheckScreenshots: (() -> Void)?
+    /// A permission was just requested (so the calendar can re-read right away).
+    var onPermissionChanged: ((Permission) -> Void)?
 
     @Published private(set) var granted: [Permission: Bool] = [:]
     @Published private(set) var cliInstalled = false
@@ -25,9 +28,12 @@ final class SettingsController: ObservableObject {
     @Published var pane: SettingsPane? = .general
 
     private var timer: Timer?
+    private var modelChanges: AnyCancellable?
 
     init(model: IslandModel) {
         self.model = model
+        // Settings panes read config and calendar status from the model, so redraw when it changes.
+        modelChanges = model.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }
         refresh()
     }
 
@@ -128,6 +134,7 @@ final class SettingsController: ObservableObject {
         Task {
             await permission.request()
             refresh()
+            onPermissionChanged?(permission)
         }
     }
 
@@ -358,10 +365,14 @@ private struct FeaturesPane: View {
             ToggleRow(title: "Classes and meetings", detail: "From the Calendar app, including Google and iCloud calendars",
                       isOn: controller.binding(\.calendar))
             SwiftUI.Group {
+            CalendarStatusView(status: controller.model.calendarStatus, schedule: controller.model.schedule) {
+                controller.request(.calendars)
+            }
             Picker("Start the countdown", selection: controller.binding(\.countdownMinutes)) {
                 Text("15 minutes before").tag(15)
                 Text("30 minutes before").tag(30)
                 Text("1 hour before").tag(60)
+                Text("2 hours before").tag(120)
             }
             Picker("Heads-up banner", selection: controller.binding(\.meetingAlertMinutes)) {
                 Text("Off").tag(0)
@@ -413,6 +424,62 @@ private struct FeaturesPane: View {
                 ))
                 .textFieldStyle(.roundedBorder)
             }
+        }
+    }
+}
+
+/// "Cove sees 5 calendars: … Next: CPE 3000 Lecture, tomorrow 9:30 AM" — or what's missing.
+private struct CalendarStatusView: View {
+    let status: CalendarStatus
+    let schedule: Schedule
+    let allow: () -> Void
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: icon).foregroundStyle(color).frame(width: 18)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(headline).font(.callout.weight(.medium))
+                Text(detail).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer()
+            if status.access != .granted { Button("Allow…", action: allow) }
+        }
+        .padding(10)
+        .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(color.opacity(0.1)))
+    }
+
+    private var icon: String { status.access == .granted ? (status.calendars.isEmpty ? "exclamationmark.triangle.fill" : "checkmark.circle.fill") : "calendar.badge.exclamationmark" }
+    private var color: Color { status.access == .granted && !status.calendars.isEmpty ? .green : .orange }
+
+    private var headline: String {
+        switch status.access {
+        case .notDetermined: return "Cove hasn't been allowed to read your calendars yet"
+        case .denied: return "Calendar access is off"
+        case .granted:
+            if status.calendars.isEmpty { return "No calendars found" }
+            return "Cove sees \(status.calendars.count) calendar\(status.calendars.count == 1 ? "" : "s"): \(status.calendars.prefix(4).joined(separator: ", "))\(status.calendars.count > 4 ? "…" : "")"
+        }
+    }
+
+    private var detail: String {
+        switch status.access {
+        case .notDetermined, .denied:
+            return "Click Allow, then turn Cove on under Calendars in System Settings → Privacy & Security."
+        case .granted:
+            if status.calendars.isEmpty {
+                return "Add your Google account in System Settings → Internet Accounts, and subscribe to D2L in the Calendar app (File → New Calendar Subscription)."
+            }
+            var parts: [String] = []
+            if let next = schedule.currentEvent() {
+                parts.append("Now: \(next.title)")
+            } else if let next = schedule.upcomingEvent() {
+                parts.append("Next: \(next.title), \(next.start.formatted(.relative(presentation: .named)))")
+            } else {
+                parts.append("No classes or meetings in the next 2 days")
+            }
+            parts.append("\(status.dueCount) due soon")
+            if status.remindersAccess != .granted { parts.append("Reminders not allowed") }
+            return parts.joined(separator: " · ")
         }
     }
 }

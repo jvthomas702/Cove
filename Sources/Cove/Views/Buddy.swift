@@ -54,6 +54,9 @@ private struct BuddyFigure: View {
     private let ink = Color(hex: 0x0D1530)
     private let cheek = Color(hex: 0xFF8FB1)
 
+    /// Beside the notch Pip is ~30 pt, so features get bolder and fine details are dropped.
+    private var small: Bool { size < 36 }
+
     var body: some View {
         let m = motion
         ZStack {
@@ -61,7 +64,7 @@ private struct BuddyFigure: View {
             VStack(spacing: 0) {
                 Circle()
                     .fill(bulbColor)
-                    .frame(width: size * 0.15, height: size * 0.15)
+                    .frame(width: size * (small ? 0.19 : 0.15), height: size * (small ? 0.19 : 0.15))
                     .shadow(color: bulbColor.opacity(0.9), radius: size * 0.08 * bulbGlow)
                     .opacity(0.65 + 0.35 * bulbGlow)
                 Capsule()
@@ -83,7 +86,14 @@ private struct BuddyFigure: View {
                         .rotationEffect(.degrees(-20))
                         .offset(x: size * 0.1, y: size * 0.07)
                 }
-                .overlay { face }
+                .overlay { face.scaleEffect(small ? 1.2 : 1) }
+                .overlay {
+                    if small {
+                        // A thin light rim so Pip reads against a black island.
+                        RoundedRectangle(cornerRadius: size * 0.34, style: .continuous)
+                            .strokeBorder(Color.white.opacity(0.35), lineWidth: 0.75)
+                    }
+                }
                 .offset(y: size * 0.1)
 
             accessories
@@ -106,13 +116,15 @@ private struct BuddyFigure: View {
             }
             .offset(x: lookX, y: -size * 0.04)
 
-            // Cheeks
-            HStack(spacing: size * 0.38) {
-                Ellipse().fill(cheek.opacity(mood == .happy ? 0.75 : 0.4))
-                Ellipse().fill(cheek.opacity(mood == .happy ? 0.75 : 0.4))
+            // Cheeks (too fine to see at notch size)
+            if !small {
+                HStack(spacing: size * 0.38) {
+                    Ellipse().fill(cheek.opacity(mood == .happy ? 0.75 : 0.4))
+                    Ellipse().fill(cheek.opacity(mood == .happy ? 0.75 : 0.4))
+                }
+                .frame(width: size * 0.62, height: size * 0.06)
+                .offset(y: size * 0.08)
             }
-            .frame(width: size * 0.62, height: size * 0.06)
-            .offset(y: size * 0.08)
 
             mouth.offset(y: size * 0.12)
         }
