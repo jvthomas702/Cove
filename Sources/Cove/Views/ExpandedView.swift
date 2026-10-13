@@ -771,6 +771,7 @@ struct ShelfItem: View {
         .help(url.path)
         .contextMenu {
             Button("Open") { NSWorkspace.shared.open(url) }
+            Button("Copy") { model.copyToPasteboard(url) }
             Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([url]) }
             Divider()
             Button("Remove from Shelf") { model.removeFromShelf(url) }

@@ -38,6 +38,12 @@
     <string>Cove shows reminders with due dates (like assignments) in its Due Soon list.</string>
     <key>NSRemindersUsageDescription</key>
     <string>Cove shows reminders with due dates (like assignments) in its Due Soon list.</string>
+    <key>NSDesktopFolderUsageDescription</key>
+    <string>Cove watches your Desktop for new screenshots and puts them on the shelf in the notch.</string>
+    <key>NSDocumentsFolderUsageDescription</key>
+    <string>Cove shows files you drop on the shelf, including ones in Documents.</string>
+    <key>NSDownloadsFolderUsageDescription</key>
+    <string>Cove shows files you drop on the shelf, including ones in Downloads.</string>
     <key>NSHumanReadableCopyright</key>
     <string>MIT License</string>
 </dict>

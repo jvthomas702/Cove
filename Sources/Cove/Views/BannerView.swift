@@ -10,10 +10,7 @@ struct BannerView: View {
         VStack(spacing: 0) {
             Color.clear.frame(height: model.notchSize.height)
             HStack(alignment: .center, spacing: Theme.Space.m) {
-                BannerIconView(icon: banner.icon, size: 36)
-                    .background {
-                        if case .buddy(.happy, _) = banner.icon { ConfettiBurst() }
-                    }
+                bannerIcon
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
                         if let source = sourceName {
@@ -64,6 +61,28 @@ struct BannerView: View {
         }
         .contentShape(Rectangle())
         .onTapGesture { model.tapBanner(banner) }
+    }
+
+    /// Screenshots get a bigger thumbnail you can drag straight out of the notch.
+    @ViewBuilder
+    private var bannerIcon: some View {
+        if case .file(let url) = banner.icon {
+            FileThumbnail(url: url, size: 48)
+                .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.thumb, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: Theme.Radius.thumb, style: .continuous)
+                        .strokeBorder(Color.white.opacity(0.18), lineWidth: 0.5)
+                )
+                .shadow(color: .black.opacity(0.5), radius: 4, y: 2)
+                .onDrag { NSItemProvider(contentsOf: url) ?? NSItemProvider() }
+                .help("Drag the screenshot anywhere")
+                .transition(.scale(scale: 1.6).combined(with: .opacity))
+        } else {
+            BannerIconView(icon: banner.icon, size: 36)
+                .background {
+                    if case .buddy(.happy, _) = banner.icon { ConfettiBurst() }
+                }
+        }
     }
 
     /// The small line above the title: the app's name for mirrored notifications, the event type otherwise.

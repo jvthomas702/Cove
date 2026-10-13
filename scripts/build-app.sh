@@ -19,6 +19,12 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/Cove"
 cp "$ROOT/Resources/Info.plist" "$APP/Contents/Info.plist"
+# Bundle the CLI tools and browser extension so Settings can install them without this repo.
+mkdir -p "$APP/Contents/Resources/bin"
+cp "$ROOT"/bin/* "$APP/Contents/Resources/bin/"
+chmod 755 "$APP/Contents/Resources/bin/"*
+cp -R "$ROOT/extension" "$APP/Contents/Resources/extension"
+
 if [ -d "$ROOT/Resources/AppIcon.iconset" ]; then
   iconutil -c icns "$ROOT/Resources/AppIcon.iconset" -o "$APP/Contents/Resources/AppIcon.icns"
   /usr/libexec/PlistBuddy -c "Add :CFBundleIconFile string AppIcon" "$APP/Contents/Info.plist" 2>/dev/null || true

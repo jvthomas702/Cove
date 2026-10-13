@@ -33,7 +33,11 @@ final class IslandModel: ObservableObject {
     @Published var hasHardwareNotch = true
 
     // State
-    @Published var config: CoveConfig
+    @Published var config: CoveConfig {
+        didSet { recompute() }
+    }
+    /// When the browser extension last reported in (shown in Settings → Connections).
+    @Published private(set) var lastExtensionEvent: Date?
     @Published private(set) var presentation: Presentation = .idle
     @Published private(set) var expanded = false
     @Published var tab: Tab = .home
@@ -50,6 +54,10 @@ final class IslandModel: ObservableObject {
     @Published private(set) var focusEnd: Date?
     @Published private(set) var focusTotal: TimeInterval = 0
     @Published private(set) var shelf: [URL] = []
+    /// Whether Cove can read the folder screenshots are saved to.
+    @Published var screenshotAccess: ScreenshotWatcher.AccessState = .unknown
+    private var lastScreenshotAt: Date?
+    private var warnedScreenshotAccess = false
     @Published private(set) var schedule = Schedule()
     @Published private(set) var hud: HUDState?
     @Published private(set) var approvals: [ApprovalRequest] = []
@@ -203,6 +211,8 @@ final class IslandModel: ObservableObject {
         // Closed on purpose (a click) while the pointer is still over it: don't re-open until it leaves.
         if !value && isHovering { suppressHoverUntilExit = true }
         if value {
+            // Just took a screenshot? Open straight to the shelf so it's ready to drag.
+            if let shot = lastScreenshotAt, Date().timeIntervalSince(shot) < 15, !shelf.isEmpty { tab = .shelf }
             // Opening the island shows everything, so pending banners are folded into history.
             bannerTimer?.invalidate()
             bannerTimer = nil
@@ -468,6 +478,7 @@ final class IslandModel: ObservableObject {
     func ingest(_ e: CoveEvent) {
         let kind = (e.kind ?? "info").lowercased()
         let sourceName = (e.source ?? "custom").lowercased()
+        if ["chatgpt", "gemini", "claude-web"].contains(sourceName) { lastExtensionEvent = Date() }
         let agent = AgentKind(rawValue: sourceName == "claude-web" ? "claude" : sourceName) ?? .custom
         let body = e.body ?? ""
         switch kind {
@@ -823,16 +834,66 @@ final class IslandModel: ObservableObject {
     /// New screenshots go to the front of the shelf, with a small thumbnail banner.
     func addScreenshots(_ urls: [URL]) {
         guard config.screenshotsToShelf, !urls.isEmpty else { return }
-        addToShelf(urls, atFront: true)
-        guard let newest = urls.last else { return }
+        let placed = config.screenshotsMoveOffDesktop ? urls.map(Self.moveOffDesktop) : urls
+        addToShelf(placed, atFront: true)
+        lastScreenshotAt = Date()
+        guard let newest = placed.last else { return }
+        Haptics.tap()
         show(Banner(
-            title: urls.count == 1 ? "Screenshot on the shelf" : "\(urls.count) screenshots on the shelf",
-            body: "Hover the notch and drag it anywhere.",
+            title: placed.count == 1 ? "Screenshot saved to the shelf" : "\(placed.count) screenshots saved to the shelf",
+            body: "Drag the thumbnail anywhere, or hover the notch",
             style: .info,
             icon: .file(newest),
-            duration: 2.5,
+            duration: 4,
             showsShelf: true
         ))
+    }
+
+    func setScreenshotAccess(_ state: ScreenshotWatcher.AccessState, folder: URL) {
+        screenshotAccess = state
+        guard state == .denied, config.screenshotsToShelf, !warnedScreenshotAccess else { return }
+        warnedScreenshotAccess = true
+        show(Banner(
+            title: "Let Cove see your \(folder.lastPathComponent) folder",
+            body: "Screenshots can't reach the shelf until you allow it. Click to open Settings.",
+            style: .attention,
+            icon: .symbol("photo.badge.exclamationmark", Palette.amber),
+            sticky: true,
+            openURL: URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_FilesAndFolders")
+        ))
+    }
+
+    /// ~/Pictures/Screenshots, created on demand.
+    nonisolated static var screenshotArchive: URL {
+        FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Pictures/Screenshots", isDirectory: true)
+    }
+
+    nonisolated static func moveOffDesktop(_ url: URL) -> URL {
+        let fm = FileManager.default
+        do {
+            try fm.createDirectory(at: screenshotArchive, withIntermediateDirectories: true)
+            var target = screenshotArchive.appendingPathComponent(url.lastPathComponent)
+            var n = 2
+            while fm.fileExists(atPath: target.path) {
+                let base = url.deletingPathExtension().lastPathComponent
+                target = screenshotArchive.appendingPathComponent("\(base) \(n).\(url.pathExtension)")
+                n += 1
+            }
+            try fm.moveItem(at: url, to: target)
+            return target
+        } catch {
+            return url
+        }
+    }
+
+    /// Copies a shelf file so it pastes as a file in Finder and as an image in chat apps.
+    func copyToPasteboard(_ url: URL) {
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        var objects: [NSPasteboardWriting] = [url as NSURL]
+        if let image = NSImage(contentsOf: url) { objects.append(image) }
+        pasteboard.writeObjects(objects)
+        Haptics.tap()
     }
 
     func removeFromShelf(_ url: URL) {

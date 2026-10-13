@@ -11,48 +11,69 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var mirror: NotificationMirror?
     private let battery = BatteryMonitor()
     private var calendar: CalendarMonitor?
-    private let screenshots = ScreenshotWatcher()
+    private var screenshots: ScreenshotWatcher?
     private let volume = VolumeController()
     private let mediaKeys = MediaKeyTap()
+    private var volumeStarted = false
     private var trustTimer: Timer?
     private var statusItem: NSStatusItem!
     private var statusLine: NSMenuItem!
-    private var loginItem: NSMenuItem!
-    private var workspaceObserver: NSObjectProtocol?
+    private var hideItem: NSMenuItem!
+    private var hiddenUntil: Date?
+    private var unhideTimer: Timer?
+    private var observers: [NSObjectProtocol] = []
+    private var settingsController: SettingsController!
+    private var settingsWindow: SettingsWindowController?
+
+    private var version: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev" }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        guard !anotherCopyIsRunning() else {
+            NSApp.terminate(nil)
+            return
+        }
+        coveLog.info("Cove \(self.version, privacy: .public) starting")
+
         let config = CoveConfig.load()
         model = IslandModel(config: config)
         windowController = NotchWindowController(model: model)
         agents = AgentBridge(model: model)
 
+        settingsController = SettingsController(model: model)
+        settingsController.onConfigChange = { [weak self] config in self?.updateConfig(config) }
+        settingsController.onRunDemo = { [weak self] in self?.runDemo() }
+        settingsController.onCopyDiagnostics = { [weak self] in self?.copyDiagnostics() }
+
         startServer(port: config.port)
         startMedia(apps: config.mediaApps)
         if config.mirrorNotifications { startMirror() }
-
         battery.onChange = { [weak self] state in self?.model.setBattery(state) }
         battery.start()
-
         if config.calendar { startCalendar(config) }
-        screenshots.onNew = { [weak self] urls in self?.model.addScreenshots(urls) }
-        screenshots.start()
+        if config.screenshotsToShelf { startScreenshots() }
         startHUD(mode: config.hud)
+        BrowserExtension.syncFromBundle()
 
-        workspaceObserver = NSWorkspace.shared.notificationCenter.addObserver(
+        observers.append(NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main
         ) { [weak self] note in
             let app = note.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
             guard let bundleID = app?.bundleIdentifier else { return }
             MainActor.assumeIsolated { self?.model.appActivated(bundleID) }
-        }
+        })
+        // Coming back from sleep: refresh things that may have changed while the lid was closed.
+        observers.append(NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didWakeNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.calendar?.refresh()
+                self?.screenshots?.recheckAccess()
+                self?.windowController.relocate()
+            }
+        })
 
         buildStatusItem()
-        model.show(Banner(
-            title: "Cove is running",
-            body: "Hover the notch to open it. Agents report in on port \(config.port).",
-            style: .success,
-            icon: .symbol("sparkles", Palette.claude)
-        ))
+        welcomeIfNeeded()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -61,9 +82,89 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         nowPlaying?.stop()
         battery.stop()
         calendar?.stop()
-        screenshots.stop()
+        screenshots?.stop()
         volume.stop()
         mediaKeys.stop()
+    }
+
+    /// Opening Cove.app again (Finder, Spotlight) opens Settings rather than doing nothing.
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        openSettings()
+        return false
+    }
+
+    private func anotherCopyIsRunning() -> Bool {
+        guard let id = Bundle.main.bundleIdentifier else { return false }
+        let mine = ProcessInfo.processInfo.processIdentifier
+        let others = NSRunningApplication.runningApplications(withBundleIdentifier: id).filter { $0.processIdentifier != mine }
+        if let other = others.first {
+            coveLog.info("Another Cove (pid \(other.processIdentifier)) is already running; quitting this one")
+            return true
+        }
+        return false
+    }
+
+    /// First launch: open Settings on the Permissions page. After an update: a small "updated" banner.
+    private func welcomeIfNeeded() {
+        let defaults = UserDefaults.standard
+        let last = defaults.string(forKey: "lastLaunchedVersion")
+        defaults.set(version, forKey: "lastLaunchedVersion")
+        if last == nil {
+            model.show(Banner(
+                title: "Hi, I'm Pip",
+                body: "Hover the notch to open Cove. Let's set up permissions.",
+                style: .success,
+                icon: .buddy(.happy, nil)
+            ))
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+                MainActor.assumeIsolated { self?.openSettings(pane: .permissions) }
+            }
+        } else if last != version {
+            model.show(Banner(
+                title: "Cove updated to \(version)",
+                body: "Hover the notch to see what's new.",
+                style: .success,
+                icon: .buddy(.happy, nil)
+            ))
+        }
+    }
+
+    // MARK: - Settings
+
+    private func openSettings(pane: SettingsPane = .general) {
+        if settingsWindow == nil { settingsWindow = SettingsWindowController(controller: settingsController) }
+        settingsWindow?.show(pane: pane)
+    }
+
+    /// Saves a changed config and applies it to the running services.
+    private func updateConfig(_ new: CoveConfig) {
+        let old = model.config
+        CoveConfig.save(new)
+        model.config = new
+
+        if new.calendar != old.calendar {
+            if new.calendar { startCalendar(new) } else { calendar?.stop(); calendar = nil; model.setSchedule(Schedule()) }
+        } else {
+            calendar?.update(config: new)
+        }
+        if new.mirrorNotifications != old.mirrorNotifications {
+            if new.mirrorNotifications { startMirror() } else { mirror?.stop(); mirror = nil }
+        }
+        if new.screenshotsToShelf != old.screenshotsToShelf {
+            if new.screenshotsToShelf { startScreenshots() } else { screenshots?.stop(); screenshots = nil }
+        }
+        if new.hud != old.hud {
+            stopHUD()
+            startHUD(mode: new.hud)
+        }
+        if new.mediaApps != old.mediaApps {
+            nowPlaying?.stop()
+            startMedia(apps: new.mediaApps)
+        }
+        if new.port != old.port {
+            server?.stop()
+            startServer(port: new.port)
+        }
     }
 
     // MARK: - Services
@@ -78,16 +179,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         server.onState = { [weak self] text in
             self?.model.serverStatus = text
-            self?.statusLine?.title = "Cove — \(text)"
+            self?.statusLine?.title = "Cove \(self?.version ?? "") — \(text)"
         }
         do {
             try server.start()
             self.server = server
         } catch {
+            coveLog.error("Server failed to start on \(port): \(error.localizedDescription, privacy: .public)")
             model.serverStatus = "port \(port) unavailable"
             model.show(Banner(
                 title: "Couldn't start on port \(port)",
-                body: "Another app is using it. Change \"port\" in ~/.config/cove/config.json.",
+                body: "Another app is using it. Change the port in Cove's settings file.",
                 style: .failure,
                 icon: .symbol("exclamationmark.triangle.fill", Palette.red),
                 sticky: true
@@ -103,7 +205,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         switch (exchange.method, exchange.path) {
         case ("GET", "/health"):
-            exchange.respond(200, #"{"ok":true,"app":"cove"}"#)
+            exchange.respond(200, #"{"ok":true,"app":"cove","version":"\#(version)"}"#)
         case ("POST", "/event"):
             guard let event = try? JSONDecoder().decode(CoveEvent.self, from: exchange.body) else {
                 exchange.respond(400, #"{"error":"expected JSON with at least a \"title\""}"#)
@@ -124,9 +226,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    // MARK: - Calendar
-
     private func startCalendar(_ config: CoveConfig) {
+        calendar?.stop()
         let monitor = CalendarMonitor(config: config)
         monitor.onUpdate = { [weak self] schedule in self?.model.setSchedule(schedule) }
         monitor.onAccessDenied = { [weak self] in
@@ -142,6 +243,35 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         calendar = monitor
     }
 
+    private func startScreenshots() {
+        screenshots?.stop()
+        let watcher = ScreenshotWatcher()
+        watcher.onNew = { [weak self] urls in self?.model.addScreenshots(urls) }
+        watcher.onAccess = { [weak self] state, folder in self?.model.setScreenshotAccess(state, folder: folder) }
+        watcher.start()
+        screenshots = watcher
+    }
+
+    private func startMedia(apps: [String]) {
+        let monitor = NowPlayingMonitor(apps: apps)
+        monitor.onUpdate = { [weak self] np in self?.model.setNowPlaying(np) }
+        monitor.onArtwork = { [weak self] key, data in self?.model.setArtwork(data, forTrack: key) }
+        model.mediaControl = { [weak monitor] command, bundleID in monitor?.send(command, to: bundleID) }
+        monitor.start()
+        nowPlaying = monitor
+    }
+
+    private func startMirror() {
+        mirror?.stop()
+        let mirror = NotificationMirror()
+        mirror.onItems = { [weak self] items in
+            for item in items { self?.model.mirrored(item) }
+        }
+        mirror.onAccessDenied = { [weak self] in self?.model.notificationAccessDenied() }
+        mirror.start()
+        self.mirror = mirror
+    }
+
     // MARK: - Volume & brightness HUD
 
     private func startHUD(mode: String) {
@@ -150,7 +280,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         volume.onChange = { [weak self] level, muted in
             self?.model.showHUD(.volume, level: Double(level), muted: muted)
         }
-        volume.start()
+        if !volumeStarted {
+            volume.start()
+            volumeStarted = true
+        }
         guard mode == "replace" else { return }
 
         mediaKeys.handler = { [weak self] key, isDown, _, fine in
@@ -159,8 +292,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if MediaKeyTap.isTrusted {
             mediaKeys.start()
         } else {
-            MediaKeyTap.requestTrust()
             // Start the tap as soon as Accessibility is granted; until then the passive HUD still works.
+            trustTimer?.invalidate()
             trustTimer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { [weak self] timer in
                 MainActor.assumeIsolated {
                     guard MediaKeyTap.isTrusted else { return }
@@ -169,6 +302,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 }
             }
         }
+    }
+
+    private func stopHUD() {
+        trustTimer?.invalidate()
+        trustTimer = nil
+        mediaKeys.stop()
+        volume.onChange = nil
     }
 
     /// Returns true when Cove handled the key (so macOS doesn't show its own pop-up).
@@ -199,25 +339,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    private func startMedia(apps: [String]) {
-        let monitor = NowPlayingMonitor(apps: apps)
-        monitor.onUpdate = { [weak self] np in self?.model.setNowPlaying(np) }
-        monitor.onArtwork = { [weak self] key, data in self?.model.setArtwork(data, forTrack: key) }
-        model.mediaControl = { [weak monitor] command, bundleID in monitor?.send(command, to: bundleID) }
-        monitor.start()
-        nowPlaying = monitor
-    }
-
-    private func startMirror() {
-        let mirror = NotificationMirror()
-        mirror.onItems = { [weak self] items in
-            for item in items { self?.model.mirrored(item) }
-        }
-        mirror.onAccessDenied = { [weak self] in self?.model.notificationAccessDenied() }
-        mirror.start()
-        self.mirror = mirror
-    }
-
     // MARK: - Menu bar
 
     private func buildStatusItem() {
@@ -226,18 +347,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem.button?.toolTip = "Cove"
 
         let menu = NSMenu()
-        statusLine = NSMenuItem(title: "Cove — \(model.serverStatus)", action: nil, keyEquivalent: "")
+        statusLine = NSMenuItem(title: "Cove \(version) — \(model.serverStatus)", action: nil, keyEquivalent: "")
         statusLine.isEnabled = false
         menu.addItem(statusLine)
         menu.addItem(.separator())
-        addItem(to: menu, "Run demo", #selector(runDemo))
+        addItem(to: menu, "Settings…", #selector(openSettingsFromMenu), key: ",")
+        addItem(to: menu, "Run demo", #selector(runDemoFromMenu))
         addItem(to: menu, "Send test notification", #selector(sendTest))
         menu.addItem(.separator())
-        addItem(to: menu, "Open config…", #selector(openConfig), key: ",")
-        addItem(to: menu, "Reload config", #selector(reloadConfig))
-        addItem(to: menu, "Grant Full Disk Access…", #selector(openFullDiskAccess))
-        loginItem = addItem(to: menu, "Launch at login", #selector(toggleLoginItem))
-        loginItem.state = SMAppService.mainApp.status == .enabled ? .on : .off
+        hideItem = addItem(to: menu, "Hide for an hour", #selector(toggleHidden))
         menu.addItem(.separator())
         let quit = NSMenuItem(title: "Quit Cove", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         quit.target = NSApp
@@ -269,45 +387,57 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return item
     }
 
+    @objc private func openSettingsFromMenu() { openSettings() }
+    @objc private func runDemoFromMenu() { runDemo() }
+
     @objc private func sendTest() {
         model.ingest(CoveEvent(title: "Hello from Cove 👋", body: "This is what a notification looks like.", kind: "info"))
     }
 
-    @objc private func openConfig() {
-        _ = CoveConfig.load() // makes sure the file exists
-        NSWorkspace.shared.open(CoveConfig.fileURL)
-    }
-
-    @objc private func reloadConfig() {
-        model.config = CoveConfig.load()
-        calendar?.update(config: model.config)
-        model.show(Banner(title: "Config reloaded", body: "Port changes apply after a restart.", style: .info,
-                          icon: .symbol("arrow.clockwise", Palette.blue)))
-    }
-
-    @objc private func openFullDiskAccess() {
-        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles") {
-            NSWorkspace.shared.open(url)
-        }
-    }
-
-    @objc private func toggleLoginItem() {
-        do {
-            if SMAppService.mainApp.status == .enabled {
-                try SMAppService.mainApp.unregister()
-            } else {
-                try SMAppService.mainApp.register()
+    @objc private func toggleHidden() {
+        unhideTimer?.invalidate()
+        if hiddenUntil == nil {
+            hiddenUntil = Date().addingTimeInterval(3600)
+            windowController.panel.orderOut(nil)
+            hideItem.title = "Show Cove"
+            unhideTimer = Timer.scheduledTimer(withTimeInterval: 3600, repeats: false) { [weak self] _ in
+                MainActor.assumeIsolated { self?.toggleHidden() }
             }
-        } catch {
-            model.show(Banner(title: "Couldn't change login item", body: error.localizedDescription, style: .failure,
-                              icon: .symbol("exclamationmark.triangle.fill", Palette.red)))
+        } else {
+            hiddenUntil = nil
+            windowController.panel.orderFrontRegardless()
+            hideItem.title = "Hide for an hour"
         }
-        loginItem.state = SMAppService.mainApp.status == .enabled ? .on : .off
     }
+
+    // MARK: - Diagnostics
+
+    private func copyDiagnostics() {
+        let os = ProcessInfo.processInfo.operatingSystemVersionString
+        var lines = [
+            "Cove \(version) on macOS \(os)",
+            "Server: \(model.serverStatus)",
+            "Notch: \(Int(model.notchSize.width))×\(Int(model.notchSize.height)) (hardware: \(model.hasHardwareNotch))",
+            "Screenshot folder: \(ScreenshotWatcher.screenshotFolder.path) — access \(model.screenshotAccess), floating thumbnail \(ScreenshotWatcher.floatingThumbnail ? "on" : "off")",
+            "Claude hooks: \(ClaudeHooks.isInstalled ? "connected" : "not connected"); Codex: \(CodexNotify.state)",
+            "CLI tools: \(CLIInstaller.isInstalled ? "installed" : "missing"); extension: \(BrowserExtension.installedVersion ?? "not copied")",
+            "Last extension event: \(model.lastExtensionEvent.map { "\($0)" } ?? "never")",
+        ]
+        for permission in Permission.allCases {
+            lines.append("Permission \(permission.title): \(permission.isGranted ? "allowed" : "not allowed")")
+        }
+        let config = (try? String(contentsOf: CoveConfig.fileURL, encoding: .utf8)) ?? "(no config file)"
+        lines.append("Config:\n\(config)")
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(lines.joined(separator: "\n"), forType: .string)
+        settingsController.message = "Diagnostics copied to the clipboard."
+    }
+
+    // MARK: - Demo
 
     /// Simulates a Claude Code session, including a (fake) permission prompt, so you can see every state.
     /// Nothing is sent anywhere.
-    @objc private func runDemo() {
+    private func runDemo() {
         let id = "claude:demo"
         let project = "hdc-classifier"
         model.agentStarted(id: id, agent: .claude, title: project, detail: "Add a confusion-matrix plot to eval.py", ownerApp: nil)

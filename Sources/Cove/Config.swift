@@ -68,6 +68,8 @@ struct CoveConfig: Codable {
     // MARK: Screenshots
     /// Put every new screenshot on the shelf.
     var screenshotsToShelf: Bool = true
+    /// Move new screenshots from the Desktop into ~/Pictures/Screenshots, keeping the Desktop clean.
+    var screenshotsMoveOffDesktop: Bool = false
 
     // MARK: Volume / brightness HUD
     /// "replace": Cove handles the volume/brightness keys and hides the system pop-up (needs Accessibility).
@@ -109,6 +111,7 @@ struct CoveConfig: Codable {
         dueAlertHours = value(.dueAlertHours, d.dueAlertHours)
         ignoreCalendars = value(.ignoreCalendars, d.ignoreCalendars)
         screenshotsToShelf = value(.screenshotsToShelf, d.screenshotsToShelf)
+        screenshotsMoveOffDesktop = value(.screenshotsMoveOffDesktop, d.screenshotsMoveOffDesktop)
         eventStartAlert = value(.eventStartAlert, d.eventStartAlert)
         buddy = value(.buddy, d.buddy)
         buddyAlwaysVisible = value(.buddyAlwaysVisible, d.buddyAlwaysVisible)
