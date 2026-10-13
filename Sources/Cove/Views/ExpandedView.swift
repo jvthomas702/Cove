@@ -250,6 +250,11 @@ struct UpNextCard: View {
                             .foregroundStyle(Theme.inkSecondary)
                             .lineLimit(1)
                     }
+                } else if let setup = model.scheduleSetup {
+                    Text(setup.title).font(Theme.Font.headline).lineLimit(1)
+                    Text(setup.action == nil ? "One moment" : "Tap to see how")
+                        .font(Theme.Font.caption)
+                        .foregroundStyle(Theme.inkSecondary)
                 } else {
                     Text("Nothing else today").font(Theme.Font.headline)
                     Text(dueCount == 0 ? "No deadlines this week" : "\(dueCount) due this week")
@@ -337,6 +342,20 @@ private struct NowCard: View {
 struct SchedulePane: View {
     @ObservedObject var model: IslandModel
 
+    private var lookahead: String {
+        let days = model.config.dueLookaheadDays
+        return days == 7 ? "week" : days == 14 ? "two weeks" : "\(days) days"
+    }
+
+    /// " · from D2L and Google Calendar"
+    private var sourceSuffix: String {
+        var names = model.feedStatuses.filter { $0.state == .ok }.map(\.name)
+        if model.config.calendar && model.calendarStatus.access == .granted { names.append("Calendar") }
+        guard !names.isEmpty else { return "" }
+        let list = names.count <= 2 ? names.joined(separator: " and ") : names.dropLast().joined(separator: ", ") + " and " + names.last!
+        return " · from \(list)"
+    }
+
     var body: some View {
         let events = Array(model.schedule.events.filter { $0.end > Date() }.prefix(8))
         let due = Array(model.dueSoon.prefix(10))
@@ -345,9 +364,11 @@ struct SchedulePane: View {
                 SectionTitle(title: "Up next", count: events.count)
                 ScrollView(.vertical, showsIndicators: false) {
                     VStack(spacing: 6) {
-                        if events.isEmpty {
-                            EmptyNote(symbol: "calendar",
-                                      text: model.config.calendar ? "No more events today" : "Calendar is turned off in settings")
+                        if let setup = model.scheduleSetup {
+                            SetupNote(setup: setup) { if let pane = setup.pane { model.openSettings?(pane) } }
+                        }
+                        if events.isEmpty && (model.scheduleSetup == nil || !due.isEmpty) {
+                            EmptyNote(symbol: "calendar", text: "Nothing in the next two days\(sourceSuffix)")
                         }
                         ForEach(events) { EventRow(event: $0) }
                     }
@@ -361,7 +382,7 @@ struct SchedulePane: View {
                     VStack(spacing: 6) {
                         if due.isEmpty {
                             EmptyNote(symbol: "checklist",
-                                      text: "Subscribe to your D2L or Canvas calendar, or add Reminders with due dates")
+                                      text: model.scheduleSetup == nil ? "Nothing due in the next \(lookahead)" : "Due dates from D2L show up here")
                         }
                         ForEach(due) { DueRow(item: $0) }
                     }
@@ -369,6 +390,38 @@ struct SchedulePane: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
+    }
+}
+
+/// "Connect D2L and Google Calendar" with a button that opens the right settings page.
+private struct SetupNote: View {
+    let setup: ScheduleSetup
+    let action: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Image(systemName: setup.action == nil ? "arrow.triangle.2.circlepath" : "link.badge.plus")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(Palette.amber)
+                Text(setup.title)
+                    .font(Theme.Font.headline)
+                    .lineLimit(1)
+            }
+            if let detail = setup.detail {
+                Text(detail)
+                    .font(Theme.Font.caption)
+                    .foregroundStyle(Theme.inkSecondary)
+                    .lineLimit(3)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            if let title = setup.action {
+                ChipButton(title: title, systemImage: "gearshape.fill", tint: Palette.amber, action: action)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(Theme.Space.m)
+        .background(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).fill(Palette.amber.opacity(0.09)))
     }
 }
 

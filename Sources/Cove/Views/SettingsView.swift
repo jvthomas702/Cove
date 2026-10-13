@@ -25,6 +25,9 @@ final class SettingsController: ObservableObject {
     @Published private(set) var launchAtLogin = false
     @Published private(set) var instantScreenshots = false
     @Published var message: String?
+    /// The calendar link being typed in Settings → Features.
+    @Published var feedDraft = ""
+    @Published var feedError: String?
     @Published var pane: SettingsPane? = .general
 
     private var timer: Timer?
@@ -63,6 +66,47 @@ final class SettingsController: ObservableObject {
         extensionVersion = BrowserExtension.installedVersion
         launchAtLogin = SMAppService.mainApp.status == .enabled
         instantScreenshots = !ScreenshotWatcher.floatingThumbnail
+    }
+
+    // MARK: Calendar links
+
+    /// Adds every link pasted in the field (several can be pasted at once).
+    func addFeeds() {
+        let links = feedDraft.split(whereSeparator: { $0 == " " || $0 == "\n" || $0 == "\t" }).map(String.init).filter { !$0.isEmpty }
+        guard !links.isEmpty else { return }
+        var config = model.config
+        for link in links {
+            if let problem = Self.feedProblem(link) {
+                feedError = problem
+                return
+            }
+            if !config.calendarFeeds.contains(link) { config.calendarFeeds.append(link) }
+        }
+        feedError = nil
+        feedDraft = ""
+        onConfigChange?(config)
+    }
+
+    func removeFeed(_ link: String) {
+        var config = model.config
+        config.calendarFeeds.removeAll { $0 == link }
+        onConfigChange?(config)
+    }
+
+    /// Catches the usual wrong links (the calendar's web page instead of its feed) before fetching.
+    nonisolated static func feedProblem(_ link: String) -> String? {
+        guard let url = ICSFeedMonitor.normalize(link) else {
+            return "That doesn't look like a calendar link. It should start with https:// or webcal://."
+        }
+        let host = url.host?.lowercased() ?? ""
+        let path = url.path.lowercased()
+        if host.contains("google.com"), !path.hasSuffix(".ics") {
+            return "That's a Google Calendar page, not its calendar link. Copy \"Secret address in iCal format\" instead (steps below)."
+        }
+        if path.contains("/d2l/"), !path.contains("feed") {
+            return "That's the D2L calendar page. In D2L Calendar, click Subscribe and copy the link it shows."
+        }
+        return nil
     }
 
     // MARK: Config binding
@@ -361,13 +405,17 @@ private struct FeaturesPane: View {
                 Text("Hand back to the terminal after \(Int(controller.model.config.approvalTimeout)) seconds")
             }
         }
-        SettingsGroup(title: "Calendar") {
-            ToggleRow(title: "Classes and meetings", detail: "From the Calendar app, including Google and iCloud calendars",
+        CalendarLinksGroup(controller: controller)
+        SettingsGroup(title: "Calendar app") {
+            ToggleRow(title: "Also read the Calendar app", detail: "Google, iCloud and Exchange accounts added in System Settings → Internet Accounts",
                       isOn: controller.binding(\.calendar))
-            SwiftUI.Group {
-            CalendarStatusView(status: controller.model.calendarStatus, schedule: controller.model.schedule) {
-                controller.request(.calendars)
+            if controller.model.config.calendar {
+                CalendarStatusView(status: controller.model.calendarStatus, schedule: controller.model.schedule) {
+                    controller.request(.calendars)
+                }
             }
+        }
+        SettingsGroup(title: "Classes and due dates") {
             Picker("Start the countdown", selection: controller.binding(\.countdownMinutes)) {
                 Text("15 minutes before").tag(15)
                 Text("30 minutes before").tag(30)
@@ -386,8 +434,6 @@ private struct FeaturesPane: View {
                 Text("1 week").tag(7)
                 Text("2 weeks").tag(14)
             }
-            }
-            .disabled(!controller.model.config.calendar)
         }
         SettingsGroup(title: "Screenshots",
               footer: "macOS's floating thumbnail holds each screenshot for about 5 seconds before saving it. Turn on instant screenshots to skip it.") {
@@ -424,6 +470,107 @@ private struct FeaturesPane: View {
                 ))
                 .textFieldStyle(.roundedBorder)
             }
+        }
+    }
+}
+
+/// Pasted D2L / Canvas / Google calendar links, each with whether it loaded.
+private struct CalendarLinksGroup: View {
+    @ObservedObject var controller: SettingsController
+
+    var body: some View {
+        SettingsGroup(title: "Calendar links",
+                      footer: "Calendar links are private: anyone with one can read that calendar, so Cove keeps them on this Mac and leaves them out of diagnostics.") {
+            ForEach(controller.model.config.calendarFeeds, id: \.self) { link in
+                FeedRow(link: link, status: controller.model.feedStatuses.first { $0.url == link }) {
+                    controller.removeFeed(link)
+                }
+                Divider()
+            }
+            HStack(spacing: 8) {
+                TextField("Paste a D2L, Canvas or Google Calendar link", text: $controller.feedDraft)
+                    .textFieldStyle(.roundedBorder)
+                    .onSubmit { controller.addFeeds() }
+                Button("Add") { controller.addFeeds() }
+                    .disabled(controller.feedDraft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+            if let error = controller.feedError {
+                Label(error, systemImage: "exclamationmark.triangle.fill")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            VStack(alignment: .leading, spacing: 8) {
+                HelpStep(title: "D2L", text: "Open Calendar in D2L, click Subscribe (under the calendar list), choose All Courses and copy the link.") {
+                    Button("Open D2L") { NSWorkspace.shared.open(URL(string: "https://kennesaw.view.usg.edu/d2l/home")!) }
+                }
+                HelpStep(title: "Google", text: "In Google Calendar settings, click your calendar on the left, scroll to Integrate calendar and copy Secret address in iCal format. Do this for each calendar you want.") {
+                    Button("Open Google Calendar settings") { NSWorkspace.shared.open(URL(string: "https://calendar.google.com/calendar/r/settings")!) }
+                }
+            }
+            .padding(.top, 2)
+        }
+    }
+}
+
+private struct FeedRow: View {
+    let link: String
+    let status: FeedStatus?
+    let remove: () -> Void
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: symbol).foregroundStyle(color).frame(width: 18)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(status?.name ?? ICSFeedMonitor.normalize(link).map(ICSFeedMonitor.friendlyName) ?? "Calendar link")
+                Text(detail).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer()
+            Button(role: .destructive, action: remove) { Image(systemName: "minus.circle") }
+                .buttonStyle(.borderless)
+                .help("Remove this calendar link")
+        }
+    }
+
+    private var symbol: String {
+        switch status?.state {
+        case .ok: return "checkmark.circle.fill"
+        case .failed: return "exclamationmark.triangle.fill"
+        default: return "arrow.triangle.2.circlepath"
+        }
+    }
+
+    private var color: Color {
+        switch status?.state {
+        case .ok: return .green
+        case .failed: return .orange
+        default: return .secondary
+        }
+    }
+
+    private var detail: String {
+        switch status?.state {
+        case .ok:
+            let count = status?.itemCount ?? 0
+            let items = count == 0 ? "Nothing coming up" : "\(count) coming up"
+            if let fetched = status?.fetchedAt { return "\(items) · updated \(fetched.formatted(.relative(presentation: .named)))" }
+            return items
+        case .failed(let reason): return reason
+        default: return "Loading…"
+        }
+    }
+}
+
+private struct HelpStep<Accessory: View>: View {
+    let title: String
+    let text: String
+    @ViewBuilder let accessory: () -> Accessory
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title).font(.caption.weight(.semibold))
+            Text(text).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            accessory().controlSize(.small)
         }
     }
 }
@@ -467,7 +614,7 @@ private struct CalendarStatusView: View {
             return "Click Allow, then turn Cove on under Calendars in System Settings → Privacy & Security."
         case .granted:
             if status.calendars.isEmpty {
-                return "Add your Google account in System Settings → Internet Accounts, and subscribe to D2L in the Calendar app (File → New Calendar Subscription)."
+                return "Paste your D2L and Google links above, or add your Google account in System Settings → Internet Accounts."
             }
             var parts: [String] = []
             if let next = schedule.currentEvent() {

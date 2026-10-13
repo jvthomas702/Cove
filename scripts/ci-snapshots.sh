@@ -47,6 +47,75 @@ sleep 1; island 06-working
 
 debug music; debug schedule; debug expand/home; sleep 1.2; island 07-expanded-home
 debug expand/schedule; sleep 1; island 08-expanded-schedule
+
+# Nothing connected: the Schedule tab says what to do instead of looking empty.
+debug clear-schedule; debug expand/schedule; sleep 1; island 08b-schedule-connect
+check "schedule tab asks to connect calendars" "curl -s -m 2 $API/debug/schedule-state | grep -q '\"events\":0'"
+
+# Calendar links: serve feeds shaped like D2L's and Google's secret iCal address from this machine.
+FEEDS="$(mktemp -d)"
+python3 - "$FEEDS" <<'PY'
+import datetime as dt, os, sys
+from zoneinfo import ZoneInfo
+root = sys.argv[1]
+ny = ZoneInfo("America/New_York")
+now = dt.datetime.now(ny).replace(second=0, microsecond=0)
+def local(t): return t.strftime("%Y%m%dT%H%M%S")
+def utc(t): return t.astimezone(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+day = ["MO", "TU", "WE", "TH", "FR", "SA", "SU"]
+lecture = now - dt.timedelta(minutes=25)
+lab = now + dt.timedelta(minutes=95)
+series = lecture - dt.timedelta(days=21)
+classes = f"""BEGIN:VCALENDAR
+PRODID:-//Google Inc//Google Calendar 70.9054//EN
+VERSION:2.0
+X-WR-CALNAME:KSU Classes
+X-WR-TIMEZONE:America/New_York
+BEGIN:VEVENT
+DTSTART;TZID=America/New_York:{local(series)}
+DTEND;TZID=America/New_York:{local(series + dt.timedelta(minutes=75))}
+RRULE:FREQ=WEEKLY;BYDAY={day[series.weekday()]}
+UID:lecture@google.com
+SUMMARY:CPE 3000 Lecture
+LOCATION:Atrium 210
+BEGIN:VALARM
+TRIGGER:-PT10M
+DESCRIPTION:Reminder
+END:VALARM
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:{utc(lab)}
+DTEND:{utc(lab + dt.timedelta(minutes=120))}
+UID:lab@google.com
+SUMMARY:Swarm robotics lab
+LOCATION:ICSR Lab
+DESCRIPTION:Join: https://kennesaw.zoom.us/j/555
+END:VEVENT
+END:VCALENDAR
+"""
+d2l = "\r\n".join([
+    "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Desire2Learn Inc//D2L Calendar//EN", "X-WR-CALNAME:Student",
+    "BEGIN:VEVENT", "UID:d2l-1", f"DTSTART:{utc(now + dt.timedelta(hours=20))}", f"DTEND:{utc(now + dt.timedelta(hours=20))}",
+    "SUMMARY:Lab 5 Report - Due", "LOCATION:CPE 3000", "END:VEVENT",
+    "BEGIN:VEVENT", "UID:d2l-2", f"DTSTART:{utc(now + dt.timedelta(days=3))}", f"DTEND:{utc(now + dt.timedelta(days=3))}",
+    "SUMMARY:HW 7: Sequential circuits - Due", "END:VEVENT",
+    "END:VCALENDAR", ""])
+for path, text in [("d2l/le/calendar/feed/user/feed.ics", d2l), ("calendar/ical/classes/private-abc/basic.ics", classes)]:
+    full = os.path.join(root, path)
+    os.makedirs(os.path.dirname(full), exist_ok=True)
+    open(full, "w").write(text)
+PY
+python3 -m http.server 8765 --bind 127.0.0.1 --directory "$FEEDS" >/dev/null 2>&1 &
+FEED_SERVER=$!
+sleep 1
+debug add-feeds/8765
+for _ in $(seq 1 20); do curl -s -m 1 "$API/debug/schedule-state" | grep -q '"feeds":"ok' && break; sleep 0.5; done
+curl -s -m 2 "$API/debug/schedule-state"; echo
+check "calendar links load (classes and due dates)" "curl -s -m 2 $API/debug/schedule-state | grep -q '\"events\":2,\"due\":2,\"feeds\":\"ok:2,ok:2\"'"
+debug expand/schedule; sleep 1; island 08c-schedule-from-links
+debug expand/home; sleep 1; island 07b-home-from-links
+debug settings/features; sleep 1.2; full 03b-settings-calendar-links
+debug close-settings
 debug collapse; sleep 1
 
 post /hook/claude '{"hook_event_name":"Stop","session_id":"ci","cwd":"/Users/you/hdc-classifier"}'
@@ -89,6 +158,7 @@ if [ -n "$PID" ]; then
 fi
 
 osascript -e 'quit app "Cove"' 2>/dev/null || pkill -x Cove
+kill "$FEED_SERVER" 2>/dev/null || true
 rm -f "$SHOT"
 echo "failures: $failures"
 exit "$failures"

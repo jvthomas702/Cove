@@ -7,6 +7,13 @@
 
 Building from source (`./scripts/install.sh`) signs Cove with a local certificate so macOS keeps its permissions across updates.
 
+## What's new in 1.0.2
+
+- **Calendar links**: paste your D2L subscribe link and Google Calendar's secret iCal address in Settings → Features, and your classes and due dates show up, with no Calendar app setup or calendar permission needed
+- Recurring classes, moved or cancelled sessions, holidays and daylight saving time are all handled
+- The Schedule tab tells you what's missing (and takes you to the fix) instead of just looking empty
+- Settings catches the usual wrong link (the calendar's web page instead of its feed) before you save it
+
 ## What's new in 1.0.1
 
 - Classes show up even if you allowed calendar access after Cove started (no restart needed)

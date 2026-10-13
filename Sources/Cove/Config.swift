@@ -47,6 +47,9 @@ struct CoveConfig: Codable {
     /// Calendars whose events are assignment due dates (e.g. a subscribed D2L/Canvas feed).
     /// Calendars named like Canvas, D2L, Brightspace, Gradescope or "Assignments" are detected automatically.
     var assignmentCalendars: [String] = []
+    /// Calendar links Cove reads directly (D2L/Canvas subscribe links, Google's secret iCal address, webcal://…).
+    /// No Calendar app setup needed. These are private links, so they're never shown in diagnostics.
+    var calendarFeeds: [String] = []
     /// Reminders lists to read due dates from (empty = all lists).
     var reminderLists: [String] = []
     /// How far ahead the "Due soon" list looks.
@@ -106,6 +109,7 @@ struct CoveConfig: Codable {
         countdownMinutes = value(.countdownMinutes, d.countdownMinutes)
         meetingAlertMinutes = value(.meetingAlertMinutes, d.meetingAlertMinutes)
         assignmentCalendars = value(.assignmentCalendars, d.assignmentCalendars)
+        calendarFeeds = value(.calendarFeeds, d.calendarFeeds)
         reminderLists = value(.reminderLists, d.reminderLists)
         dueLookaheadDays = value(.dueLookaheadDays, d.dueLookaheadDays)
         dueAlertHours = value(.dueAlertHours, d.dueAlertHours)

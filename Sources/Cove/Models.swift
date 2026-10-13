@@ -370,3 +370,11 @@ func formatDuration(_ interval: TimeInterval) -> String {
     if s >= 60 { return "\(s / 60)m \(s % 60)s" }
     return "\(s)s"
 }
+
+/// What the Schedule tab shows when it has nothing because something isn't connected.
+struct ScheduleSetup: Equatable {
+    var title: String
+    var detail: String?
+    var action: String?
+    var pane: SettingsPane?
+}

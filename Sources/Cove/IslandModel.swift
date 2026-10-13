@@ -38,6 +38,10 @@ final class IslandModel: ObservableObject {
     }
     /// What Cove can see in Calendar (Settings → Features → Calendar).
     @Published var calendarStatus = CalendarStatus()
+    /// Pasted calendar links and whether each one loaded.
+    @Published var feedStatuses: [FeedStatus] = []
+    /// Opens the settings window (set by AppDelegate) so the island can point at a fix.
+    var openSettings: ((SettingsPane) -> Void)?
     /// When the browser extension last reported in (shown in Settings → Connections).
     @Published private(set) var lastExtensionEvent: Date?
     @Published private(set) var presentation: Presentation = .idle
@@ -677,6 +681,29 @@ final class IslandModel: ObservableObject {
         guard updated != schedule else { return }
         schedule = updated
         recompute()
+    }
+
+    /// Why the Schedule tab might be empty, if something needs setting up. Nil when everything is connected.
+    var scheduleSetup: ScheduleSetup? {
+        for feed in feedStatuses {
+            if case .failed(let reason) = feed.state {
+                return ScheduleSetup(title: "\(feed.name) link didn't load", detail: reason, action: "Fix", pane: .features)
+            }
+        }
+        if !schedule.events.isEmpty || !schedule.due.isEmpty { return nil }
+        if feedStatuses.contains(where: { $0.state == .loading }) {
+            return ScheduleSetup(title: "Loading your calendars…", detail: nil, action: nil, pane: nil)
+        }
+        if !feedStatuses.isEmpty { return nil }
+        // Only the Mac's built-in calendars means D2L and Google aren't connected yet.
+        let builtIn = ["home", "work", "calendar", "scheduled reminders", "us holidays", "holidays", "birthdays", "siri suggestions"]
+        let onlyBuiltIn = calendarStatus.calendars.allSatisfy { name in
+            builtIn.contains(name.lowercased()) || name.lowercased().hasPrefix("holidays in")
+        }
+        if config.calendar && calendarStatus.access == .granted && !onlyBuiltIn { return nil }
+        return ScheduleSetup(title: "Connect D2L and Google Calendar",
+                             detail: "Paste your calendar links in Settings and your classes and due dates show up here.",
+                             action: "Add links", pane: .features)
     }
 
     /// Upcoming due items within the lookahead window (overdue ones from the last 3 days included).

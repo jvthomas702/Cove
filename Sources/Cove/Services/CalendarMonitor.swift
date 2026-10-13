@@ -241,7 +241,11 @@ final class CalendarMonitor {
     /// Finds a video-call link in the event's URL, location, or notes.
     private static func joinURL(for event: EKEvent) -> URL? {
         if let url = event.url, isJoinLink(url) { return url }
-        let text = [event.location, event.notes].compactMap { $0 }.joined(separator: "\n")
+        return findJoinURL(in: [event.location, event.notes].compactMap { $0 }.joined(separator: "\n"))
+    }
+
+    /// First Zoom/Meet/Teams/Webex/FaceTime link in some text.
+    static func findJoinURL(in text: String) -> URL? {
         guard !text.isEmpty, let detector = try? NSDataDetector(types: NSTextCheckingResult.CheckingType.link.rawValue) else { return nil }
         let range = NSRange(text.startIndex..., in: text)
         for match in detector.matches(in: text, options: [], range: range) {

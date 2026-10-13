@@ -51,10 +51,14 @@ Open Settings any time from the menu bar icon, or by opening Cove.app again.
 
 ### Classes from D2L and Google Calendar
 
-Cove reads the Mac's Calendar app, so add both calendars there:
+Paste each calendar's private link into **Settings → Features → Calendar links**. Cove downloads them every 15 minutes; nothing needs setting up in the Calendar app.
 
-- **Google Calendar**: System Settings → Internet Accounts → Google, and turn on Calendars.
-- **D2L assignments**: in D2L's Calendar, find **Subscribe** and copy the link. In the Calendar app choose **File → New Calendar Subscription**, paste it, name it `D2L`, and set auto-refresh to every 15 minutes. Calendars named D2L, Brightspace, Canvas or Gradescope are treated as due dates.
+- **D2L**: open **Calendar** in D2L, click **Subscribe** (under the calendar list), choose **All Courses** and copy the link.
+- **Google Calendar**: open [Google Calendar settings](https://calendar.google.com/calendar/r/settings), click your calendar on the left, scroll to **Integrate calendar** and copy **Secret address in iCal format**. Repeat for each calendar you want.
+
+Timed sessions show as classes; assignments and "Availability Ends" items from D2L or Canvas go in **Due soon**. These links are private (anyone with one can read the calendar), so Cove leaves them out of diagnostics.
+
+Calendars already in the Mac's Calendar app (Google added under System Settings → Internet Accounts, iCloud, Exchange) are read too, if you allow calendar access.
 
 ### Screenshots
 
@@ -97,6 +101,7 @@ Sources/Cove/
     ├── AgentBridge.swift        Claude Code hooks, permission prompts, Codex
     ├── Integrations.swift       permissions, hooks, CLI tools, browser extension setup
     ├── CalendarMonitor.swift    EventKit classes and reminders
+    ├── ICSFeeds.swift           calendar links (D2L, Canvas, Google iCal): download and parse
     ├── ScreenshotWatcher.swift  FSEvents on the screenshot folder, plus Spotlight
     ├── NotificationMirror.swift Notification Center's database (read only)
     ├── NowPlayingMonitor.swift  Music and Spotify

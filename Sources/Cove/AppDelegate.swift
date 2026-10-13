@@ -12,6 +12,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var mirror: NotificationMirror?
     private let battery = BatteryMonitor()
     private var calendar: CalendarMonitor?
+    private var feeds: ICSFeedMonitor?
+    private var eventKitSchedule = Schedule()
+    private var feedSchedule = Schedule()
     private var screenshots: ScreenshotWatcher?
     private let volume = VolumeController()
     private let mediaKeys = MediaKeyTap()
@@ -44,6 +47,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         agents = AgentBridge(model: model)
 
         settingsController = SettingsController(model: model)
+        model.openSettings = { [weak self] pane in self?.openSettings(pane: pane) }
         settingsController.onConfigChange = { [weak self] config in self?.updateConfig(config) }
         settingsController.onRunDemo = { [weak self] in self?.runDemo() }
         settingsController.onCopyDiagnostics = { [weak self] in self?.copyDiagnostics() }
@@ -62,6 +66,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         battery.onChange = { [weak self] state in self?.model.setBattery(state) }
         battery.start()
         if config.calendar { startCalendar(config) }
+        startFeeds(config)
         if config.screenshotsToShelf { startScreenshots() }
         startHUD(mode: config.hud)
         BrowserExtension.syncFromBundle()
@@ -79,6 +84,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         ) { [weak self] _ in
             MainActor.assumeIsolated {
                 self?.calendar?.refresh()
+                self?.feeds?.fetchAll()
                 self?.screenshots?.recheckAccess()
                 self?.windowController.relocate()
             }
@@ -94,6 +100,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         nowPlaying?.stop()
         battery.stop()
         calendar?.stop()
+        feeds?.stop()
         screenshots?.stop()
         volume.stop()
         mediaKeys.stop()
@@ -157,10 +164,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         model.config = new
 
         if new.calendar != old.calendar {
-            if new.calendar { startCalendar(new) } else { calendar?.stop(); calendar = nil; model.setSchedule(Schedule()) }
+            if new.calendar {
+                startCalendar(new)
+            } else {
+                calendar?.stop()
+                calendar = nil
+                eventKitSchedule = Schedule()
+                publishSchedule()
+            }
         } else {
             calendar?.update(config: new)
         }
+        feeds?.update(config: new)
         if new.mirrorNotifications != old.mirrorNotifications {
             if new.mirrorNotifications { startMirror() } else { mirror?.stop(); mirror = nil }
         }
@@ -217,6 +232,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             exchange.respond(204, "") // CORS preflight from the browser extension
             return
         }
+        if debugAPI, exchange.path == "/debug/schedule-state" {
+            let feeds = model.feedStatuses.map { feed -> String in
+                switch feed.state {
+                case .ok: return "ok:\(feed.itemCount)"
+                case .loading: return "loading"
+                case .failed: return "failed"
+                }
+            }
+            exchange.respond(200, #"{"events":\#(model.schedule.events.count),"due":\#(model.schedule.due.count),"feeds":"\#(feeds.joined(separator: ","))"}"#)
+            return
+        }
         if debugAPI, exchange.path.hasPrefix("/debug/") {
             debugRoute(exchange.path)
             exchange.respond(200, ok)
@@ -248,7 +274,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func startCalendar(_ config: CoveConfig) {
         calendar?.stop()
         let monitor = CalendarMonitor(config: config)
-        monitor.onUpdate = { [weak self] schedule in self?.model.setSchedule(schedule) }
+        monitor.onUpdate = { [weak self] schedule in
+            self?.eventKitSchedule = schedule
+            self?.publishSchedule()
+        }
         monitor.onStatus = { [weak self] status in
             if self?.model.calendarStatus != status { self?.model.calendarStatus = status }
         }
@@ -263,6 +292,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         monitor.start()
         calendar = monitor
+    }
+
+    /// Calendar links pasted in Settings (D2L, Canvas, Google's secret iCal address). Always running;
+    /// with no links it does nothing.
+    private func startFeeds(_ config: CoveConfig) {
+        feeds?.stop()
+        let monitor = ICSFeedMonitor(config: config)
+        monitor.onUpdate = { [weak self] schedule, statuses in
+            guard let self else { return }
+            if self.model.feedStatuses != statuses { self.model.feedStatuses = statuses }
+            guard schedule != self.feedSchedule else { return }
+            self.feedSchedule = schedule
+            self.publishSchedule()
+        }
+        monitor.start()
+        feeds = monitor
+    }
+
+    private func publishSchedule() {
+        let parts = model.config.calendar ? [eventKitSchedule, feedSchedule] : [feedSchedule]
+        model.setSchedule(Schedule.merged(parts))
     }
 
     private func startScreenshots() {
@@ -449,8 +499,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let allowed = permission == .desktop ? model.screenshotAccess == .ok : permission.isGranted
             lines.append("Permission \(permission.title): \(allowed ? "allowed" : "not allowed")")
         }
-        let config = (try? String(contentsOf: CoveConfig.fileURL, encoding: .utf8)) ?? "(no config file)"
-        lines.append("Config:\n\(config)")
+        for feed in model.feedStatuses {
+            let state: String
+            switch feed.state {
+            case .loading: state = "loading"
+            case .ok: state = "ok, \(feed.itemCount) items"
+            case .failed(let reason): state = "failed: \(reason)"
+            }
+            lines.append("Calendar link \(feed.name): \(state)")
+        }
+        // Calendar links are private (anyone with one can read the calendar), so they're redacted.
+        var config = model.config
+        config.calendarFeeds = config.calendarFeeds.map { link in
+            ICSFeedMonitor.normalize(link).map { "\($0.scheme ?? "https")://\($0.host ?? "")/…(redacted)" } ?? "(redacted)"
+        }
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        let configText = (try? encoder.encode(config)).flatMap { String(data: $0, encoding: .utf8) } ?? "(unreadable config)"
+        lines.append("Config:\n\(configText)")
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(lines.joined(separator: "\n"), forType: .string)
         settingsController.message = "Diagnostics copied to the clipboard."
@@ -499,6 +565,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 DueItem(id: "b", title: "HW 7: Sequential circuits", due: now.addingTimeInterval(3 * 86_400), source: "D2L", color: Color(hex: 0xFF453A)),
             ]
             model.setSchedule(Schedule(events: [lecture, lab], due: due))
+        case "clear-schedule":
+            model.setSchedule(Schedule())
+        case "add-feeds":
+            // CI serves sample D2L-style and class feeds on this port.
+            var config = model.config
+            config.calendarFeeds = ["http://127.0.0.1:\(arg)/d2l/le/calendar/feed/user/feed.ics",
+                                    "http://127.0.0.1:\(arg)/calendar/ical/classes/private-abc/basic.ics"]
+            updateConfig(config)
         case "hud":
             model.showHUD(.volume, level: 0.62)
         case "future-class":
