@@ -152,25 +152,27 @@ final class CalendarMonitor {
             let predicate = store.predicateForEvents(withStart: now.addingTimeInterval(-12 * 3600), end: horizon, calendars: calendars)
             for event in store.events(matching: predicate) where event.status != .canceled {
                 if Self.declinedByMe(event) { continue }
+                // EventKit's dates are implicitly unwrapped and can be missing on broken feed items.
+                guard let start = event.startDate as Date?, let end = event.endDate as Date? else { continue }
                 let title = event.title ?? "Event"
                 let calendarTitle = event.calendar?.title ?? ""
                 let color = Color(nsColor: event.calendar?.color ?? .systemBlue)
-                let id = (event.eventIdentifier ?? UUID().uuidString) + "@\(event.startDate.timeIntervalSince1970)"
-                switch CalendarClassifier.classify(title: title, calendarTitle: calendarTitle, start: event.startDate,
-                                                   end: event.endDate, isAllDay: event.isAllDay, extraLMS: config.assignmentCalendars) {
+                let id = (event.eventIdentifier ?? UUID().uuidString) + "@\(start.timeIntervalSince1970)"
+                switch CalendarClassifier.classify(title: title, calendarTitle: calendarTitle, start: start,
+                                                   end: end, isAllDay: event.isAllDay, extraLMS: config.assignmentCalendars) {
                 case .due:
                     let due = event.isAllDay
-                        ? (Calendar.current.date(bySettingHour: 23, minute: 59, second: 0, of: event.startDate) ?? event.startDate)
-                        : event.startDate
+                        ? (Calendar.current.date(bySettingHour: 23, minute: 59, second: 0, of: start) ?? start)
+                        : start
                     guard due > now.addingTimeInterval(-3 * 86_400) else { continue }
                     schedule.due.append(DueItem(id: id, title: Self.cleanDueTitle(title), due: due, source: calendarTitle, color: color))
                 case .event:
-                    guard event.endDate > now, event.startDate < now.addingTimeInterval(48 * 3600) else { continue }
+                    guard end > now, start < now.addingTimeInterval(48 * 3600) else { continue }
                     schedule.events.append(CalEvent(
                         id: id,
                         title: title,
-                        start: event.startDate,
-                        end: event.endDate,
+                        start: start,
+                        end: end,
                         location: event.location.flatMap { $0.isEmpty ? nil : $0.components(separatedBy: "\n").first },
                         calendar: calendarTitle,
                         color: color,
