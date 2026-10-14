@@ -181,3 +181,7 @@ Choose **AI work** on Home to see the selected reply alongside an overview of tr
 ### App updates
 
 Packaged Cove embeds Sparkle, with daily checks and opt-in automatic installation. Signed downloads and the feed live in the public [Cove-updates repository](https://github.com/jvthomas702/Cove-updates); this source repository stays private. Check manually from Cove's menu or **Settings → About**. Signed archives and the signed feed must validate before installation. See [signed-update publishing](docs/UPDATES.md) for release setup. Older versions need one manual replacement to gain the updater.
+
+### Live Codex activity
+
+Codex's legacy completion notifier does not report ongoing work. For start, tool progress, approval waits and completion, use the [live lifecycle connection](docs/CODEX-LIVE.md). Preview it with `python3 scripts/connect-codex-live.py`, then install with `--install` and review/trust the new definitions through Codex `/hooks`. It sends only coarse activity metadata to local Cove and preserves existing hooks. This connection works with the installed Cove 1.1 without replacing the app or requiring Accessibility.

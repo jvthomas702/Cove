@@ -63,9 +63,13 @@ jobs:
       - name: Check scripts and extension
         run: |
           {
-            for f in bin/* scripts/*.sh; do bash -n "$f" && echo "ok $f"; done
+            for f in bin/* scripts/*.sh; do
+              if [[ "$f" == *.py ]]; then python3 -m py_compile "$f"; else bash -n "$f"; fi
+              echo "ok $f"
+            done
             for f in extension/*.js; do node --check "$f" && echo "ok $f"; done
             node --test Tests/Browser/extension.test.cjs
+            python3 -m unittest discover -s Tests/Codex -v
             python3 -c "import json; json.load(open('extension/manifest.json')); print('ok manifest.json')"
           } 2>&1 | tee scripts.log
 
