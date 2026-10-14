@@ -1,5 +1,6 @@
 import CoreServices
 import Foundation
+import ImageIO
 import os
 
 /// Puts new screenshots on the shelf the moment macOS saves them.
@@ -171,14 +172,28 @@ final class ScreenshotWatcher {
                 && FileManager.default.fileExists(atPath: url.path)
         }
         guard !fresh.isEmpty else { return }
-        let token = generation
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
+        considerSettled(fresh, token: generation, attempt: 0)
+    }
+
+    private func considerSettled(_ urls: [URL], token: UUID, attempt: Int) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
             guard let self, self.running, self.generation == token else { return }
-            let shots = fresh.filter { url in
-                FileManager.default.fileExists(atPath: url.path) && Self.isScreenshot(url) && self.isNew(url)
-            }
-            self.deliver(shots)
+            let candidates = urls.filter { Self.isScreenshot($0) && self.isNew($0) }
+            let ready = candidates.filter(Self.isCaptureFileReady)
+            self.deliver(ready)
+            let pending = candidates.filter { !Self.isCaptureFileReady($0) }
+            if attempt < 19 && !pending.isEmpty { self.considerSettled(pending, token: token, attempt: attempt + 1) }
         }
+    }
+
+    static func isCaptureFileReady(_ url: URL) -> Bool {
+        guard FileManager.default.fileExists(atPath: url.path) else { return false }
+        // Screen recordings and PDFs are references; raster screenshots must decode completely before being retained.
+        if ["mov", "pdf"].contains(url.pathExtension.lowercased()) { return true }
+        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
+              CGImageSourceGetStatus(source) == .statusComplete,
+              CGImageSourceGetCount(source) > 0 else { return false }
+        return CGImageSourceCreateImageAtIndex(source, 0, nil) != nil
     }
 
     private func isNew(_ url: URL) -> Bool {

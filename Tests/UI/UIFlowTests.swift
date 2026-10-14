@@ -21,6 +21,7 @@ final class UIFlowTests: XCTestCase {
 
     func testSportsSelectionAndOfflineRecovery() {
         window.buttons["tab.sports"].click()
+        window.buttons["sports.games"].click()
         let games = window.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "sports.game."))
         XCTAssertTrue(games.firstMatch.waitForExistence(timeout: 8))
         games.firstMatch.click()
@@ -75,6 +76,7 @@ final class UIFlowTests: XCTestCase {
 
     func testBasketballGamecastQuarterScoringAndStats() {
         window.buttons["tab.sports"].click()
+        window.buttons["sports.games"].click()
         window.buttons["sports.game.401810946"].click()
         let period = window.popUpButtons["sports.period"]
         XCTAssertTrue(period.waitForExistence(timeout: 5))
@@ -104,6 +106,33 @@ final class UIFlowTests: XCTestCase {
         window.radioButtons["Drives"].click()
         XCTAssertTrue(window.scrollViews["sports.drives"].waitForExistence(timeout: 5))
         XCTAssertTrue(text("Drive chart").exists)
+    }
+
+    func testBundledTeamLogosRemainVisibleOffline() {
+        window.buttons["tab.sports"].click()
+        let logo = window.descendants(matching: .any).matching(identifier: "sports.logo.nba.20").firstMatch
+        XCTAssertTrue(logo.waitForExistence(timeout: 5))
+        XCTAssertEqual(logo.value as? String, "Image loaded")
+        window.buttons["Offline"].click()
+        XCTAssertTrue(text("Updates paused.").waitForExistence(timeout: 8))
+        XCTAssertEqual(logo.value as? String, "Image loaded")
+    }
+
+    func testScreenshotStaysOnShelfAcrossTabs() {
+        window.buttons["Quiet screenshot"].click()
+        window.buttons["tab.shelf"].click()
+        let item = window.descendants(matching: .any).matching(identifier: "shelf.item.Cove UI Screenshot.png").firstMatch
+        XCTAssertTrue(item.waitForExistence(timeout: 5))
+        window.buttons["tab.home"].click()
+        window.buttons["tab.shelf"].click()
+        XCTAssertTrue(item.exists)
+        window.buttons["Delete source"].click()
+        app.terminate()
+        app.launchArguments = ["--preserve-shelf"]
+        app.launch()
+        XCTAssertTrue(window.waitForExistence(timeout: 10))
+        window.buttons["tab.shelf"].click()
+        XCTAssertTrue(item.waitForExistence(timeout: 5))
     }
 
     func testAllTabsRemainUsable() {

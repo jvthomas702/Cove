@@ -46,6 +46,7 @@ final class IslandModel: ObservableObject {
     var openSettings: ((SettingsPane) -> Void)?
     var applyConfig: ((CoveConfig) -> Void)?
     let sports: SportsMonitor
+    private let shelfStore: ShelfStore
     private var sportsChanges: AnyCancellable?
     /// When the browser extension last reported in (shown in Settings → Connections).
     @Published private(set) var lastExtensionEvent: Date?
@@ -97,7 +98,8 @@ final class IslandModel: ObservableObject {
         "net.kovidgoyal.kitty", "org.alacritty", "com.microsoft.VSCode", "com.todesktop.230313mzl4w4u92",
     ]
 
-    init(config: CoveConfig, sports: SportsMonitor? = nil) {
+    init(config: CoveConfig, sports: SportsMonitor? = nil, shelfStore: ShelfStore? = nil) {
+        self.shelfStore = shelfStore ?? ShelfStore()
         self.config = config
         self.sports = sports ?? SportsMonitor()
         // Relay changes from the nested monitor after its published values have changed.
@@ -117,6 +119,8 @@ final class IslandModel: ObservableObject {
         }
     }
 
+    var showsActivityPane: Bool { !activities.isEmpty || !history.isEmpty }
+
     // MARK: - Sizes
 
     func size(for p: Presentation) -> CGSize {
@@ -125,9 +129,11 @@ final class IslandModel: ObservableObject {
         case .idle: return n
         case .compact: return CGSize(width: n.width + compactWing * 2, height: n.height)
         case .banner: return CGSize(width: max(n.width + 250, 440), height: n.height + 72)
-        case .expanded: return tab == .sports
-            ? CGSize(width: max(n.width + 530, 760), height: n.height + 380)
-            : CGSize(width: max(n.width + 450, 660), height: n.height + 252)
+        case .expanded:
+            if tab == .sports { return CGSize(width: max(n.width + 450, 660), height: n.height + 342) }
+            if tab == .shelf { return CGSize(width: max(n.width + 290, 480), height: n.height + (shelf.count <= 4 ? 172 : 252)) }
+            if tab == .home && !showsActivityPane { return CGSize(width: max(n.width + 290, 480), height: n.height + 252) }
+            return CGSize(width: max(n.width + 450, 660), height: n.height + 252)
         case .approval:
             // Grows with the preview (a one-line command vs. an 8-line diff).
             let lines = CGFloat(max(approvals.first?.preview.lines.count ?? 1, 1))
@@ -960,13 +966,9 @@ final class IslandModel: ObservableObject {
     }
 
     func addToShelf(_ urls: [URL], atFront: Bool = false) {
-        for url in urls where !shelf.contains(url) {
-            if atFront { shelf.insert(url, at: 0) } else { shelf.append(url) }
-        }
-        if shelf.count > 24 {
-            if atFront { shelf.removeLast(shelf.count - 24) } else { shelf.removeFirst(shelf.count - 24) }
-        }
-        saveShelf()
+        shelfStore.add(urls, atFront: atFront)
+        shelf = shelfStore.urls
+        recompute()
     }
 
     /// New screenshots go to the front of the shelf, with a small thumbnail banner.
@@ -974,7 +976,7 @@ final class IslandModel: ObservableObject {
         guard config.screenshotsToShelf, !urls.isEmpty else { return }
         // Repeated watcher callbacks must not produce another banner for a capture already on the shelf.
         var seen = Set<URL>()
-        let fresh = urls.filter { seen.insert($0).inserted && !shelf.contains($0) }
+        let fresh = urls.filter { seen.insert($0).inserted && !shelfStore.contains($0) }
         guard !fresh.isEmpty else { return }
         let placed = config.screenshotsMoveOffDesktop ? fresh.map(Self.moveOffDesktop) : fresh
         addToShelf(placed, atFront: true)
@@ -1032,21 +1034,18 @@ final class IslandModel: ObservableObject {
     }
 
     func removeFromShelf(_ url: URL) {
-        shelf.removeAll { $0 == url }
-        saveShelf()
+        shelfStore.remove(url)
+        shelf = shelfStore.urls
+        recompute()
     }
 
     func clearShelf() {
-        shelf.removeAll()
-        saveShelf()
-    }
-
-    private func saveShelf() {
-        UserDefaults.standard.set(shelf.map(\.path), forKey: "shelf")
+        shelfStore.clear()
+        shelf = []
+        recompute()
     }
 
     private func loadShelf() {
-        let paths = UserDefaults.standard.stringArray(forKey: "shelf") ?? []
-        shelf = paths.filter { FileManager.default.fileExists(atPath: $0) }.map { URL(fileURLWithPath: $0) }
+        shelf = shelfStore.urls
     }
 }

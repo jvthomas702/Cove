@@ -20,11 +20,12 @@ files=[file(p,'sourcecode.swift') for p in sorted((root/'Sources/Cove').rglob('*
 files.append(file(root/'Tests/UI/CoveUIHost.swift','sourcecode.swift'))
 test_file=file(root/'Tests/UI/UIFlowTests.swift','sourcecode.swift')
 fixtures=file(root/'Tests/CoveTests/Fixtures','folder')
+logos=file(root/'Resources/TeamLogos','folder')
 def phase(name,kind,refs):
     builds=[obj(name+ref,isa='PBXBuildFile',fileRef=ref) for ref in refs]
     return obj(name,isa=kind,buildActionMask=2147483647,files=builds,runOnlyForDeploymentPostprocessing=0)
 app_src=phase('app-src','PBXSourcesBuildPhase',files)
-app_res=phase('app-res','PBXResourcesBuildPhase',[fixtures])
+app_res=phase('app-res','PBXResourcesBuildPhase',[fixtures,logos])
 test_src=phase('test-src','PBXSourcesBuildPhase',[test_file])
 base={'SDKROOT':'macosx','MACOSX_DEPLOYMENT_TARGET':'14.0','SWIFT_VERSION':'5.0','CODE_SIGN_IDENTITY':'-','CODE_SIGN_STYLE':'Manual','ENABLE_HARDENED_RUNTIME':'NO','GENERATE_INFOPLIST_FILE':'YES','SWIFT_OPTIMIZATION_LEVEL':'-Onone'}
 def configs(name,extra):
@@ -36,7 +37,7 @@ app_target=obj('app-target',isa='PBXNativeTarget',name='CoveUIHost',productName=
 proxy=obj('proxy',isa='PBXContainerItemProxy',containerPortal=ident('project'),proxyType=1,remoteGlobalIDString=app_target,remoteInfo='CoveUIHost')
 dep=obj('dep',isa='PBXTargetDependency',target=app_target,targetProxy=proxy)
 test_target=obj('test-target',isa='PBXNativeTarget',name='CoveUITests',productName='CoveUITests',productReference=test_product,productType='com.apple.product-type.bundle.ui-testing',buildConfigurationList=configs('test',{'PRODUCT_BUNDLE_IDENTIFIER':'app.cove.ui-tests','PRODUCT_NAME':'CoveUITests','TEST_TARGET_NAME':'CoveUIHost'}),buildPhases=[test_src],buildRules=[],dependencies=[dep])
-group=obj('group',isa='PBXGroup',children=files+[test_file,fixtures,app_product,test_product],sourceTree='<group>')
+group=obj('group',isa='PBXGroup',children=files+[test_file,fixtures,logos,app_product,test_product],sourceTree='<group>')
 proj=obj('project',isa='PBXProject',attributes={'LastUpgradeCheck':'1600','TargetAttributes':{test_target:{'TestTargetID':app_target}}},buildConfigurationList=configs('project',{}),compatibilityVersion='Xcode 14.0',developmentRegion='en',knownRegions=['en','Base'],mainGroup=group,projectDirPath='',projectRoot='',targets=[app_target,test_target])
 (project/'project.pbxproj').write_text('// !$*UTF8*$!\n'+emit({'archiveVersion':1,'classes':{},'objectVersion':56,'objects':objects,'rootObject':proj}))
 schemes=project/'xcshareddata/xcschemes';schemes.mkdir(parents=True)

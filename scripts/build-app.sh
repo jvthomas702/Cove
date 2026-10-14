@@ -18,6 +18,7 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/Cove"
 cp "$ROOT/Resources/Info.plist" "$APP/Contents/Info.plist"
+cp -R "$ROOT/Resources/TeamLogos" "$APP/Contents/Resources/TeamLogos"
 # Bundle the CLI tools and browser extension so Settings can install them without this repo.
 mkdir -p "$APP/Contents/Resources/bin"
 cp "$ROOT"/bin/* "$APP/Contents/Resources/bin/"

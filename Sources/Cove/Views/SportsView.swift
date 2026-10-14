@@ -17,6 +17,7 @@ private struct TeamMatchupBackground: View {
 struct SportsPane: View {
     @ObservedObject var model: IslandModel
     @ObservedObject var sports: SportsMonitor
+    @State private var showingGames = false
 
     init(model: IslandModel) {
         self.model = model
@@ -44,6 +45,16 @@ struct SportsPane: View {
                     .help("Games featuring at least one Top 25 team")
                 }
                 Spacer(minLength: 0)
+                Button {
+                    showingGames.toggle()
+                } label: {
+                    HStack(spacing: 4) {
+                        Text("Games")
+                        Image(systemName: showingGames ? "chevron.up" : "chevron.down")
+                    }.font(Theme.Font.caption)
+                }
+                .buttonStyle(.plain).foregroundStyle(Palette.blue)
+                .accessibilityIdentifier("sports.games")
                 if sports.loading { ProgressView().controlSize(.mini) }
                 IconButton(systemImage: "arrow.clockwise", size: 12, hit: 24) { sports.refresh() }
                     .help("Refresh games")
@@ -54,12 +65,11 @@ struct SportsPane: View {
                 SportsEmpty(title: "Sports is turned off", detail: "Enable it in Settings → Features.")
                 Button("Open settings") { model.openSettings?(.features) }.buttonStyle(.plain)
             } else {
-                HStack(alignment: .top, spacing: 12) {
-                    gameList.frame(width: 220)
-                    SportsDetail(sports: sports)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                if showingGames || model.config.sportsGameID == nil {
+                    gameList.frame(height: 90)
                 }
-                .frame(maxHeight: .infinity)
+                SportsDetail(sports: sports)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
         }
     }
@@ -75,10 +85,10 @@ struct SportsPane: View {
                             ? "No Top 25 matchups in this slate. Turn off Top 25 to see all FBS games."
                             : "Check back for the next slate of games.")
             } else {
-                ScrollView {
-                    LazyVStack(spacing: 5) {
+                ScrollView(.horizontal) {
+                    LazyHStack(spacing: 6) {
                         ForEach(model.visibleSportsGames) { game in
-                            Button { model.chooseSportsGame(game) } label: {
+                            Button { model.chooseSportsGame(game); showingGames = false } label: {
                                 VStack(alignment: .leading, spacing: 4) {
                                     HStack {
                                         HStack(spacing: 5) {
@@ -103,7 +113,7 @@ struct SportsPane: View {
                                     }
                                 }
                                 .padding(9)
-                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .frame(width: 180, alignment: .leading)
                                 .background { TeamMatchupBackground(game: game).clipShape(RoundedRectangle(cornerRadius: 12)) }
                                 .overlay { RoundedRectangle(cornerRadius: 12).strokeBorder(game.id == model.config.sportsGameID ? game.away.tint.opacity(0.65) : Theme.hairline, lineWidth: 1) }
                                 .contentShape(Rectangle())
@@ -112,8 +122,9 @@ struct SportsPane: View {
                             .help("Follow \(game.away.name) at \(game.home.name)")
                             .accessibilityIdentifier("sports.game.\(game.id)")
                         }
-                    }
+                    }.padding(.vertical, 2)
                 }
+                .accessibilityIdentifier("sports.gamePicker")
             }
         }
     }
@@ -193,16 +204,15 @@ struct SportsScoreHeader: View {
                 Text("–").font(Theme.Font.caption).foregroundStyle(Theme.inkTertiary)
                 teamScore(game.home)
             }
-            .accessibilityElement(children: .ignore)
+            .accessibilityElement(children: .contain)
             .accessibilityLabel("\(game.away.name) \(game.away.score), \(game.home.name) \(game.home.score), \(game.status)")
         }
     }
 
     private func teamScore(_ team: SportsTeam) -> some View {
         VStack(spacing: 5) {
-            Capsule().fill(team.tint).frame(height: 3)
-            HStack(spacing: 6) {
-                TeamLogo(team: team, size: 28)
+            HStack(spacing: 7) {
+                TeamLogo(team: team, size: 34)
                 Text(team.label).font(Theme.Font.headline).foregroundStyle(team.tint)
                 Spacer(minLength: 0)
                 Text(team.score).font(.system(size: 20, weight: .bold, design: .rounded).monospacedDigit())

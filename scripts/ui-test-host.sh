@@ -4,7 +4,8 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 TEST_STAGE="$(mktemp -d /tmp/cove-ui-test.XXXXXX)"
 APP="$TEST_STAGE/Cove UI Test.app"
-mkdir -p "$APP/Contents/MacOS"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+cp -R Resources/TeamLogos "$APP/Contents/Resources/TeamLogos"
 cat > "$APP/Contents/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?><!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"><plist version="1.0"><dict><key>CFBundleIdentifier</key><string>app.cove.ui-test</string><key>CFBundleName</key><string>Cove UI Test</string><key>CFBundleExecutable</key><string>CoveUIHost</string><key>CFBundlePackageType</key><string>APPL</string></dict></plist>
 PLIST

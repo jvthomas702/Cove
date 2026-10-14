@@ -48,12 +48,18 @@ struct UIHostView: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("Isolated UI test · recorded ESPN feeds").font(.caption)
+                Text("UI fixture").font(.caption)
                 Spacer()
                 Button("Show notch", action: showNotch)
                 Button("Quiet screenshot") {
-                    model.addScreenshots([URL(fileURLWithPath: "/tmp/Cove UI Screenshot.png")])
+                    let shot = FileManager.default.temporaryDirectory.appendingPathComponent("Cove UI Screenshot.png")
+                    if let logo = Bundle.main.url(forResource: "nba-1", withExtension: "png", subdirectory: "TeamLogos"),
+                       let data = try? Data(contentsOf: logo) { try? data.write(to: shot) }
+                    model.addScreenshots([shot])
                     print("CAPTURE tab=\(model.tab.rawValue) banner=\(model.banner != nil)")
+                }
+                Button("Delete source") {
+                    try? FileManager.default.removeItem(at: FileManager.default.temporaryDirectory.appendingPathComponent("Cove UI Screenshot.png"))
                 }
                 Button("Offline") { UIFeed.offline.toggle(); model.sports.refresh() }
             }.padding(8)
@@ -77,7 +83,11 @@ struct UIHostView: View {
         var config = CoveConfig()
         config.calendar = false; config.sounds = false; config.desktopAIActivity = false
         config.homeWidget = .sports; config.sportsLeague = .nba; config.sportsGameID = "401810946"
-        model = IslandModel(config: config, sports: SportsMonitor(session: URLSession(configuration: sessionConfig)))
+        let shelfDefaults = UserDefaults(suiteName: "app.cove.ui-test.shelf")!
+        if !CommandLine.arguments.contains("--preserve-shelf") {
+            ShelfStore(defaults: shelfDefaults, root: FileManager.default.temporaryDirectory.appendingPathComponent("cove-ui-shelf")).clear()
+        }
+        model = IslandModel(config: config, sports: SportsMonitor(session: URLSession(configuration: sessionConfig)), shelfStore: ShelfStore(defaults: shelfDefaults, root: FileManager.default.temporaryDirectory.appendingPathComponent("cove-ui-shelf")))
         model.applyConfig = { [weak self] config in
             guard let self else { return }
             self.model.config = config; self.model.sports.update(config: config)
@@ -99,7 +109,7 @@ struct UIHostView: View {
             self.model.setExpanded(true)
             self.notch.panel.orderFrontRegardless()
         }))
-        resizeSubscription = model.$tab.dropFirst().sink { [weak self] _ in
+        resizeSubscription = model.$currentSize.dropFirst().sink { [weak self] _ in
             DispatchQueue.main.async {
                 guard let self else { return }
                 let size = self.model.size(for: .expanded)

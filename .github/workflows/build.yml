@@ -68,6 +68,9 @@ jobs:
             ls build/Cove.app/Contents/Resources build/Cove.app/Contents/Resources/bin
             test -f build/Cove.app/Contents/Resources/AppIcon.icns
             test -f build/Cove.app/Contents/Resources/extension/manifest.json
+            test -f build/Cove.app/Contents/Resources/TeamLogos/nba-1.png
+            test -f build/Cove.app/Contents/Resources/TeamLogos/nfl-1.png
+            test -f build/Cove.app/Contents/Resources/TeamLogos/cfb-194.png
             echo "bundle ok"
           } 2>&1 | tee bundle.log
 

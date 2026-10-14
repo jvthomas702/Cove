@@ -56,6 +56,7 @@ struct SportsTeam: Equatable {
     var alternateHex: UInt32? = nil
     var logoURL: URL? = nil
     var periodScores: [String] = []
+    var league: SportsLeague? = nil
     var label: String { rank.map { "#\($0) \(abbreviation)" } ?? abbreviation }
 
     /// Use the supplied brand hue, lifting very dark colors so labels remain legible on black.
@@ -188,14 +189,14 @@ enum SportsParser {
 
     static func game(_ competition: [String: Any], id: String, league: SportsLeague, date: String?) -> SportsGame? {
         guard let competitors = competition["competitors"] as? [[String: Any]],
-              let home = competitors.first(where: { $0["homeAway"] as? String == "home" }).flatMap(team),
-              let away = competitors.first(where: { $0["homeAway"] as? String == "away" }).flatMap(team) else { return nil }
+              let home = competitors.first(where: { $0["homeAway"] as? String == "home" }).flatMap({ team($0, league: league) }),
+              let away = competitors.first(where: { $0["homeAway"] as? String == "away" }).flatMap({ team($0, league: league) }) else { return nil }
         let type = (competition["status"] as? [String: Any])?["type"] as? [String: Any] ?? [:]
         return SportsGame(id: id, league: league, start: date.flatMap(parseDate),
                           away: away, home: home, state: type["state"] as? String ?? "pre",
                           status: type["shortDetail"] as? String ?? type["detail"] as? String ?? "Scheduled")
     }
-    private static func team(_ competitor: [String: Any]) -> SportsTeam? {
+    private static func team(_ competitor: [String: Any], league: SportsLeague) -> SportsTeam? {
         guard let team = competitor["team"] as? [String: Any],
               let name = team["displayName"] as? String else { return nil }
         let rank = (competitor["curatedRank"] as? [String: Any])?["current"] as? Int ?? competitor["rank"] as? Int
@@ -204,7 +205,7 @@ enum SportsParser {
                           id: team["id"] as? String, primaryHex: SportsTeam.colorHex(team["color"]),
                           alternateHex: SportsTeam.colorHex(team["alternateColor"]),
                           logoURL: SportsTeam.logoURL(team["logo"]) ?? (team["logos"] as? [[String: Any]])?.compactMap { SportsTeam.logoURL($0["href"]) }.first,
-                          periodScores: (competitor["linescores"] as? [[String: Any]] ?? []).map { string($0["displayValue"]) ?? string($0["value"]) ?? "–" })
+                          periodScores: (competitor["linescores"] as? [[String: Any]] ?? []).map { string($0["displayValue"]) ?? string($0["value"]) ?? "–" }, league: league)
     }
     static func string(_ value: Any?) -> String? {
         if let text = value as? String { return text }

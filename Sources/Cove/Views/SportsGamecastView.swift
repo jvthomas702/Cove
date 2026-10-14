@@ -21,7 +21,7 @@ private struct SportsGamecastDetail: View {
     let game: SportsGame
     @State private var mode = GamecastMode.plays
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 6) {
             SportsScoreHeader(game: game)
             if let situation = sports.situation {
                 HStack(spacing: 6) {
@@ -66,7 +66,7 @@ struct SportsPlayRow: View {
         HStack(alignment: .top, spacing: 8) {
             if let team { TeamLogo(team: team, size: 22) }
             else { Image(systemName: "clock").font(.system(size: 11)).foregroundStyle(Theme.inkTertiary).frame(width: 22, height: 22) }
-            VStack(alignment: .leading, spacing: 5) {
+            VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
                     Text(play.timeLabel).foregroundStyle(Theme.inkTertiary)
                     if let badge = play.badge {
@@ -86,13 +86,13 @@ struct SportsPlayRow: View {
                 }
                 Text(play.text).font(Theme.Font.body).foregroundStyle(Theme.ink)
                     .fixedSize(horizontal: false, vertical: true)
-                if !play.athleteNames.isEmpty {
+                if !play.athleteNames.isEmpty && !play.athleteNames.allSatisfy({ play.text.contains($0) }) {
                     Text(play.athleteNames.joined(separator: " · ")).font(.system(size: 9.5))
                         .foregroundStyle(Theme.inkTertiary).lineLimit(1)
                 }
             }
         }
-        .padding(9)
+        .padding(7)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(RoundedRectangle(cornerRadius: 10).fill(play.scoring ? tint.opacity(0.10) : Theme.surface))
         .overlay(alignment: .leading) {

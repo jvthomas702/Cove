@@ -142,10 +142,13 @@ struct HomePane: View {
                 }
                 .scrollIndicators(.automatic)
             }
-            .frame(width: 280)
+            .frame(width: model.showsActivityPane ? 280 : nil)
+            .frame(maxWidth: model.showsActivityPane ? 280 : .infinity)
 
-            ActivityList(model: model)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            if model.showsActivityPane {
+                ActivityList(model: model)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            }
         }
     }
 }
@@ -772,13 +775,13 @@ struct ShelfPane: View {
                 HStack {
                     SectionTitle(title: "Shelf", count: model.shelf.count)
                     Spacer()
-                    Text("Drag files out to use them")
+                    Text("Saved until you remove them")
                         .font(.system(size: 10.5))
                         .foregroundStyle(Theme.inkTertiary)
                     ChipButton(title: "Clear", systemImage: "trash") { model.clearShelf() }
                 }
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: Theme.Space.s) {
+                ScrollView {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 96), spacing: 8)], spacing: 8) {
                         ForEach(model.shelf, id: \.self) { url in
                             ShelfItem(url: url, model: model)
                         }
@@ -787,6 +790,7 @@ struct ShelfPane: View {
                     .padding(.horizontal, 2)
                 }
                 .frame(maxHeight: .infinity)
+                .accessibilityIdentifier("shelf.items")
                 .background(
                     RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
                         .strokeBorder(Palette.blue.opacity(model.isDropTargeted ? 0.7 : 0), lineWidth: 1.5)
@@ -842,6 +846,9 @@ struct ShelfItem: View {
                 .truncationMode(.middle)
                 .multilineTextAlignment(.center)
                 .frame(width: 80)
+            if !FileManager.default.fileExists(atPath: url.path) {
+                Text("Unavailable").font(.system(size: 9)).foregroundStyle(Palette.amber)
+            }
         }
         .padding(8)
         .background(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).fill(hovering ? Theme.surfaceRaised : Theme.surface))
@@ -857,6 +864,7 @@ struct ShelfItem: View {
                         .background(Circle().fill(Color.white.opacity(0.85)))
                 }
                 .buttonStyle(PressableStyle())
+                .accessibilityLabel("Remove \(url.lastPathComponent) from shelf")
                 .offset(x: 4, y: -4)
                 .transition(.scale.combined(with: .opacity))
             }
@@ -867,6 +875,7 @@ struct ShelfItem: View {
         .onDrag { NSItemProvider(contentsOf: url) ?? NSItemProvider() }
         .onTapGesture(count: 2) { NSWorkspace.shared.open(url) }
         .help(url.path)
+        .accessibilityIdentifier("shelf.item.\(url.lastPathComponent)")
         .contextMenu {
             Button("Open") { NSWorkspace.shared.open(url) }
             Button("Copy") { model.copyToPasteboard(url) }

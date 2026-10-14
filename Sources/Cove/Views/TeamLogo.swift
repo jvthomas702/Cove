@@ -13,10 +13,29 @@ struct TeamLogo: View {
         return cache
     }()
 
+    static func bundledURL(team: SportsTeam, bundle: Bundle = .main) -> URL? {
+        guard let league = team.league, let id = team.id, id.allSatisfy(\.isNumber), !id.isEmpty else { return nil }
+        let prefix = league == .collegeFootball ? "cfb" : league.rawValue
+        return bundle.url(forResource: "\(prefix)-\(id)", withExtension: "png", subdirectory: "TeamLogos")
+    }
+
+    private var bundledImage: NSImage? {
+        guard let url = Self.bundledURL(team: team) else { return nil }
+        if let cached = Self.cache.object(forKey: url as NSURL) { return cached }
+        guard let image = NSImage(contentsOf: url) else { return nil }
+        Self.cache.setObject(image, forKey: url as NSURL)
+        return image
+    }
+
+    private var remoteImage: NSImage? {
+        guard let url = team.logoURL else { return nil }
+        return Self.cache.object(forKey: url as NSURL) ?? (loadedURL == url ? image : nil)
+    }
+
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: size * 0.22).fill(Color.white.opacity(0.08))
-            if let url = team.logoURL, let logo = Self.cache.object(forKey: url as NSURL) ?? (loadedURL == url ? image : nil) {
+            if let logo = bundledImage ?? remoteImage {
                 Image(nsImage: logo).resizable().scaledToFit().padding(size * 0.08)
             } else {
                 Text(String(team.abbreviation.prefix(3)))
@@ -25,11 +44,14 @@ struct TeamLogo: View {
             }
         }
         .frame(width: size, height: size)
-        .accessibilityHidden(true) // Adjacent team label already names the team.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(team.name) logo")
+        .accessibilityValue(bundledImage != nil || remoteImage != nil ? "Image loaded" : "Team abbreviation")
+        .accessibilityIdentifier("sports.logo.\(team.league?.rawValue ?? "unknown").\(team.id ?? team.abbreviation)")
         .task(id: team.logoURL) {
             image = nil
             loadedURL = nil
-            guard let url = team.logoURL else { return }
+            guard bundledImage == nil, let url = team.logoURL else { return }
             if let cached = Self.cache.object(forKey: url as NSURL) {
                 image = cached; loadedURL = url; return
             }
