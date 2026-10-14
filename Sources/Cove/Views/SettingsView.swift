@@ -7,6 +7,7 @@ import SwiftUI
 @MainActor
 final class SettingsController: ObservableObject {
     let model: IslandModel
+    let updater: CoveUpdater
     /// Called with the new config whenever a setting changes (AppDelegate saves and applies it).
     var onConfigChange: ((CoveConfig) -> Void)?
     var onRunDemo: (() -> Void)?
@@ -33,8 +34,9 @@ final class SettingsController: ObservableObject {
     private var timer: Timer?
     private var modelChanges: AnyCancellable?
 
-    init(model: IslandModel) {
+    init(model: IslandModel, updater: CoveUpdater? = nil) {
         self.model = model
+        self.updater = updater ?? CoveUpdater()
         // Settings panes read config and calendar status from the model, so redraw when it changes.
         modelChanges = model.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }
         refresh()
@@ -407,10 +409,16 @@ private struct FeaturesPane: View {
             }
         }
         SettingsGroup(title: "Sports",
-                      footer: "Choose a game in the Sports tab to pin its score and latest play to the Home widget. Live games refresh about every 15 seconds. ESPN coverage and delays vary.") {
+                      footer: "Choose a game in the Sports tab to pin its score and latest play to the Home widget. Selected live games refresh about every 10 seconds; other followed scores refresh each minute. ESPN coverage and delays vary.") {
             ToggleRow(title: "Enable sports", detail: "NBA, NFL and college football", isOn: controller.binding(\.sportsEnabled))
             ToggleRow(title: "College football: Top 25 games only", detail: "At least one ranked team; turn off to browse all FBS games",
                       isOn: controller.binding(\.sportsRankedOnly))
+        }
+        SettingsGroup(title: "Favorite teams", footer: "Favorites stay visible in the game picker, including unranked college teams. Auto-follow selects your next live or upcoming favorite matchup after the current game ends.") {
+            SportsFavoritesPicker(model: controller.model)
+            ToggleRow(title: "Automatically follow favorite teams", isOn: controller.binding(\.sportsAutoFollow))
+            ToggleRow(title: "Notify when a followed game starts", isOn: controller.binding(\.sportsStartAlerts))
+            ToggleRow(title: "Notify about followed score changes", isOn: controller.binding(\.sportsScoreAlerts))
         }
         SettingsGroup(title: "Claude Code permission prompts",
               footer: "Smart shows prompts in the notch unless Claude's terminal is in front or you're away from the Mac. Unanswered prompts go back to the terminal.") {
@@ -766,6 +774,7 @@ private struct AboutPane: View {
                 Text(controller.model.serverStatus).font(.caption).foregroundStyle(.secondary)
             }
         }
+        UpdateSettingsGroup(updater: controller.updater)
         SettingsGroup(title: "Help") {
             HStack {
                 Button("Run the demo") { controller.onRunDemo?() }
@@ -775,6 +784,20 @@ private struct AboutPane: View {
             Text("Copy diagnostics puts a short report on your clipboard (versions, permissions, connections) to paste into a bug report. It contains no notification or chat content.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+        }
+    }
+}
+
+
+private struct UpdateSettingsGroup: View {
+    @ObservedObject var updater: CoveUpdater
+    var body: some View {
+        SettingsGroup(title: "Updates", footer: updater.status) {
+            ToggleRow(title: "Automatically check for updates", isOn: Binding(get: { updater.automaticChecks }, set: { updater.setAutomaticChecks($0) }))
+            ToggleRow(title: "Download and install updates automatically", detail: "Install verified updates when Cove is ready to restart",
+                      isOn: Binding(get: { updater.automaticDownloads }, set: { updater.setAutomaticDownloads($0) }))
+            Button("Check for updates…") { updater.check() }.disabled(!updater.canCheck)
+                .accessibilityIdentifier("updates.check")
         }
     }
 }

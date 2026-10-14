@@ -47,12 +47,16 @@ final class IslandModel: ObservableObject {
     var applyConfig: ((CoveConfig) -> Void)?
     let sports: SportsMonitor
     private let shelfStore: ShelfStore
+    private let shelfEditor = ShelfEditorController()
+    @Published private(set) var canUndoShelf = false
     private var sportsChanges: AnyCancellable?
     /// When the browser extension last reported in (shown in Settings → Connections).
     @Published private(set) var lastExtensionEvent: Date?
+    @Published var selectedAIActivityID: String?
     @Published var desktopAIStatus = "Checking ChatGPT app…"
     @Published private(set) var presentation: Presentation = .idle
     @Published private(set) var expanded = false
+    @Published private(set) var isPinnedOpen = false
     @Published var tab: Tab = .home { didSet { recompute() } }
     @Published private(set) var activities: [Activity] = []
     @Published private(set) var banner: Banner?
@@ -109,6 +113,14 @@ final class IslandModel: ObservableObject {
                 self?.recompute()
             }
         }
+        self.sports.onAutomaticSelection = { [weak self] game in
+            guard let self else { return }
+            var next = self.config; next.sportsLeague = game.league; next.sportsGameID = game.id
+            self.applyConfig?(next)
+        }
+        self.sports.onAlert = { [weak self] alert in
+            self?.show(Banner(title: alert.title, body: alert.body, style: .info, icon: .symbol("sportscourt.fill", Palette.blue), source: "Sports"))
+        }
         loadShelf()
         pruneTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.prune() }
@@ -131,8 +143,8 @@ final class IslandModel: ObservableObject {
         case .banner: return CGSize(width: max(n.width + 250, 440), height: n.height + 72)
         case .expanded:
             if tab == .sports { return CGSize(width: max(n.width + 450, 660), height: n.height + 342) }
-            if tab == .shelf { return CGSize(width: max(n.width + 290, 480), height: n.height + (shelf.count <= 4 ? 172 : 252)) }
-            if tab == .home && !showsActivityPane { return CGSize(width: max(n.width + 290, 480), height: n.height + 252) }
+            if tab == .shelf { return CGSize(width: max(n.width + 310, 500), height: n.height + (shelf.count <= 4 ? 172 : 252)) }
+            if tab == .home && !showsActivityPane { return CGSize(width: max(n.width + 310, 500), height: n.height + 252) }
             return CGSize(width: max(n.width + 450, 660), height: n.height + 252)
         case .approval:
             // Grows with the preview (a one-line command vs. an 8-line diff).
@@ -247,7 +259,7 @@ final class IslandModel: ObservableObject {
             MainActor.assumeIsolated {
                 guard let self else { return }
                 self.hoverWork = nil
-                guard !self.isHovering, !self.isDropTargeted, self.menuTrackingDepth == 0 else { return }
+                guard !self.isHovering, !self.isDropTargeted, self.menuTrackingDepth == 0, !self.isPinnedOpen else { return }
                 self.setExpanded(false)
             }
         }
@@ -264,6 +276,7 @@ final class IslandModel: ObservableObject {
     }
 
     func setExpanded(_ value: Bool) {
+        if !value { isPinnedOpen = false }
         guard value != expanded else { return }
         expanded = value
         // Closed on purpose (a click) while the pointer is still over it: don't re-open until it leaves.
@@ -286,6 +299,33 @@ final class IslandModel: ObservableObject {
 
     func toggleExpanded() { setExpanded(!expanded) }
 
+    func togglePinnedOpen() {
+        isPinnedOpen.toggle()
+        if isPinnedOpen { hoverWork?.cancel(); hoverWork = nil; setExpanded(true) }
+        else if !isHovering { scheduleCollapse(after: 0.3) }
+    }
+
+    func toggleFavorite(_ teamID: String, league: SportsLeague) {
+        var next = config
+        let key = "\(league.rawValue):\(teamID)"
+        if next.sportsFavoriteTeams.contains(key) { next.sportsFavoriteTeams.removeAll { $0 == key } }
+        else { next.sportsFavoriteTeams.append(key) }
+        applyConfig?(next)
+    }
+
+    func toggleWatchedGame(_ game: SportsGame) {
+        var next = config
+        if next.sportsWatchedGames.contains(game.key) { next.sportsWatchedGames.removeAll { $0 == game.key } }
+        else { next.sportsWatchedGames.append(game.key) }
+        applyConfig?(next)
+    }
+
+    var followedSportsGames: [SportsGame] {
+        var games = sports.allGames.filter { $0.isFollowed(in: config) }
+        if let game = sports.selectedGame, !games.contains(where: { $0.key == game.key }) { games.insert(game, at: 0) }
+        return games.sorted { if $0.isLive != $1.isLive { return $0.isLive }; return ($0.start ?? .distantFuture) < ($1.start ?? .distantFuture) }
+    }
+
     func chooseSportsLeague(_ league: SportsLeague) {
         guard league != config.sportsLeague else { return }
         var next = config
@@ -304,7 +344,7 @@ final class IslandModel: ObservableObject {
     }
 
     var visibleSportsGames: [SportsGame] {
-        sports.games.filter { config.sportsLeague != .collegeFootball || !config.sportsRankedOnly || $0.isRanked }
+        sports.games.filter { config.sportsLeague != .collegeFootball || !config.sportsRankedOnly || $0.isRanked || $0.isFavorite(in: config) }
     }
 
     func setDropTargeted(_ targeted: Bool) {
@@ -1035,17 +1075,36 @@ final class IslandModel: ObservableObject {
 
     func removeFromShelf(_ url: URL) {
         shelfStore.remove(url)
+        canUndoShelf = shelfStore.canUndo
         shelf = shelfStore.urls
         recompute()
     }
 
     func clearShelf() {
         shelfStore.clear()
+        canUndoShelf = shelfStore.canUndo
         shelf = []
         recompute()
     }
 
+    func undoShelfRemoval() {
+        shelfStore.undo(); shelf = shelfStore.urls; canUndoShelf = shelfStore.canUndo; recompute()
+    }
+
+    func previewShelfItem(_ url: URL) { shelfEditor.show(url: url, model: self) }
+
+    func renameShelfItem(_ url: URL, baseName: String) throws -> URL {
+        let renamed = try shelfStore.rename(url, baseName: baseName)
+        shelf = shelfStore.urls; return renamed
+    }
+
+    func saveAnnotatedShelfImage(_ data: Data, name: String) throws -> URL {
+        let url = try shelfStore.saveEditedImage(data, name: name)
+        shelf = shelfStore.urls; recompute(); return url
+    }
+
     private func loadShelf() {
+        canUndoShelf = shelfStore.canUndo
         shelf = shelfStore.urls
     }
 }

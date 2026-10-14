@@ -51,6 +51,11 @@ jobs:
       - name: Package app
         run: ./scripts/build-app.sh 2>&1 | tee package.log
 
+      - name: Signed update validation
+        run: |
+          ./scripts/test-update-signatures.sh 2>&1 | tee update-signatures.log
+          python3 scripts/test-update-install.py .build 2>&1 | tee update-install.log
+
       - name: Check scripts and extension
         run: |
           {
@@ -71,6 +76,7 @@ jobs:
             test -f build/Cove.app/Contents/Resources/TeamLogos/nba-1.png
             test -f build/Cove.app/Contents/Resources/TeamLogos/nfl-1.png
             test -f build/Cove.app/Contents/Resources/TeamLogos/cfb-194.png
+            test -f build/Cove.app/Contents/Frameworks/Sparkle.framework/Sparkle
             echo "bundle ok"
           } 2>&1 | tee bundle.log
 

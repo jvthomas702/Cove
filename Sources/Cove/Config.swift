@@ -85,6 +85,11 @@ struct CoveConfig: Codable {
     var sportsGameID: String? = nil
     /// "Big games": at least one Top 25 team. Turn off to browse all FBS games.
     var sportsRankedOnly: Bool = true
+    var sportsFavoriteTeams: [String] = []
+    var sportsWatchedGames: [String] = []
+    var sportsAutoFollow: Bool = true
+    var sportsStartAlerts: Bool = false
+    var sportsScoreAlerts: Bool = false
 
     // MARK: Volume / brightness HUD
     /// "replace": Cove handles the volume/brightness keys and hides the system pop-up (needs Accessibility).
@@ -136,6 +141,11 @@ struct CoveConfig: Codable {
         sportsLeague = value(.sportsLeague, d.sportsLeague)
         sportsGameID = value(.sportsGameID, d.sportsGameID)
         sportsRankedOnly = value(.sportsRankedOnly, d.sportsRankedOnly)
+        sportsFavoriteTeams = Array(Set(value(.sportsFavoriteTeams, d.sportsFavoriteTeams))).sorted()
+        sportsWatchedGames = Array(Set(value(.sportsWatchedGames, d.sportsWatchedGames))).sorted()
+        sportsAutoFollow = value(.sportsAutoFollow, d.sportsAutoFollow)
+        sportsStartAlerts = value(.sportsStartAlerts, d.sportsStartAlerts)
+        sportsScoreAlerts = value(.sportsScoreAlerts, d.sportsScoreAlerts)
         eventStartAlert = value(.eventStartAlert, d.eventStartAlert)
         buddy = value(.buddy, d.buddy)
         buddyAlwaysVisible = value(.buddyAlwaysVisible, d.buddyAlwaysVisible)

@@ -48,7 +48,16 @@ struct UIHostView: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("UI fixture").font(.caption)
+                Menu("Fixtures") {
+                    Button("Add AI task") {
+                        model.ingest(CoveEvent(id: "web:claude:ui:tab:2", title: "Second AI task", body: "A second simulated response", kind: "running", source: "claude", phase: "Reasoning", url: "https://claude.ai/chat/ui"))
+                    }
+                    Button("Follow slate") {
+                        var config = model.config; config.sportsWatchedGames = model.sports.allGames.map(\.key)
+                        model.applyConfig?(config)
+                    }
+                    Button("Favorite Miami Heat") { model.toggleFavorite("14", league: .nba) }
+                }
                 Spacer()
                 Button("Show notch", action: showNotch)
                 Button("Quiet screenshot") {
@@ -62,7 +71,7 @@ struct UIHostView: View {
                     try? FileManager.default.removeItem(at: FileManager.default.temporaryDirectory.appendingPathComponent("Cove UI Screenshot.png"))
                 }
                 Button("Offline") { UIFeed.offline.toggle(); model.sports.refresh() }
-            }.padding(8)
+            }.controlSize(.small).font(.system(size: 10.5)).padding(8)
             ExpandedView(model: model).frame(width: model.size(for: .expanded).width, height: model.size(for: .expanded).height).background(Color.black)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)

@@ -137,6 +137,66 @@ final class UIFlowTests: XCTestCase {
         XCTAssertTrue(item.waitForExistence(timeout: 5))
     }
 
+    func testPinnedNotchAndAnchoredTabPositions() {
+        window.buttons["Show notch"].click()
+        let notch = app.dialogs["Cove Test Notch"]
+        let pin = notch.buttons["notch.pin"]
+        XCTAssertTrue(pin.waitForExistence(timeout: 5)); pin.click()
+        window.buttons["Offline"].click()
+        Thread.sleep(forTimeInterval: 0.6)
+        XCTAssertTrue(pin.exists)
+        let home = notch.buttons["tab.home"]
+        let original = home.frame
+        notch.buttons["tab.sports"].click()
+        XCTAssertTrue(notch.scrollViews["sports.plays"].waitForExistence(timeout: 5))
+        XCTAssertEqual(home.frame.minX, original.minX, accuracy: 2)
+        notch.buttons["tab.shelf"].click()
+        XCTAssertTrue(notch.staticTexts.matching(NSPredicate(format: "value CONTAINS %@", "Drop files")).firstMatch.waitForExistence(timeout: 5))
+        XCTAssertEqual(home.frame.minX, original.minX, accuracy: 2)
+        notch.buttons["notch.close"].click()
+        expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: pin)
+        waitForExpectations(timeout: 5)
+    }
+
+    func testMultipleScoresAndAIOverviewSelection() {
+        window.buttons["Fixtures"].click(); app.menuItems["Follow slate"].click()
+        window.buttons["tab.sports"].click()
+        XCTAssertTrue(window.scrollViews["sports.followedScores"].waitForExistence(timeout: 8))
+        window.buttons["tab.home"].click()
+        window.buttons["Fixtures"].click(); app.menuItems["Add AI task"].click()
+        let chooser = window.popUpButtons["home.widget"]
+        chooser.click(); app.menuItems["AI work"].click()
+        XCTAssertTrue(window.scrollViews["ai.overview"].waitForExistence(timeout: 5))
+        let task = window.buttons["ai.task.web:claude:ui:tab:2"]
+        XCTAssertTrue(task.waitForExistence(timeout: 5)); task.click()
+        XCTAssertTrue(window.buttons["Open Claude"].waitForExistence(timeout: 5))
+        XCTAssertTrue(text("Reasoning").exists)
+    }
+
+    func testShelfUndoRenameAndAnnotation() {
+        window.buttons["Quiet screenshot"].click(); window.buttons["tab.shelf"].click()
+        let item = window.descendants(matching: .any).matching(identifier: "shelf.item.Cove UI Screenshot.png").firstMatch
+        XCTAssertTrue(item.waitForExistence(timeout: 5))
+        window.buttons["shelf.clear"].click()
+        let undo = window.buttons["shelf.undo"]
+        XCTAssertTrue(undo.waitForExistence(timeout: 5)); undo.click()
+        XCTAssertTrue(item.waitForExistence(timeout: 5)); item.doubleClick()
+        let editor = app.windows["Cove Image Preview"]
+        XCTAssertTrue(editor.waitForExistence(timeout: 5))
+        let name = editor.textFields["shelf.rename"]
+        name.click(); name.typeKey("a", modifierFlags: .command); name.typeText("Renamed capture")
+        editor.buttons["shelf.renameSave"].click()
+        XCTAssertTrue(editor.staticTexts.matching(NSPredicate(format: "value CONTAINS %@", "Renamed saved copy")).firstMatch.waitForExistence(timeout: 5))
+        editor.radioButtons["Pen"].click()
+        let canvas = editor.descendants(matching: .any).matching(identifier: "shelf.annotationCanvas").firstMatch
+        XCTAssertTrue(canvas.waitForExistence(timeout: 5))
+        canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.3)).press(forDuration: 0.1, thenDragTo: canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.7, dy: 0.6)))
+        let save = editor.buttons["shelf.saveAnnotation"]
+        XCTAssertTrue(save.isEnabled); save.click()
+        XCTAssertTrue(editor.staticTexts.matching(NSPredicate(format: "value CONTAINS %@", "Annotated copy saved")).firstMatch.waitForExistence(timeout: 5))
+        editor.buttons["_XCUI:CloseWindow"].click()
+    }
+
     func testAllTabsRemainUsable() {
         for tab in ["schedule", "sports", "shelf", "home"] {
             window.buttons["tab.\(tab)"].click()

@@ -30,12 +30,22 @@ struct ExpandedView: View {
     private var header: some View {
         HStack(spacing: 0) {
             TabSwitcher(model: model)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .trailing)
             Color.clear.frame(width: model.notchSize.width)
             Group {
-                if let battery = model.battery { BatteryGlyph(state: battery) }
+                HStack(spacing: 5) {
+                    if let battery = model.battery { BatteryGlyph(state: battery) }
+                    IconButton(systemImage: model.isPinnedOpen ? "pin.fill" : "pin", size: 11, hit: 22) { model.togglePinnedOpen() }
+                        .foregroundStyle(model.isPinnedOpen ? Palette.blue : Theme.inkSecondary)
+                        .help(model.isPinnedOpen ? "Unpin the notch" : "Keep the notch open")
+                        .accessibilityLabel(model.isPinnedOpen ? "Unpin notch" : "Pin notch open")
+                        .accessibilityIdentifier("notch.pin")
+                    IconButton(systemImage: "xmark", size: 10, hit: 22) { model.setExpanded(false) }
+                        .help("Close the notch").accessibilityLabel("Close notch")
+                        .accessibilityIdentifier("notch.close")
+                }
             }
-            .frame(maxWidth: .infinity, alignment: .trailing)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.horizontal, 14)
         .frame(height: model.notchSize.height)
@@ -146,7 +156,10 @@ struct HomePane: View {
             .frame(maxWidth: model.showsActivityPane ? 280 : .infinity)
 
             if model.showsActivityPane {
-                ActivityList(model: model)
+                Group {
+                    if model.config.homeWidget == .ai { AIWorkOverview(model: model) }
+                    else { ActivityList(model: model) }
+                }
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             }
         }
@@ -768,33 +781,26 @@ struct ShelfPane: View {
     @ObservedObject var model: IslandModel
 
     var body: some View {
-        if model.shelf.isEmpty {
-            DropZone(targeted: model.isDropTargeted)
-        } else {
-            VStack(alignment: .leading, spacing: Theme.Space.s) {
-                HStack {
-                    SectionTitle(title: "Shelf", count: model.shelf.count)
-                    Spacer()
-                    Text("Saved until you remove them")
-                        .font(.system(size: 10.5))
-                        .foregroundStyle(Theme.inkTertiary)
-                    ChipButton(title: "Clear", systemImage: "trash") { model.clearShelf() }
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
+            HStack {
+                SectionTitle(title: "Shelf", count: model.shelf.count)
+                Spacer()
+                if model.canUndoShelf {
+                    ChipButton(title: "Undo", systemImage: "arrow.uturn.backward") { model.undoShelfRemoval() }
+                        .accessibilityIdentifier("shelf.undo")
                 }
+                if !model.shelf.isEmpty {
+                    ChipButton(title: "Clear", systemImage: "trash") { model.clearShelf() }
+                        .accessibilityIdentifier("shelf.clear")
+                }
+            }
+            if model.shelf.isEmpty { DropZone(targeted: model.isDropTargeted) }
+            else {
                 ScrollView {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 96), spacing: 8)], spacing: 8) {
-                        ForEach(model.shelf, id: \.self) { url in
-                            ShelfItem(url: url, model: model)
-                        }
-                    }
-                    .padding(.vertical, 6)
-                    .padding(.horizontal, 2)
-                }
-                .frame(maxHeight: .infinity)
-                .accessibilityIdentifier("shelf.items")
-                .background(
-                    RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
-                        .strokeBorder(Palette.blue.opacity(model.isDropTargeted ? 0.7 : 0), lineWidth: 1.5)
-                )
+                        ForEach(model.shelf, id: \.self) { url in ShelfItem(url: url, model: model) }
+                    }.padding(.vertical, 6).padding(.horizontal, 2)
+                }.frame(maxHeight: .infinity).accessibilityIdentifier("shelf.items")
             }
         }
     }
@@ -873,11 +879,12 @@ struct ShelfItem: View {
         .animation(Theme.snappy, value: hovering)
         .onHover { hovering = $0 }
         .onDrag { NSItemProvider(contentsOf: url) ?? NSItemProvider() }
-        .onTapGesture(count: 2) { NSWorkspace.shared.open(url) }
+        .onTapGesture(count: 2) { model.previewShelfItem(url) }
         .help(url.path)
         .accessibilityIdentifier("shelf.item.\(url.lastPathComponent)")
         .contextMenu {
-            Button("Open") { NSWorkspace.shared.open(url) }
+            Button("Preview / Annotate / Rename") { model.previewShelfItem(url) }
+            Button("Open in default app") { NSWorkspace.shared.open(url) }
             Button("Copy") { model.copyToPasteboard(url) }
             Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([url]) }
             Divider()

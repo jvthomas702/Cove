@@ -55,6 +55,8 @@ struct SportsPane: View {
                 }
                 .buttonStyle(.plain).foregroundStyle(Palette.blue)
                 .accessibilityIdentifier("sports.games")
+                IconButton(systemImage: "star", size: 12, hit: 24) { model.openSettings?(.features) }
+                    .help("Choose favorite teams").accessibilityLabel("Choose favorite teams")
                 if sports.loading { ProgressView().controlSize(.mini) }
                 IconButton(systemImage: "arrow.clockwise", size: 12, hit: 24) { sports.refresh() }
                     .help("Refresh games")
@@ -67,6 +69,10 @@ struct SportsPane: View {
             } else {
                 if showingGames || model.config.sportsGameID == nil {
                     gameList.frame(height: 90)
+                }
+                FollowedScoresStrip(model: model)
+                if let error = sports.followedSlateError, model.followedSportsGames.count > 1 {
+                    Text(error).font(.system(size: 9)).foregroundStyle(Palette.amber)
                 }
                 SportsDetail(sports: sports)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -88,6 +94,7 @@ struct SportsPane: View {
                 ScrollView(.horizontal) {
                     LazyHStack(spacing: 6) {
                         ForEach(model.visibleSportsGames) { game in
+                            VStack(spacing: 3) {
                             Button { model.chooseSportsGame(game); showingGames = false } label: {
                                 VStack(alignment: .leading, spacing: 4) {
                                     HStack {
@@ -121,6 +128,10 @@ struct SportsPane: View {
                             .buttonStyle(.plain)
                             .help("Follow \(game.away.name) at \(game.home.name)")
                             .accessibilityIdentifier("sports.game.\(game.id)")
+                            Button(model.config.sportsWatchedGames.contains(game.key) ? "Unfollow game" : "Follow game") { model.toggleWatchedGame(game) }
+                                .font(.system(size: 9)).foregroundStyle(Palette.blue).buttonStyle(.plain)
+                                .accessibilityIdentifier("sports.watch.\(game.id)")
+                            }
                         }
                     }.padding(.vertical, 2)
                 }
@@ -141,7 +152,7 @@ struct SportsWidget: View {
     init(model: IslandModel) { self.model = model; self.sports = model.sports }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 7) {
             HStack {
                 SectionTitle(title: "Following", count: nil)
                 Spacer()
@@ -153,6 +164,7 @@ struct SportsWidget: View {
                 Button("Open settings") { model.openSettings?(.features) }.buttonStyle(.plain)
             } else if let game = sports.selectedGame {
                 SportsScoreHeader(game: game)
+                FollowedScoresStrip(model: model)
                 if let error = sports.detailError {
                     Text(error).font(Theme.Font.caption).foregroundStyle(Palette.amber)
                 } else if let play = sports.plays.first {

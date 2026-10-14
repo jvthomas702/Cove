@@ -96,7 +96,7 @@ final class ShelfPersistenceTests: XCTestCase {
         XCTAssertNil(model.banner); XCTAssertEqual(model.tab, .sports)
         XCTAssertEqual(model.size(for: .expanded).width, 660)
         model.tab = .home
-        XCTAssertEqual(model.size(for: .expanded).width, 480)
+        XCTAssertEqual(model.size(for: .expanded).width, 500)
         let restored = IslandModel(config: config, shelfStore: store())
         XCTAssertEqual(restored.shelf, model.shelf)
     }

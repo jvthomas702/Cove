@@ -27,6 +27,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var hiddenUntil: Date?
     private var unhideTimer: Timer?
     private var observers: [NSObjectProtocol] = []
+    private let updater = CoveUpdater()
     private var settingsController: SettingsController!
     private var settingsWindow: SettingsWindowController?
 
@@ -47,7 +48,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         windowController = NotchWindowController(model: model)
         agents = AgentBridge(model: model)
 
-        settingsController = SettingsController(model: model)
+        settingsController = SettingsController(model: model, updater: updater)
         model.openSettings = { [weak self] pane in self?.openSettings(pane: pane) }
         model.applyConfig = { [weak self] config in self?.updateConfig(config) }
         settingsController.onConfigChange = { [weak self] config in self?.updateConfig(config) }
@@ -100,6 +101,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         })
 
         buildStatusItem()
+        if !debugAPI { updater.start() }
         welcomeIfNeeded()
     }
 
@@ -437,6 +439,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(statusLine)
         menu.addItem(.separator())
         addItem(to: menu, "Settings…", #selector(openSettingsFromMenu), key: ",")
+        addItem(to: menu, "Check for Updates…", #selector(checkForUpdates))
+        addItem(to: menu, "Pin / unpin notch", #selector(togglePinFromMenu))
         addItem(to: menu, "Run demo", #selector(runDemoFromMenu))
         addItem(to: menu, "Send test notification", #selector(sendTest))
         menu.addItem(.separator())
@@ -472,6 +476,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return item
     }
 
+    @objc private func checkForUpdates() { updater.check() }
+    @objc private func togglePinFromMenu() { model.togglePinnedOpen() }
     @objc private func openSettingsFromMenu() { openSettings() }
     @objc private func runDemoFromMenu() { runDemo() }
 

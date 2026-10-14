@@ -199,12 +199,13 @@ enum SportsParser {
     private static func team(_ competitor: [String: Any], league: SportsLeague) -> SportsTeam? {
         guard let team = competitor["team"] as? [String: Any],
               let name = team["displayName"] as? String else { return nil }
+        let brand = SportsCatalog.team(id: team["id"] as? String, league: league)
         let rank = (competitor["curatedRank"] as? [String: Any])?["current"] as? Int ?? competitor["rank"] as? Int
         return SportsTeam(name: name, abbreviation: team["abbreviation"] as? String ?? name,
                           score: string(competitor["score"]) ?? "–", rank: rank.flatMap { (1...25).contains($0) ? $0 : nil },
-                          id: team["id"] as? String, primaryHex: SportsTeam.colorHex(team["color"]),
-                          alternateHex: SportsTeam.colorHex(team["alternateColor"]),
-                          logoURL: SportsTeam.logoURL(team["logo"]) ?? (team["logos"] as? [[String: Any]])?.compactMap { SportsTeam.logoURL($0["href"]) }.first,
+                          id: team["id"] as? String, primaryHex: SportsTeam.colorHex(team["color"]) ?? SportsTeam.colorHex(brand?.color),
+                          alternateHex: SportsTeam.colorHex(team["alternateColor"]) ?? SportsTeam.colorHex(brand?.alternateColor),
+                          logoURL: SportsTeam.logoURL(team["logo"]) ?? (team["logos"] as? [[String: Any]])?.compactMap { SportsTeam.logoURL($0["href"]) }.first ?? SportsTeam.logoURL(brand?.logo),
                           periodScores: (competitor["linescores"] as? [[String: Any]] ?? []).map { string($0["displayValue"]) ?? string($0["value"]) ?? "–" }, league: league)
     }
     static func string(_ value: Any?) -> String? {
@@ -225,6 +226,13 @@ enum SportsParser {
 @MainActor
 final class SportsMonitor: ObservableObject {
     @Published private(set) var games: [SportsGame] = []
+    @Published private(set) var allGames: [SportsGame] = []
+    @Published private(set) var followedSlateError: String?
+    var onAutomaticSelection: ((SportsGame) -> Void)?
+    var onAlert: ((SportsAlertTracker.Alert) -> Void)?
+    private var preferences = CoveConfig()
+    private var slates: [SportsLeague: [SportsGame]] = [:]
+    private var alertTracker = SportsAlertTracker()
     @Published private(set) var selectedGame: SportsGame?
     @Published private(set) var plays: [SportsPlay] = []
     @Published private(set) var drives: [SportsDrive] = []
@@ -260,9 +268,12 @@ final class SportsMonitor: ObservableObject {
     }
 
     func update(config: CoveConfig) {
+        let changedPreferences = preferences.sportsFavoriteTeams != config.sportsFavoriteTeams || preferences.sportsWatchedGames != config.sportsWatchedGames || preferences.sportsAutoFollow != config.sportsAutoFollow
+        preferences = config
+        if changedPreferences { lastScoreboardAttempt = .distantPast }
         let changedLeague = league != config.sportsLeague
         let changed = changedLeague || selectedID != config.sportsGameID || enabled != config.sportsEnabled
-        guard changed else { return }
+        guard changed else { if changedPreferences && enabled { refresh() }; return }
         task?.cancel()
         task = nil
         generation = UUID()
@@ -270,6 +281,7 @@ final class SportsMonitor: ObservableObject {
         enabled = config.sportsEnabled
         selectedID = config.sportsGameID
         if changedLeague || !enabled { games = [] }
+        if !enabled { slates = [:]; allGames = []; alertTracker = SportsAlertTracker(); followedSlateError = nil }
         selectedGame = games.first { $0.id == selectedID }
         plays = []
         drives = []; stats = []; leaders = []; situation = nil
@@ -304,7 +316,8 @@ final class SportsMonitor: ObservableObject {
             defer {
                 if self.generation == token { self.loading = false; self.task = nil }
             }
-            async let slate = self.fetchResult(fetchSlate ? league.scoreboardURL : nil)
+            let leagues = self.preferences.sportsFavoriteTeams.isEmpty && self.preferences.sportsWatchedGames.isEmpty ? [league] : SportsLeague.allCases
+            async let slateResults = self.fetchSlates(fetchSlate ? leagues : [])
             async let detail = self.fetchResult(id.map { league.summaryURL($0) })
             var detailSucceeded = false
             if let result = await detail {
@@ -321,6 +334,7 @@ final class SportsMonitor: ObservableObject {
                     game.away.logoURL = game.away.logoURL ?? self.selectedGame?.away.logoURL
                     game.home.logoURL = game.home.logoURL ?? self.selectedGame?.home.logoURL
                     self.selectedGame = game
+                    self.alertTracker.consume([game], config: self.preferences).forEach { self.onAlert?($0) }
                     if let index = self.games.firstIndex(where: { $0.id == game.id }) { self.games[index] = game }
                     self.plays = snapshot.plays
                     self.drives = snapshot.drives
@@ -334,33 +348,61 @@ final class SportsMonitor: ObservableObject {
                     self.detailError = "Updates paused. Showing the last available data. Try refreshing."
                 }
             }
-            if let result = await slate {
+            var failedFollowedSlate = false
+            for (slateLeague, result) in await slateResults {
                 guard !Task.isCancelled, self.generation == token else { return }
                 do {
-                    var games = try SportsParser.scoreboard(result.get(), league: league)
-                    self.games = games
-                    self.scoreboardError = nil
-                    if let game = games.first(where: { $0.id == id }) {
-                        if detailSucceeded, var selected = self.selectedGame {
-                            // Summary responses sometimes omit brand/ranking metadata that the slate supplies.
-                            selected.away.rank = selected.away.rank ?? game.away.rank
-                            selected.home.rank = selected.home.rank ?? game.home.rank
-                            selected.away.primaryHex = selected.away.primaryHex ?? game.away.primaryHex
-                            selected.home.primaryHex = selected.home.primaryHex ?? game.home.primaryHex
-                            selected.away.alternateHex = selected.away.alternateHex ?? game.away.alternateHex
-                            selected.home.alternateHex = selected.home.alternateHex ?? game.home.alternateHex
-                            selected.away.logoURL = selected.away.logoURL ?? game.away.logoURL
-                            selected.home.logoURL = selected.home.logoURL ?? game.home.logoURL
-                            self.selectedGame = selected
-                            if let index = games.firstIndex(where: { $0.id == selected.id }) {
-                                games[index] = selected; self.games = games
-                            }
-                        } else { self.selectedGame = game }
+                    var games = try SportsParser.scoreboard(result.get(), league: slateLeague)
+                    if slateLeague == league {
+                        self.scoreboardError = nil
+                        if let game = games.first(where: { $0.id == id }) {
+                            if detailSucceeded, var selected = self.selectedGame {
+                                selected.away.rank = selected.away.rank ?? game.away.rank
+                                selected.home.rank = selected.home.rank ?? game.home.rank
+                                selected.away.primaryHex = selected.away.primaryHex ?? game.away.primaryHex
+                                selected.home.primaryHex = selected.home.primaryHex ?? game.home.primaryHex
+                                selected.away.alternateHex = selected.away.alternateHex ?? game.away.alternateHex
+                                selected.home.alternateHex = selected.home.alternateHex ?? game.home.alternateHex
+                                selected.away.logoURL = selected.away.logoURL ?? game.away.logoURL
+                                selected.home.logoURL = selected.home.logoURL ?? game.home.logoURL
+                                self.selectedGame = selected
+                                if let index = games.firstIndex(where: { $0.id == selected.id }) { games[index] = selected }
+                            } else { self.selectedGame = game }
+                        }
+                        self.games = games
                     }
+                    self.slates[slateLeague] = games
+                    self.alertTracker.consume(games, config: self.preferences).forEach { self.onAlert?($0) }
                 } catch {
-                    self.scoreboardError = "Couldn't refresh games. Check your connection and try again."
+                    failedFollowedSlate = true
+                    if slateLeague == league { self.scoreboardError = "Couldn't refresh games. Check your connection and try again." }
                 }
             }
+            if fetchSlate {
+                self.followedSlateError = failedFollowedSlate ? "Some followed scores could not refresh. Showing their last available scores." : nil
+            }
+            self.allGames = self.slates.values.flatMap { $0 }
+            if let selected = self.selectedGame {
+                if let index = self.allGames.firstIndex(where: { $0.key == selected.key }) { self.allGames[index] = selected }
+                else { self.allGames.append(selected) }
+            }
+            if self.detailError == nil, let game = SportsFollowRules.automaticGame(self.allGames, current: self.selectedGame, config: self.preferences) {
+                DispatchQueue.main.async { [weak self] in
+                    guard let self, self.generation == token else { return }
+                    self.onAutomaticSelection?(game)
+                }
+            }
+        }
+    }
+
+    private func fetchSlates(_ leagues: [SportsLeague]) async -> [(SportsLeague, Result<Data, Error>)] {
+        await withTaskGroup(of: (SportsLeague, Result<Data, Error>).self) { group in
+            for league in leagues {
+                group.addTask { (league, await self.fetchResult(league.scoreboardURL)!) }
+            }
+            var results: [(SportsLeague, Result<Data, Error>)] = []
+            for await result in group { results.append(result) }
+            return results
         }
     }
 
