@@ -4,7 +4,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 : "${COVE_UPDATE_ED25519_KEY:?Set the repository Actions secret COVE_UPDATE_ED25519_KEY}"
 : "${GH_TOKEN:?GitHub token is required}"
-REPOSITORY="${COVE_UPDATE_REPOSITORY:-${GITHUB_REPOSITORY:-jvthomas702/Cove}}"
+REPOSITORY="${COVE_UPDATE_REPOSITORY:-jvthomas702/Cove-updates}"
 if [ "$(gh repo view "$REPOSITORY" --json isPrivate --jq '.isPrivate')" = "true" ]; then
   echo 'Update feeds and downloads must be publicly readable; set COVE_UPDATE_REPOSITORY to the approved distribution repository.' >&2
   exit 1
@@ -22,6 +22,11 @@ cp build/Cove.zip "$STAGE/archives/Cove.zip"
 cp RELEASE_NOTES.md "$STAGE/archives/Cove.md"
 "$APPCAST" --ed-key-file "$STAGE/private" --download-url-prefix "https://github.com/$REPOSITORY/releases/download/v$VERSION/" --embed-release-notes --link "https://github.com/$REPOSITORY" --maximum-deltas 0 "$STAGE/archives"
 "$SIGN" --verify --ed-key-file "$STAGE/private" "$STAGE/archives/appcast.xml"
+if gh release view "v$VERSION" --repo "$REPOSITORY" >/dev/null 2>&1; then
+  gh release upload "v$VERSION" build/Cove.zip --repo "$REPOSITORY" --clobber
+else
+  gh release create "v$VERSION" build/Cove.zip --repo "$REPOSITORY" --title "Cove $VERSION" --notes-file RELEASE_NOTES.md
+fi
 gh release upload "v$VERSION" "$STAGE/archives/appcast.xml" --repo "$REPOSITORY" --clobber
 # Update only the public signed-feed branch; application code and default-branch history stay separate.
 git clone --depth 1 --branch updates "https://github.com/$REPOSITORY.git" "$STAGE/feed"
@@ -29,6 +34,5 @@ cp "$STAGE/archives/appcast.xml" "$STAGE/feed/appcast.xml"
 git -C "$STAGE/feed" add appcast.xml
 if ! git -C "$STAGE/feed" diff --cached --quiet; then
   git -C "$STAGE/feed" -c user.name='Cove release bot' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m "Signed update feed for Cove $VERSION"
-  gh auth setup-git
-  git -C "$STAGE/feed" push origin updates
+  git -C "$STAGE/feed" -c credential.helper= -c 'credential.helper=!gh auth git-credential' push origin updates
 fi

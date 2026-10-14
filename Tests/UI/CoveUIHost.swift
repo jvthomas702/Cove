@@ -112,13 +112,15 @@ struct UIHostView: View {
         window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 660, height: 320), styleMask: [.titled, .closable], backing: .buffered, defer: false)
         window.title = "Cove UI Test"
         window.isReleasedWhenClosed = false
-        window.contentView = NSHostingView(rootView: UIHostView(model: model, showNotch: { [weak self] in
+        let host = NSHostingView(rootView: UIHostView(model: model, showNotch: { [weak self] in
             guard let self else { return }
             self.window.setFrameOrigin(NSPoint(x: 80, y: 30))
             self.model.tab = .home
             self.model.setExpanded(true)
             self.notch.panel.orderFrontRegardless()
         }))
+        host.sizingOptions = []
+        window.contentView = host
         resizeSubscription = model.$currentSize.dropFirst().sink { [weak self] _ in
             DispatchQueue.main.async {
                 guard let self else { return }

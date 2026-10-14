@@ -193,7 +193,9 @@ final class UIFlowTests: XCTestCase {
         editor.radioButtons["Pen"].click()
         let canvas = editor.descendants(matching: .any).matching(identifier: "shelf.annotationCanvas").firstMatch
         XCTAssertTrue(canvas.waitForExistence(timeout: 5))
-        canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.3)).press(forDuration: 0.1, thenDragTo: canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.7, dy: 0.6)))
+        let before = XCTAttachment(screenshot: editor.screenshot())
+        before.name = "Editor before drawing"; before.lifetime = .keepAlways; add(before)
+        canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.3)).click(forDuration: 0.1, thenDragTo: canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.7, dy: 0.6)))
         let save = editor.buttons["shelf.saveAnnotation"]
         XCTAssertTrue(save.isEnabled); save.click()
         XCTAssertTrue(editor.staticTexts.matching(NSPredicate(format: "value CONTAINS %@", "Annotated copy saved")).firstMatch.waitForExistence(timeout: 5))
@@ -207,6 +209,7 @@ final class UIFlowTests: XCTestCase {
             window.buttons["tab.\(tab)"].click()
             XCTAssertTrue(window.buttons["tab.\(tab)"].isHittable)
         }
+        Thread.sleep(forTimeInterval: 0.7)
         let attachment = XCTAttachment(screenshot: window.screenshot())
         attachment.name = "Home UI"; attachment.lifetime = .keepAlways
         add(attachment)

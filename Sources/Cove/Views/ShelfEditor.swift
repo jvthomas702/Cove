@@ -4,6 +4,37 @@ import SwiftUI
 struct ShelfStroke { var points: [CGPoint]; var color: NSColor; var width: CGFloat }
 struct ShelfText { var text: String; var point: CGPoint; var color: NSColor; var size: CGFloat }
 
+/// Native mouse events keep annotation input reliable inside a secondary AppKit window.
+private struct ShelfAnnotationInput: NSViewRepresentable {
+    var began: (CGPoint) -> Void
+    var moved: (CGPoint) -> Void
+    var ended: (CGPoint) -> Void
+    func makeNSView(context: Context) -> InputView { InputView() }
+    func updateNSView(_ view: InputView, context: Context) {
+        view.began = began; view.moved = moved; view.ended = ended
+    }
+    final class InputView: NSView {
+        var began: ((CGPoint) -> Void)?
+        var moved: ((CGPoint) -> Void)?
+        var ended: ((CGPoint) -> Void)?
+        override var isFlipped: Bool { true }
+        override init(frame: NSRect) {
+            super.init(frame: frame)
+            setAccessibilityElement(true); setAccessibilityRole(.image)
+            setAccessibilityLabel("Image annotation canvas"); setAccessibilityIdentifier("shelf.annotationCanvas")
+        }
+        required init?(coder: NSCoder) { fatalError("init(coder:) is not used") }
+        override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+        private func point(_ event: NSEvent) -> CGPoint {
+            let p = convert(event.locationInWindow, from: nil)
+            return CGPoint(x: min(1, max(0, p.x / max(bounds.width, 1))), y: min(1, max(0, p.y / max(bounds.height, 1))))
+        }
+        override func mouseDown(with event: NSEvent) { began?(point(event)) }
+        override func mouseDragged(with event: NSEvent) { moved?(point(event)) }
+        override func mouseUp(with event: NSEvent) { ended?(point(event)) }
+    }
+}
+
 enum ShelfImageRenderer {
     static func png(image: NSImage, strokes: [ShelfStroke], labels: [ShelfText]) throws -> Data {
         var rect = CGRect(origin: .zero, size: image.size)
@@ -48,7 +79,9 @@ enum ShelfImageRenderer {
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 780, height: 540), styleMask: [.titled, .closable, .resizable], backing: .buffered, defer: false)
         window.title = "Cove Image Preview"
         window.isReleasedWhenClosed = false; window.delegate = self
-        window.contentView = NSHostingView(rootView: ShelfEditorView(url: url, image: image, model: model))
+        let host = NSHostingView(rootView: ShelfEditorView(url: url, image: image, model: model))
+        host.sizingOptions = []
+        window.contentView = host
         window.minSize = NSSize(width: 600, height: 420)
         self.window = window
         window.center(); window.makeKeyAndOrderFront(nil); NSApp.activate(ignoringOtherApps: true)
@@ -104,7 +137,7 @@ private struct ShelfEditorView: View {
                     do { _ = try save(); message = "Annotated copy saved to the shelf" }
                     catch { message = error.localizedDescription }
                 }.disabled(!edited).accessibilityIdentifier("shelf.saveAnnotation")
-            }
+            }.frame(height: 28)
             HStack(spacing: 10) {
                 Picker("Annotation tool", selection: $tool) { Text("Preview").tag("Preview"); Text("Pen").tag("Pen"); Text("Text").tag("Text") }
                     .pickerStyle(.segmented).frame(width: 220).accessibilityIdentifier("shelf.annotationTool")
@@ -118,7 +151,7 @@ private struct ShelfEditorView: View {
                     if let mark = undoMarks.popLast() { if mark == "Text" { labels.removeLast() } else { strokes.removeLast() }; revision += 1 }
                 }
                     .disabled(!edited)
-            }
+            }.frame(height: 26)
             GeometryReader { geometry in
                 let ratio = min(geometry.size.width / max(image.size.width, 1), geometry.size.height / max(image.size.height, 1))
                 let size = CGSize(width: image.size.width * ratio, height: image.size.height * ratio)
@@ -138,35 +171,29 @@ private struct ShelfEditorView: View {
                                          at: CGPoint(x: label.point.x * canvas.width, y: label.point.y * canvas.height), anchor: .topLeading)
                         }
                     }
-                }.frame(width: size.width, height: size.height)
-                    .contentShape(Rectangle())
-                    .gesture(DragGesture(minimumDistance: 0).onChanged { value in
+                    .allowsHitTesting(false)
+                    ShelfAnnotationInput(began: { point in
                         guard tool == "Pen" else { return }
-                        let point = normalized(value.location, size: size)
-                        if activeStroke == nil { activeStroke = ShelfStroke(points: [point], color: color, width: 3 / max(size.width, 1)) }
-                        else { activeStroke?.points.append(point) }
-                    }.onEnded { value in
+                        activeStroke = ShelfStroke(points: [point], color: color, width: 3 / max(size.width, 1))
+                    }, moved: { point in
+                        if tool == "Pen" { activeStroke?.points.append(point) }
+                    }, ended: { point in
                         if tool == "Pen", let stroke = activeStroke { strokes.append(stroke); undoMarks.append("Pen"); revision += 1; activeStroke = nil }
                         if tool == "Text", !text.trimmingCharacters(in: .whitespaces).isEmpty {
-                            labels.append(ShelfText(text: String(text.prefix(200)), point: normalized(value.location, size: size), color: color, size: 16 / max(size.width, 1)))
+                            labels.append(ShelfText(text: String(text.prefix(200)), point: point, color: color, size: 16 / max(size.width, 1)))
                             undoMarks.append("Text"); revision += 1
                         }
                     })
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel("Image annotation canvas")
-                    .accessibilityIdentifier("shelf.annotationCanvas")
+                }.frame(width: size.width, height: size.height)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }.background(Color.black.opacity(0.08))
             HStack {
                 Text(message ?? (tool == "Text" ? "Click the image to place text" : tool == "Pen" ? "Drag on the image to draw" : "Annotations save as a new shelf image"))
                     .font(.caption).foregroundStyle(.secondary)
                 Spacer()
-            }
+            }.frame(height: 18)
         }.padding(14).frame(minWidth: 570, minHeight: 360)
             .onAppear { baseName = url.deletingPathExtension().lastPathComponent }
-    }
-    private func normalized(_ point: CGPoint, size: CGSize) -> CGPoint {
-        CGPoint(x: min(1, max(0, point.x / max(size.width, 1))), y: min(1, max(0, point.y / max(size.height, 1))))
     }
     private func save() throws -> URL {
         if savedRevision == revision, let savedURL, FileManager.default.fileExists(atPath: savedURL.path) { return savedURL }
