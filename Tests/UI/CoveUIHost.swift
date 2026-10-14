@@ -65,6 +65,7 @@ struct UIHostView: View {
             }.padding(8)
             ExpandedView(model: model).frame(width: model.size(for: .expanded).width, height: model.size(for: .expanded).height).background(Color.black)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .environment(\.colorScheme, .dark)
     }
 }

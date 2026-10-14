@@ -125,6 +125,7 @@ final class UIFlowTests: XCTestCase {
         let item = window.descendants(matching: .any).matching(identifier: "shelf.item.Cove UI Screenshot.png").firstMatch
         XCTAssertTrue(item.waitForExistence(timeout: 5))
         window.buttons["tab.home"].click()
+        XCTAssertTrue(window.popUpButtons["home.widget"].waitForExistence(timeout: 5))
         window.buttons["tab.shelf"].click()
         XCTAssertTrue(item.waitForExistence(timeout: 5))
         window.buttons["Delete source"].click()
