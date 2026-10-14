@@ -17,7 +17,7 @@ enum ShelfImageRenderer {
         defer { NSGraphicsContext.restoreGraphicsState() }
         NSGraphicsContext.current = graphics
         let w = CGFloat(cg.width), h = CGFloat(cg.height)
-        image.draw(in: NSRect(x: 0, y: 0, width: w, height: h), from: .zero, operation: .copy, fraction: 1)
+        graphics.cgContext.draw(cg, in: CGRect(x: 0, y: 0, width: w, height: h))
         for stroke in strokes where !stroke.points.isEmpty {
             let path = NSBezierPath(); path.lineWidth = max(1, stroke.width * w); path.lineCapStyle = .round; path.lineJoinStyle = .round
             let first = stroke.points[0]

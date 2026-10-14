@@ -109,7 +109,8 @@ import XCTest
     }
     private func bitmap() throws -> NSBitmapImageRep {
         let bitmap = try XCTUnwrap(NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 100, pixelsHigh: 80, bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0))
-        for y in 0..<80 { for x in 0..<100 { bitmap.setColor(.green, atX: x, y: y) } }
+        let green = NSColor(deviceRed: 0, green: 1, blue: 0, alpha: 1)
+        for y in 0..<80 { for x in 0..<100 { bitmap.setColor(green, atX: x, y: y) } }
         return bitmap
     }
 }

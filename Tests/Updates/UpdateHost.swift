@@ -13,14 +13,12 @@ import Sparkle
         controller = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: self, userDriverDelegate: nil)
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { self.controller.updater.checkForUpdatesInBackground() }
     }
-    @objc(updater:willInstallUpdateOnQuit:immediateInstallationBlock:)
-    func install(_ updater: SPUUpdater, item: SUAppcastItem, immediate: @escaping () -> Void) -> Bool {
+    func updater(_ updater: SPUUpdater, willInstallUpdateOnQuit item: SUAppcastItem, immediateInstallationBlock immediate: @escaping () -> Void) -> Bool {
         print("INSTALLING UPDATE FIXTURE \(item.versionString)")
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2, execute: immediate)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { immediate() }
         return true
     }
-    @objc(updater:didAbortWithError:)
-    func aborted(_ updater: SPUUpdater, error: Error) { print("UPDATE ERROR \(error.localizedDescription)") }
+    func updater(_ updater: SPUUpdater, didAbortWithError error: Error) { print("UPDATE ERROR \(error.localizedDescription)") }
 }
 
 @main struct UpdateHost {

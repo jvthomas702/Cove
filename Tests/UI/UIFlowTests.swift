@@ -159,11 +159,11 @@ final class UIFlowTests: XCTestCase {
     }
 
     func testMultipleScoresAndAIOverviewSelection() {
-        window.buttons["Fixtures"].click(); app.menuItems["Follow slate"].click()
+        window.menuButtons["Fixtures"].click(); app.menuItems["Follow slate"].click()
         window.buttons["tab.sports"].click()
         XCTAssertTrue(window.scrollViews["sports.followedScores"].waitForExistence(timeout: 8))
         window.buttons["tab.home"].click()
-        window.buttons["Fixtures"].click(); app.menuItems["Add AI task"].click()
+        window.menuButtons["Fixtures"].click(); app.menuItems["Add AI task"].click()
         let chooser = window.popUpButtons["home.widget"]
         chooser.click(); app.menuItems["AI work"].click()
         XCTAssertTrue(window.scrollViews["ai.overview"].waitForExistence(timeout: 5))
@@ -171,6 +171,8 @@ final class UIFlowTests: XCTestCase {
         XCTAssertTrue(task.waitForExistence(timeout: 5)); task.click()
         XCTAssertTrue(window.buttons["Open Claude"].waitForExistence(timeout: 5))
         XCTAssertTrue(text("Reasoning").exists)
+        let attachment = XCTAttachment(screenshot: window.screenshot())
+        attachment.name = "AI task overview"; attachment.lifetime = .keepAlways; add(attachment)
     }
 
     func testShelfUndoRenameAndAnnotation() {
@@ -194,6 +196,8 @@ final class UIFlowTests: XCTestCase {
         let save = editor.buttons["shelf.saveAnnotation"]
         XCTAssertTrue(save.isEnabled); save.click()
         XCTAssertTrue(editor.staticTexts.matching(NSPredicate(format: "value CONTAINS %@", "Annotated copy saved")).firstMatch.waitForExistence(timeout: 5))
+        let attachment = XCTAttachment(screenshot: editor.screenshot())
+        attachment.name = "Screenshot editor"; attachment.lifetime = .keepAlways; add(attachment)
         editor.buttons["_XCUI:CloseWindow"].click()
     }
 

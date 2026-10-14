@@ -1,3 +1,14 @@
+# Cove 1.1.0
+
+- Pick favorite NBA, NFL and college football teams. Automatically follow the next favorite matchup and enable game-start or scoring alerts when you want them.
+- Follow several games while one selected game keeps its full play-by-play, drives and stats. Favorite unranked college teams stay visible beside Top 25 games.
+- Pin the notch open, unpin it, or close it explicitly. Tabs and controls stay anchored beside the notch as panel sizes change.
+- Preview screenshots, draw or add text, save an annotated copy, rename saved copies, and undo shelf removals or Clear. Original files remain untouched.
+- Browse connected AI tasks with filters, elapsed time, current previews and return-to-app/tab actions.
+- Check for cryptographically signed updates from Cove. Automatic download/install is opt-in; update archives and feeds are verified.
+
+The existing quiet screenshot capture, persistent shelf, 200 bundled team logos, and ESPN Gamecast remain available.
+
 ## Upcoming changes
 
 - Sports widgets use team colors in score accents, game cards and the compact notch display.

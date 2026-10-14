@@ -49,7 +49,11 @@ jobs:
             ui-tests.log
 
       - name: Package app
-        run: ./scripts/build-app.sh 2>&1 | tee package.log
+        env:
+          COVE_UNIVERSAL: ${{ startsWith(github.ref, 'refs/tags/v') || inputs.release }}
+        run: |
+          if [ "$COVE_UNIVERSAL" = "true" ]; then export COVE_UNIVERSAL=1; fi
+          ./scripts/build-app.sh 2>&1 | tee package.log
 
       - name: Signed update validation
         run: |
@@ -101,7 +105,9 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v') || inputs.release
         env:
           GH_TOKEN: ${{ github.token }}
+          COVE_UPDATE_ED25519_KEY: ${{ secrets.COVE_UPDATE_ED25519_KEY }}
         run: |
+          : "${COVE_UPDATE_ED25519_KEY:?Set the repository Actions secret COVE_UPDATE_ED25519_KEY before publishing}"
           VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Resources/Info.plist)"
           TAG="v$VERSION"
           if gh release view "$TAG" >/dev/null 2>&1; then
@@ -109,6 +115,8 @@ jobs:
           else
             gh release create "$TAG" build/Cove.zip --target "$GITHUB_SHA" --title "Cove $VERSION" --notes-file RELEASE_NOTES.md
           fi
+          export COVE_BUILD_PATH="$PWD/.build/arm64"
+          ./scripts/publish-updates.sh
 
       # Logs go to the ci-logs branch so they can be read with plain git.
       - name: Publish logs
