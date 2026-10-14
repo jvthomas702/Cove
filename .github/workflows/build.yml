@@ -116,7 +116,11 @@ jobs:
             gh release create "$TAG" build/Cove.zip --target "$GITHUB_SHA" --title "Cove $VERSION" --notes-file RELEASE_NOTES.md
           fi
           export COVE_BUILD_PATH="$PWD/.build/arm64"
-          ./scripts/publish-updates.sh
+          if [ "$(/usr/libexec/PlistBuddy -c 'Print :CoveUpdateFeedReady' Resources/Info.plist)" = "true" ]; then
+            ./scripts/publish-updates.sh
+          else
+            echo 'Signed update publishing awaits an approved public distribution repository.'
+          fi
 
       # Logs go to the ci-logs branch so they can be read with plain git.
       - name: Publish logs

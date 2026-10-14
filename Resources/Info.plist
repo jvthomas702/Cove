@@ -23,7 +23,7 @@
 	<key>SUFeedURL</key>
 	<string>https://raw.githubusercontent.com/jvthomas702/Cove/updates/appcast.xml</string>
 	<key>SUEnableAutomaticChecks</key>
-	<true/>
+	<false/>
 	<key>SUAutomaticallyUpdate</key>
 	<false/>
 	<key>SUVerifyUpdateBeforeExtraction</key>
@@ -60,5 +60,7 @@
 	<string>0XS5aZX2H51vgS5ATLv2FrAC8eyN+vnEG434ntY2XVM=</string>
 	<key>SURequireSignedFeed</key>
 	<true/>
+	<key>CoveUpdateFeedReady</key>
+	<false/>
 </dict>
 </plist>

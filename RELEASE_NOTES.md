@@ -5,7 +5,7 @@
 - Pin the notch open, unpin it, or close it explicitly. Tabs and controls stay anchored beside the notch as panel sizes change.
 - Preview screenshots, draw or add text, save an annotated copy, rename saved copies, and undo shelf removals or Clear. Original files remain untouched.
 - Browse connected AI tasks with filters, elapsed time, current previews and return-to-app/tab actions.
-- Check for cryptographically signed updates from Cove. Automatic download/install is opt-in; update archives and feeds are verified.
+- Signed update support is integrated and tested through a real installation/relaunch. Checks stay disabled until a public feed/download host is approved; automatic download/install will be opt-in.
 
 The existing quiet screenshot capture, persistent shelf, 200 bundled team logos, and ESPN Gamecast remain available.
 

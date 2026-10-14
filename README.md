@@ -180,4 +180,4 @@ Choose **AI work** on Home to see the selected reply alongside an overview of tr
 
 ### App updates
 
-Packaged Cove embeds Sparkle, with daily checks and opt-in automatic installation. Check manually from Cove's menu or **Settings → About**. Signed archives and the signed feed must validate before installation. See [signed-update publishing](docs/UPDATES.md) for release setup. Older versions need one manual replacement to gain the updater.
+Packaged Cove embeds Sparkle, with daily checks and opt-in automatic installation once the signed feed is publicly hosted. This private source repository’s feed is inaccessible to installed apps, so checks stay disabled pending approval of a public distribution host. Check manually from Cove's menu or **Settings → About**. Signed archives and the signed feed must validate before installation. See [signed-update publishing](docs/UPDATES.md) for release setup. Older versions need one manual replacement to gain the updater.

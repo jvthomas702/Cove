@@ -4,7 +4,11 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 : "${COVE_UPDATE_ED25519_KEY:?Set the repository Actions secret COVE_UPDATE_ED25519_KEY}"
 : "${GH_TOKEN:?GitHub token is required}"
-REPOSITORY="${GITHUB_REPOSITORY:-jvthomas702/Cove}"
+REPOSITORY="${COVE_UPDATE_REPOSITORY:-${GITHUB_REPOSITORY:-jvthomas702/Cove}}"
+if [ "$(gh repo view "$REPOSITORY" --json isPrivate --jq '.isPrivate')" = "true" ]; then
+  echo 'Update feeds and downloads must be publicly readable; set COVE_UPDATE_REPOSITORY to the approved distribution repository.' >&2
+  exit 1
+fi
 VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' Resources/Info.plist)"
 BUILD_PATH="${COVE_BUILD_PATH:-$PWD/.build}"
 APPCAST="$(python3 scripts/sparkle-path.py "$BUILD_PATH" generate_appcast)"

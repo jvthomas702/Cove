@@ -17,6 +17,10 @@ import Sparkle
     func start() {
 #if canImport(Sparkle)
         guard Bundle.main.bundleURL.pathExtension == "app", Bundle.main.object(forInfoDictionaryKey: "SUPublicEDKey") is String else { return }
+        guard Bundle.main.object(forInfoDictionaryKey: "CoveUpdateFeedReady") as? Bool == true else {
+            status = "Updates will be available after the signed feed is published."
+            return
+        }
         let controller = SPUStandardUpdaterController(startingUpdater: false, updaterDelegate: nil, userDriverDelegate: nil)
         self.controller = controller
         controller.updater.publisher(for: \.canCheckForUpdates).receive(on: RunLoop.main).assign(to: &$canCheck)
