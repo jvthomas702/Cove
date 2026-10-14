@@ -199,6 +199,12 @@ final class UIFlowTests: XCTestCase {
         let save = editor.buttons["shelf.saveAnnotation"]
         XCTAssertTrue(save.isEnabled); save.click()
         XCTAssertTrue(editor.staticTexts.matching(NSPredicate(format: "value CONTAINS %@", "Annotated copy saved")).firstMatch.waitForExistence(timeout: 5))
+        editor.radioButtons["Text"].click()
+        editor.textFields["shelf.annotationText"].click()
+        editor.textFields["shelf.annotationText"].typeText("Review note")
+        canvas.coordinate(withNormalizedOffset: CGVector(dx: 0.15, dy: 0.15)).click()
+        XCTAssertTrue(editor.buttons["Undo mark"].isEnabled)
+        editor.buttons["Undo mark"].click()
         let attachment = XCTAttachment(screenshot: editor.screenshot())
         attachment.name = "Screenshot editor"; attachment.lifetime = .keepAlways; add(attachment)
         editor.buttons["_XCUI:CloseWindow"].click()
