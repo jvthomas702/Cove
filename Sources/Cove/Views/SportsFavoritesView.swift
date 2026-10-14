@@ -39,7 +39,7 @@ struct FollowedScoresStrip: View {
         if model.followedSportsGames.count > 1 {
             ScrollView(.horizontal) {
                 HStack(spacing: 6) {
-                    ForEach(model.followedSportsGames) { game in
+                    ForEach(model.followedSportsGames, id: \.key) { game in
                         Button { model.chooseSportsGame(game) } label: {
                             HStack(spacing: 4) {
                                 TeamLogo(team: game.away, size: 16)
@@ -50,7 +50,7 @@ struct FollowedScoresStrip: View {
                                 TeamLogo(team: game.home, size: 16)
                                 if game.isLive { Circle().fill(Palette.green).frame(width: 4, height: 4) }
                             }.font(.system(size: 10, weight: .semibold))
-                                .padding(6).background(RoundedRectangle(cornerRadius: 8).fill(game.id == model.config.sportsGameID ? Theme.surfaceRaised : Theme.surface))
+                                .padding(6).background(RoundedRectangle(cornerRadius: 8).fill(game.id == model.config.sportsGameID && game.league == model.config.sportsLeague ? Theme.surfaceRaised : Theme.surface))
                         }.buttonStyle(.plain).help("\(game.matchup) · \(game.status)")
                             .accessibilityLabel("\(game.matchup), \(game.scoreLine), \(game.status)")
                             .accessibilityIdentifier("sports.followed.\(game.key)")

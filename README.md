@@ -54,9 +54,9 @@ Open Settings any time from the menu bar icon, or by opening Cove.app again.
 
 **Settings → General → Home widget** lets you choose Calendar, Music, Focus, Sports or AI work. Automatic shows available calendar/media content and hides inactive cards. The island remembers your selected tab when you close it. Sports widgets use each team’s provider colors in labels, score accents and card backgrounds, with readable accents for dark colors.
 
-Open the **Sports** tab (court icon), choose **NBA**, **NFL** or **College football**, then click a game. This pins its score to the notch and its latest play to Home. The Sports tab shows the latest 100 plays, newest first, with game clock and scoring updates. Selected games and leagues survive a restart.
+Open the **Sports** tab (court icon), choose **NBA**, **NFL** or **College football**, then click a game. This pins its score to the notch and its latest play to Home. The Sports tab shows all returned plays, newest first, with game clock, quarter filters, drives and game stats. Selected games and leagues survive a restart.
 
-College football shows games with at least one **Top 25** team by default; turn off **Top 25** to browse all FBS games. NBA shows the day's slate, while NFL and college football show the current week's slate. Live selected games refresh about every 15 seconds; other states refresh every minute. ESPN provides the data, so coverage and delays vary. If a request fails, Cove keeps the last data and indicates that updates have paused. These public feed endpoints are not a documented API contract and may change.
+College football shows games with at least one **Top 25** team by default; turn off **Top 25** to browse all FBS games. NBA shows the day's slate, while NFL and college football show the current week's slate. Live selected games refresh about every 10 seconds; other states and followed scoreboards refresh every minute. ESPN provides the data, so coverage and delays vary. If a request fails, Cove keeps the last data and indicates that updates have paused. These public feed endpoints are not a documented API contract and may change.
 
 ### AI work from apps and browser tabs
 
@@ -162,3 +162,22 @@ CI runs these XCUITest flows and publishes the result bundle with failure screen
 The Sports panel grows to give the full feed room. Plays keeps all plays returned by ESPN, rather than the newest 100; filter by quarter/overtime or scoring and use Latest play to return to the top. Reading older plays keeps a scroll anchor while updates arrive. NBA plays show scoring values and participant names resolved from the game roster. Football shows down-and-distance, field position, yardage, penalties/turnovers, and expandable drive summaries. Stats includes quarter scores, team comparisons and game leaders. ESPN ↗ opens the complete Gamecast.
 
 Live detail checks every 10 seconds, independently of the slower scoreboard refresh. The timestamp and paused/delayed state describe feed freshness; provider data can still lag. Failed requests retain the last successful plays, drives and stats. These are public, undocumented ESPN JSON feeds, so no claim is made of official push updates or guaranteed coverage.
+
+
+### Favorites, multi-game scores and pinning
+
+In **Settings → Features → Favorite teams**, search NBA, NFL and FBS teams and click their stars. Auto-follow selects a live favorite when no active game is selected, then an upcoming favorite; it respects an active game you selected manually. Favorite college teams stay visible with Top 25 enabled. Use **Follow game** in the game chooser to add individual matchups. The compact score strip switches between followed games across leagues. Start and score alerts are optional and off initially.
+
+Use the pin beside the notch to keep it open while the pointer is elsewhere. Unpin restores hover behavior; the close button closes and unpins it. Tab controls stay beside the physical notch when the panel changes width.
+
+### Screenshot preview, annotation and undo
+
+Double-click a shelf image to preview it in Cove. Rename changes only the saved shelf copy. Pen and text annotations save as a new PNG at the original pixel dimensions; Copy includes the annotated result. Undo mark reverses the last annotation. The shelf's Undo restores the last removal or Clear, including after restarting Cove. Originals remain in their original screenshot folder. The most recent removed copies stay in the shelf's internal Trash until restored or replaced by another removal.
+
+### AI task overview
+
+Choose **AI work** on Home to see the selected reply alongside an overview of tracked app and browser work. Filter All, Working or Finished, choose a task, and jump back to its app or tab. Completed tasks stay for ten minutes. Browser setup and desktop Accessibility requirements still apply; reply previews remain a browser-extension preference.
+
+### App updates
+
+Packaged Cove embeds Sparkle, with daily checks and opt-in automatic installation. Check manually from Cove's menu or **Settings → About**. Signed archives and the signed feed must validate before installation. See [signed-update publishing](docs/UPDATES.md) for release setup. Older versions need one manual replacement to gain the updater.

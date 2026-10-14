@@ -57,7 +57,7 @@ struct UIHostView: View {
                         model.applyConfig?(config)
                     }
                     Button("Favorite Miami Heat") { model.toggleFavorite("14", league: .nba) }
-                }
+                }.accessibilityIdentifier("ui.fixtures")
                 Spacer()
                 Button("Show notch", action: showNotch)
                 Button("Quiet screenshot") {

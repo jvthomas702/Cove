@@ -42,6 +42,7 @@ enum ShelfImageRenderer {
     func show(url: URL, model: IslandModel) {
         window?.close()
         guard let image = NSImage(contentsOf: url) else { NSWorkspace.shared.open(url); return }
+        installEditMenu()
         model.setMenuTracking(true)
         onClose = { [weak model] in model?.setMenuTracking(false) }
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 780, height: 540), styleMask: [.titled, .closable, .resizable], backing: .buffered, defer: false)
@@ -53,6 +54,17 @@ enum ShelfImageRenderer {
         window.center(); window.makeKeyAndOrderFront(nil); NSApp.activate(ignoringOtherApps: true)
     }
     func windowWillClose(_ notification: Notification) { onClose?(); onClose = nil; window = nil }
+
+    private func installEditMenu() {
+        let main = NSApp.mainMenu ?? NSMenu()
+        guard main.item(withTitle: "Edit") == nil else { return }
+        let edit = NSMenu(title: "Edit")
+        for (title, action, key) in [("Undo", "undo:", "z"), ("Cut", "cut:", "x"), ("Copy", "copy:", "c"), ("Paste", "paste:", "v"), ("Select All", "selectAll:", "a")] {
+            edit.addItem(withTitle: title, action: NSSelectorFromString(action), keyEquivalent: key)
+        }
+        let item = NSMenuItem(title: "Edit", action: nil, keyEquivalent: "")
+        item.submenu = edit; main.addItem(item); NSApp.mainMenu = main
+    }
 }
 
 private struct ShelfEditorView: View {
@@ -126,6 +138,7 @@ private struct ShelfEditorView: View {
                                          at: CGPoint(x: label.point.x * canvas.width, y: label.point.y * canvas.height), anchor: .topLeading)
                         }
                     }
+                }.frame(width: size.width, height: size.height)
                     .contentShape(Rectangle())
                     .gesture(DragGesture(minimumDistance: 0).onChanged { value in
                         guard tool == "Pen" else { return }
@@ -142,7 +155,6 @@ private struct ShelfEditorView: View {
                     .accessibilityElement(children: .ignore)
                     .accessibilityLabel("Image annotation canvas")
                     .accessibilityIdentifier("shelf.annotationCanvas")
-                }.frame(width: size.width, height: size.height)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }.background(Color.black.opacity(0.08))
             HStack {

@@ -159,11 +159,11 @@ final class UIFlowTests: XCTestCase {
     }
 
     func testMultipleScoresAndAIOverviewSelection() {
-        window.menuButtons["Fixtures"].click(); app.menuItems["Follow slate"].click()
+        window.descendants(matching: .any).matching(identifier: "ui.fixtures").firstMatch.click(); app.menuItems["Follow slate"].click()
         window.buttons["tab.sports"].click()
         XCTAssertTrue(window.scrollViews["sports.followedScores"].waitForExistence(timeout: 8))
         window.buttons["tab.home"].click()
-        window.menuButtons["Fixtures"].click(); app.menuItems["Add AI task"].click()
+        window.descendants(matching: .any).matching(identifier: "ui.fixtures").firstMatch.click(); app.menuItems["Add AI task"].click()
         let chooser = window.popUpButtons["home.widget"]
         chooser.click(); app.menuItems["AI work"].click()
         XCTAssertTrue(window.scrollViews["ai.overview"].waitForExistence(timeout: 5))
@@ -187,6 +187,7 @@ final class UIFlowTests: XCTestCase {
         XCTAssertTrue(editor.waitForExistence(timeout: 5))
         let name = editor.textFields["shelf.rename"]
         name.click(); name.typeKey("a", modifierFlags: .command); name.typeText("Renamed capture")
+        XCTAssertEqual(name.value as? String, "Renamed capture")
         editor.buttons["shelf.renameSave"].click()
         XCTAssertTrue(editor.staticTexts.matching(NSPredicate(format: "value CONTAINS %@", "Renamed saved copy")).firstMatch.waitForExistence(timeout: 5))
         editor.radioButtons["Pen"].click()
