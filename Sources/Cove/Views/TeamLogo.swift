@@ -37,6 +37,8 @@ struct TeamLogo: View {
             RoundedRectangle(cornerRadius: size * 0.22).fill(Color.white.opacity(0.08))
             if let logo = bundledImage ?? remoteImage {
                 Image(nsImage: logo).resizable().scaledToFit().padding(size * 0.08)
+                    .accessibilityLabel("\(team.name) logo")
+                    .accessibilityIdentifier("sports.logo.\(team.league?.rawValue ?? "unknown").\(team.id ?? team.abbreviation)")
             } else {
                 Text(String(team.abbreviation.prefix(3)))
                     .font(.system(size: size * 0.29, weight: .bold, design: .rounded))
@@ -44,10 +46,7 @@ struct TeamLogo: View {
             }
         }
         .frame(width: size, height: size)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(team.name) logo")
-        .accessibilityValue(bundledImage != nil || remoteImage != nil ? "Image loaded" : "Team abbreviation")
-        .accessibilityIdentifier("sports.logo.\(team.league?.rawValue ?? "unknown").\(team.id ?? team.abbreviation)")
+        .accessibilityElement(children: .contain)
         .task(id: team.logoURL) {
             image = nil
             loadedURL = nil

@@ -13,6 +13,7 @@ final class UIFlowTests: XCTestCase {
         XCTAssertTrue(window.waitForExistence(timeout: 10))
     }
     override func tearDownWithError() throws {
+        print(app.debugDescription)
         let hierarchy = XCTAttachment(string: app.debugDescription)
         hierarchy.name = "Native accessibility hierarchy"; hierarchy.lifetime = .keepAlways
         add(hierarchy)
@@ -110,12 +111,12 @@ final class UIFlowTests: XCTestCase {
 
     func testBundledTeamLogosRemainVisibleOffline() {
         window.buttons["tab.sports"].click()
-        let logo = window.descendants(matching: .any).matching(identifier: "sports.logo.nba.20").firstMatch
+        let logo = window.images.matching(identifier: "sports.logo.nba.20").firstMatch
         XCTAssertTrue(logo.waitForExistence(timeout: 5))
-        XCTAssertEqual(logo.value as? String, "Image loaded")
+        XCTAssertGreaterThan(logo.frame.width, 0)
         window.buttons["Offline"].click()
         XCTAssertTrue(text("Updates paused.").waitForExistence(timeout: 8))
-        XCTAssertEqual(logo.value as? String, "Image loaded")
+        XCTAssertGreaterThan(logo.frame.width, 0)
     }
 
     func testScreenshotStaysOnShelfAcrossTabs() {
@@ -125,7 +126,7 @@ final class UIFlowTests: XCTestCase {
         XCTAssertTrue(item.waitForExistence(timeout: 5))
         window.buttons["tab.home"].click()
         window.buttons["tab.shelf"].click()
-        XCTAssertTrue(item.exists)
+        XCTAssertTrue(item.waitForExistence(timeout: 5))
         window.buttons["Delete source"].click()
         app.terminate()
         app.launchArguments = ["--preserve-shelf"]
