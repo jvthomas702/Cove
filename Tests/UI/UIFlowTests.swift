@@ -325,7 +325,7 @@ final class UIFlowTests: XCTestCase {
 
     func testAgentPromptSurvivesTabSwitchAndStartsOnlyWhenSubmitted() {
         window.buttons["tab.ai"].click()
-        window.segmentedControls["agent.destination"].buttons["New task"].click()
+        window.radioGroups["agent.destination"].radioButtons["New task"].click()
         let prompt = window.descendants(matching: .any).matching(identifier: "agent.prompt").firstMatch
         XCTAssertTrue(prompt.waitForExistence(timeout: 5)); prompt.click()
         prompt.typeText("Explain this project without changes")
@@ -355,7 +355,7 @@ final class UIFlowTests: XCTestCase {
         window.buttons["Show notch"].click()
         let notch = app.dialogs["Cove Test Notch"]
         notch.buttons["tab.ai"].click()
-        notch.segmentedControls["agent.destination"].buttons["New task"].click()
+        notch.radioGroups["agent.destination"].radioButtons["New task"].click()
         let prompt = notch.descendants(matching: .any).matching(identifier: "agent.prompt").firstMatch
         XCTAssertTrue(prompt.waitForExistence(timeout: 5)); prompt.click(); prompt.typeText("Review this code")
         XCTAssertEqual(prompt.value as? String, "Review this code")
