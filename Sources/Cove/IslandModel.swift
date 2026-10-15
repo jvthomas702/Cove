@@ -47,6 +47,7 @@ final class IslandModel: ObservableObject {
     var openSettings: ((SettingsPane) -> Void)?
     var applyConfig: ((CoveConfig) -> Void)?
     let sports: SportsMonitor
+    let agentLauncher = AgentLauncher()
     private let shelfStore: ShelfStore
     private let shelfEditor = ShelfEditorController()
     @Published private(set) var canUndoShelf = false
@@ -151,7 +152,7 @@ final class IslandModel: ObservableObject {
         case .expanded:
             let width = min(1000, availableIslandWidth)
             if tab == .home { return CGSize(width: width, height: n.height + 174) }
-            if tab == .ai { return CGSize(width: width, height: n.height + 290) }
+            if tab == .ai { return CGSize(width: width, height: n.height + 400) }
             if tab == .sports { return CGSize(width: width, height: n.height + 342) }
             if tab == .shelf { return CGSize(width: width, height: n.height + (shelf.count <= 4 ? 172 : 252)) }
             return CGSize(width: width, height: n.height + 252)

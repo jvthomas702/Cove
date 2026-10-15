@@ -322,4 +322,29 @@ final class UIFlowTests: XCTestCase {
         screenshot.name = "Black settings in light macOS appearance"; screenshot.lifetime = .keepAlways; add(screenshot)
     }
 
+    func testAgentPromptSurvivesTabSwitchAndStartsOnlyWhenSubmitted() {
+        window.buttons["tab.ai"].click()
+        let prompt = window.descendants(matching: .any).matching(identifier: "agent.prompt").firstMatch
+        XCTAssertTrue(prompt.waitForExistence(timeout: 5)); prompt.click()
+        prompt.typeText("Explain this project without changes")
+        window.buttons["tab.home"].click(); window.buttons["tab.ai"].click()
+        XCTAssertEqual(window.descendants(matching: .any).matching(identifier: "agent.prompt").firstMatch.value as? String, "Explain this project without changes")
+        window.buttons["agent.start"].click()
+        XCTAssertTrue(text("Opened Codex in Terminal").waitForExistence(timeout: 5))
+        XCTAssertEqual(window.descendants(matching: .any).matching(identifier: "agent.prompt").firstMatch.value as? String, "")
+    }
+
+    func testRealNotchAcceptsAgentTypingAndStaysOpen() {
+        window.buttons["Show notch"].click()
+        let notch = app.dialogs["Cove Test Notch"]
+        notch.buttons["tab.ai"].click()
+        let prompt = notch.descendants(matching: .any).matching(identifier: "agent.prompt").firstMatch
+        XCTAssertTrue(prompt.waitForExistence(timeout: 5)); prompt.click(); prompt.typeText("Review this code")
+        XCTAssertEqual(prompt.value as? String, "Review this code")
+        window.buttons["Offline"].click()
+        Thread.sleep(forTimeInterval: 0.8)
+        XCTAssertTrue(prompt.exists)
+        XCTAssertEqual(prompt.value as? String, "Review this code")
+    }
+
 }

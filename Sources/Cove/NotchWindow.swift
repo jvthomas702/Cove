@@ -17,7 +17,8 @@ extension NSScreen {
 
 /// Borderless, non-activating panel that floats above the menu bar on every Space.
 final class NotchPanel: NSPanel {
-    override var canBecomeKey: Bool { false }
+    var acceptsKeyboardInput = false
+    override var canBecomeKey: Bool { acceptsKeyboardInput }
     override var canBecomeMain: Bool { false }
 }
 
@@ -112,6 +113,11 @@ final class NotchWindowController {
         host.model = model
         host.sizingOptions = []
         panel.contentView = host
+        panel.acceptsKeyboardInput = model.expanded
+        model.$expanded.sink { [weak panel] expanded in
+            panel?.acceptsKeyboardInput = expanded
+            if !expanded { panel?.resignKey() }
+        }.store(in: &cancellables)
 
         relocate()
 

@@ -102,6 +102,12 @@ struct UIHostView: View {
             ShelfStore(defaults: shelfDefaults, root: FileManager.default.temporaryDirectory.appendingPathComponent("cove-ui-shelf")).clear()
         }
         model = IslandModel(config: config, sports: SportsMonitor(session: URLSession(configuration: sessionConfig)), shelfStore: ShelfStore(defaults: shelfDefaults, root: FileManager.default.temporaryDirectory.appendingPathComponent("cove-ui-shelf")))
+        model.agentLauncher.folder = UIFeed.root
+        model.agentLauncher.resolveExecutable = { _ in URL(fileURLWithPath: "/usr/bin/true") }
+        model.agentLauncher.openCommand = { url, completion in
+            try? FileManager.default.removeItem(at: url.deletingLastPathComponent())
+            completion(nil)
+        }
         model.applyConfig = { [weak self] config in
             guard let self else { return }
             self.model.config = config; self.model.sports.update(config: config)
@@ -122,7 +128,7 @@ struct UIHostView: View {
         notch.panel.orderOut(nil)
         let initialSize = model.size(for: .expanded)
         // Keep the fixture toolbar at a stable origin while the real island changes height.
-        window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: initialSize.width, height: 430), styleMask: [.titled, .closable], backing: .buffered, defer: false)
+        window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: initialSize.width, height: 550), styleMask: [.titled, .closable], backing: .buffered, defer: false)
         window.title = "Cove UI Test"
         window.isReleasedWhenClosed = false
         let host = NSHostingView(rootView: UIHostView(model: model, showNotch: { [weak self] in

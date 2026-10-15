@@ -17,15 +17,15 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.1.0</string>
+	<string>1.2.0</string>
 	<key>CFBundleVersion</key>
-	<string>110</string>
+	<string>120</string>
 	<key>SUFeedURL</key>
 	<string>https://raw.githubusercontent.com/jvthomas702/Cove-updates/updates/appcast.xml</string>
 	<key>SUEnableAutomaticChecks</key>
 	<true/>
 	<key>SUAutomaticallyUpdate</key>
-	<false/>
+	<true/>
 	<key>SUVerifyUpdateBeforeExtraction</key>
 	<true/>
 	<key>SUShowReleaseNotes</key>

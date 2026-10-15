@@ -129,12 +129,15 @@ struct AIWorkspacePane: View {
     @ObservedObject var model: IslandModel
 
     var body: some View {
-        HStack(alignment: .top, spacing: 10) {
-            AIWorkWidget(model: model)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            if !model.aiActivities.isEmpty {
-                AIWorkOverview(model: model).frame(width: 250)
+        VStack(spacing: 10) {
+            HStack(alignment: .top, spacing: 10) {
+                AIWorkWidget(model: model)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                if !model.aiActivities.isEmpty {
+                    AIWorkOverview(model: model).frame(width: 250)
+                }
             }
+            AgentComposer(model: model)
         }
     }
 }
