@@ -50,9 +50,13 @@ Cove opens **Settings** on first launch. Everything is a click from there:
 
 Open Settings any time from the menu bar icon, or by opening Cove.app again.
 
+### Matte appearance
+
+Choose **Dark Matte** or **White Matte** from the menu bar’s **Appearance** submenu, the island’s appearance menu, or **Settings → General → Appearance**. The real notch and closed pill stay black in both themes. Home keeps music, sports, activity and controls side by side; on smaller displays the tile row scrolls horizontally. Click **Play-by-play →** to open the existing Gamecast with plays, drives, stats and followed games. The quick controls open Wi-Fi, AirDrop, Sound, Displays and Cove settings. The appearance choice is saved locally and needs no new permissions.
+
 ### Choose your widget
 
-**Settings → General → Home widget** lets you choose Calendar, Music, Focus, Sports or AI work. Automatic shows available calendar/media content and hides inactive cards. The island remembers your selected tab when you close it. Sports widgets use each team’s provider colors in labels, score accents and card backgrounds, with readable accents for dark colors.
+**Settings → General → Home widget** lets you choose Calendar, Music, Focus, Sports or AI work. Home uses a wide row of matte tiles: music with vinyl artwork, a sports score and latest play, activity, and quick controls. Calendar and Focus put their content in the context tile; AI work opens the detailed task overview. The island remembers your selected tab when you close it. Team logos and provider colors identify teams; blue marks active controls and live status.
 
 Open the **Sports** tab (court icon), choose **NBA**, **NFL** or **College football**, then click a game. This pins its score to the notch and its latest play to Home. The Sports tab shows all returned plays, newest first, with game clock, quarter filters, drives and game stats. Selected games and leagues survive a restart.
 

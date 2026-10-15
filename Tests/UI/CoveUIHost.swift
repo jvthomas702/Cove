@@ -72,10 +72,10 @@ struct UIHostView: View {
                 }
                 Button("Offline") { UIFeed.offline.toggle(); model.sports.refresh() }
             }.controlSize(.small).font(.system(size: 10.5)).padding(8)
-            ExpandedView(model: model).frame(width: model.size(for: .expanded).width, height: model.size(for: .expanded).height).background(Color.black)
+            ExpandedView(model: model).frame(width: model.size(for: .expanded).width, height: model.size(for: .expanded).height).background(Theme.background)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .environment(\.colorScheme, .dark)
+        .environment(\.colorScheme, model.config.islandTheme.colorScheme)
     }
 }
 
@@ -83,7 +83,6 @@ struct UIHostView: View {
     var window: NSWindow!
     var model: IslandModel!
     var notch: NotchWindowController!
-    var resizeSubscription: AnyCancellable?
     func applicationDidFinishLaunching(_ notification: Notification) {
         setbuf(stdout, nil)
         let fixturePath = CommandLine.arguments.dropFirst().first { $0.hasPrefix("/") && FileManager.default.fileExists(atPath: $0) }
@@ -93,6 +92,7 @@ struct UIHostView: View {
         var config = CoveConfig()
         config.calendar = false; config.sounds = false; config.desktopAIActivity = false
         config.homeWidget = .sports; config.sportsLeague = .nba; config.sportsGameID = "401810946"
+        if CommandLine.arguments.contains("--white-matte") { config.islandTheme = .whiteMatte }
         let shelfDefaults = UserDefaults(suiteName: "app.cove.ui-test.shelf")!
         if !CommandLine.arguments.contains("--preserve-shelf") {
             ShelfStore(defaults: shelfDefaults, root: FileManager.default.temporaryDirectory.appendingPathComponent("cove-ui-shelf")).clear()
@@ -109,7 +109,9 @@ struct UIHostView: View {
         notch = NotchWindowController(model: model)
         notch.panel.title = "Cove Test Notch"
         notch.panel.orderOut(nil)
-        window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 660, height: 320), styleMask: [.titled, .closable], backing: .buffered, defer: false)
+        let initialSize = model.size(for: .expanded)
+        // Keep the fixture toolbar at a stable origin while the real island changes height.
+        window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: initialSize.width, height: 430), styleMask: [.titled, .closable], backing: .buffered, defer: false)
         window.title = "Cove UI Test"
         window.isReleasedWhenClosed = false
         let host = NSHostingView(rootView: UIHostView(model: model, showNotch: { [weak self] in
@@ -121,13 +123,6 @@ struct UIHostView: View {
         }))
         host.sizingOptions = []
         window.contentView = host
-        resizeSubscription = model.$currentSize.dropFirst().sink { [weak self] _ in
-            DispatchQueue.main.async {
-                guard let self else { return }
-                let size = self.model.size(for: .expanded)
-                self.window.setContentSize(NSSize(width: size.width, height: size.height + 36))
-            }
-        }
         window.center(); window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
     }

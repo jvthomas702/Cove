@@ -33,6 +33,7 @@ final class IslandModel: ObservableObject {
     /// The island's current size; the window follows this.
     @Published private(set) var currentSize = CGSize(width: 190, height: 32)
     @Published var hasHardwareNotch = true
+    @Published var availableIslandWidth: CGFloat = 1200 { didSet { recompute() } }
 
     // State
     @Published var config: CoveConfig {
@@ -142,15 +143,24 @@ final class IslandModel: ObservableObject {
         case .compact: return CGSize(width: n.width + compactWing * 2, height: n.height)
         case .banner: return CGSize(width: max(n.width + 250, 440), height: n.height + 72)
         case .expanded:
-            if tab == .sports { return CGSize(width: max(n.width + 450, 660), height: n.height + 342) }
-            if tab == .shelf { return CGSize(width: max(n.width + 310, 500), height: n.height + (shelf.count <= 4 ? 172 : 252)) }
-            if tab == .home && !showsActivityPane { return CGSize(width: max(n.width + 310, 500), height: n.height + 252) }
-            return CGSize(width: max(n.width + 450, 660), height: n.height + 252)
+            let width = min(1000, availableIslandWidth)
+            if tab == .home && config.homeWidget != .ai {
+                return CGSize(width: width, height: n.height + 166)
+            }
+            if tab == .sports { return CGSize(width: width, height: n.height + 342) }
+            if tab == .shelf { return CGSize(width: width, height: n.height + (shelf.count <= 4 ? 172 : 252)) }
+            return CGSize(width: width, height: n.height + 252)
         case .approval:
             // Grows with the preview (a one-line command vs. an 8-line diff).
             let lines = CGFloat(max(approvals.first?.preview.lines.count ?? 1, 1))
             return CGSize(width: max(n.width + 420, 620), height: n.height + min(134 + lines * 17, 280))
         }
+    }
+
+    func chooseIslandTheme(_ theme: IslandTheme) {
+        var next = config
+        next.islandTheme = theme
+        applyConfig?(next)
     }
 
     /// Width of each wing in compact mode. Wider for things that need words (a class name, a level bar).

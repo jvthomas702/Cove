@@ -65,8 +65,7 @@ struct AIWorkWidget: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background {
             RoundedRectangle(cornerRadius: Theme.Radius.card)
-                .fill(LinearGradient(colors: [(current?.agent.tint ?? Palette.blue).opacity(0.18), Theme.surface],
-                                     startPoint: .topLeading, endPoint: .bottomTrailing))
+                .fill(Theme.surface)
         }
     }
 }

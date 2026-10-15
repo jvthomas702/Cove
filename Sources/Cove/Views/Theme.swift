@@ -1,18 +1,28 @@
 import AppKit
 import SwiftUI
 
-/// Cove's design tokens. The island is pure black; everything on it is built from a few white
-/// tints, one type family (SF Pro, rounded for titles and numbers), and concentric corner radii.
+/// Matte surfaces use the selected appearance. Closed states keep the real notch black.
 enum Theme {
     // MARK: Ink (text and icons on black)
-    static let ink = Color.white.opacity(0.96)
-    static let inkSecondary = Color.white.opacity(0.62)
-    static let inkTertiary = Color.white.opacity(0.40)
+    static let ink = adaptive(light: 0x1E2129, dark: 0xE3E7EF)
+    static let inkSecondary = adaptive(light: 0x545A69, dark: 0xA4ABBA)
+    static let inkTertiary = inkSecondary.opacity(0.72)
 
     // MARK: Surfaces (layered on the black island)
-    static let surface = Color.white.opacity(0.06)
-    static let surfaceRaised = Color.white.opacity(0.10)
-    static let hairline = Color.white.opacity(0.08)
+    static let background = adaptive(light: 0xF7F8FA, dark: 0x16181F)
+    static let surface = adaptive(light: 0xFBFBFC, dark: 0x21242D)
+    static let surfaceRaised = adaptive(light: 0xE8EBEF, dark: 0x303440)
+    static let hairline = adaptive(light: 0x1E2129, dark: 0xE3E7EF).opacity(0.10)
+    static let accent = adaptive(light: 0x3B82D0, dark: 0x8FC7FF)
+
+    private static func adaptive(light: UInt32, dark: UInt32) -> Color {
+        Color(nsColor: NSColor(name: nil) { appearance in
+            let hex = appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua ? dark : light
+            return NSColor(srgbRed: CGFloat((hex >> 16) & 255) / 255,
+                           green: CGFloat((hex >> 8) & 255) / 255,
+                           blue: CGFloat(hex & 255) / 255, alpha: 1)
+        })
+    }
 
     // MARK: Spacing (4-pt grid)
     enum Space {
@@ -24,7 +34,7 @@ enum Theme {
 
     // MARK: Radii — concentric: island 34 → card (34 − 14 inset) 20 → row 12
     enum Radius {
-        static let islandExpanded: CGFloat = 34
+        static let islandExpanded: CGFloat = 42
         static let islandBanner: CGFloat = 26
         static let card: CGFloat = 20
         static let row: CGFloat = 12
@@ -54,6 +64,10 @@ enum Theme {
     static var snappy: Animation {
         reduceMotion ? .easeInOut(duration: 0.15) : .spring(response: 0.3, dampingFraction: 0.86)
     }
+}
+
+extension IslandTheme {
+    var colorScheme: ColorScheme { self == .whiteMatte ? .light : .dark }
 }
 
 /// Trackpad haptic tap (only felt on Force Touch trackpads while a finger is resting on them).

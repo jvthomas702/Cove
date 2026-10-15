@@ -6,6 +6,7 @@ import UniformTypeIdentifiers
 struct IslandShape: Shape {
     var ear: CGFloat
     var bottomRadius: CGFloat
+    var roundedTop = false
 
     var animatableData: AnimatablePair<CGFloat, CGFloat> {
         get { AnimatablePair(ear, bottomRadius) }
@@ -13,6 +14,9 @@ struct IslandShape: Shape {
     }
 
     func path(in r: CGRect) -> Path {
+        if roundedTop {
+            return Path(roundedRect: r, cornerRadius: bottomRadius, style: .continuous)
+        }
         let e = max(0, min(ear, r.width / 4))
         let radius = max(0, min(bottomRadius, (r.width - 2 * e) / 2, r.height))
         // Body: a continuous rounded rect whose top corners sit above the frame (so only the bottom ones show).
@@ -78,7 +82,7 @@ struct IslandRootView: View {
     var body: some View {
         IslandShell(model: model)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            .environment(\.colorScheme, .dark)
+            .environment(\.colorScheme, model.presentation == .expanded ? model.config.islandTheme.colorScheme : .dark)
     }
 }
 
@@ -90,12 +94,12 @@ struct IslandShell: View {
     var body: some View {
         let p = model.presentation
         let size = model.currentSize
-        let shape = IslandShape(ear: p == .idle ? 0 : IslandModel.ear, bottomRadius: radius(for: p))
+        let shape = IslandShape(ear: p == .idle ? 0 : IslandModel.ear, bottomRadius: radius(for: p), roundedTop: p == .expanded)
         let isOpen = p == .expanded || p == .banner || p == .approval
 
         ZStack(alignment: .top) {
             shape
-                .fill(Color.black)
+                .fill(p == .expanded ? Theme.background : Color.black)
                 .shadow(color: .black.opacity(isOpen ? 0.5 : 0), radius: 18, y: 8)
 
             content(for: p)
@@ -105,14 +109,17 @@ struct IslandShell: View {
                 .transition(.islandMorph)
                 .id(p)
         }
+        .overlay(alignment: .top) {
+            if p == .expanded {
+                UnevenRoundedRectangle(bottomLeadingRadius: 10, bottomTrailingRadius: 10)
+                    .fill(Color.black).frame(width: model.notchSize.width, height: model.notchSize.height)
+                    .allowsHitTesting(false)
+            }
+        }
         // A faint rim along the lower edge gives the open island some depth against dark wallpapers.
         .overlay {
             if isOpen {
-                shape.stroke(
-                    LinearGradient(colors: [.clear, Theme.hairline, Color.white.opacity(0.12)],
-                                   startPoint: .top, endPoint: .bottom),
-                    lineWidth: 1
-                )
+                shape.stroke(Theme.hairline, lineWidth: 1)
                 .allowsHitTesting(false)
             }
         }

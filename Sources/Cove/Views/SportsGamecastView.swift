@@ -174,13 +174,13 @@ private struct SportsDrives: View {
                                     if let team = game.team(drive.teamID) { TeamLogo(team: team, size: 24) }
                                     VStack(alignment: .leading, spacing: 3) {
                                         Text(drive.result).font(Theme.Font.headline)
-                                            .foregroundStyle(drive.scoring ? (game.team(drive.teamID)?.tint ?? Palette.green) : Theme.ink)
+                                            .foregroundStyle(drive.scoring ? (game.team(drive.teamID)?.tint ?? Theme.accent) : Theme.ink)
                                         Text(drive.summary).font(Theme.Font.caption).foregroundStyle(Theme.inkSecondary)
                                     }
                                     Spacer(minLength: 0)
                                     Text([drive.period > 0 ? SportsPlayFilter.periodName(drive.period) : "", drive.clock].filter { !$0.isEmpty }.joined(separator: " · "))
                                         .font(Theme.Font.number).foregroundStyle(Theme.inkTertiary)
-                                    if drive.current { Circle().fill(Palette.green).frame(width: 5, height: 5) }
+                                    if drive.current { Circle().fill(Theme.accent).frame(width: 5, height: 5) }
                                 }
                             }
                             .padding(9).background(RoundedRectangle(cornerRadius: 10).fill(Theme.surface))
@@ -267,7 +267,7 @@ private struct SportsFreshness: View {
         TimelineView(.periodic(from: .now, by: 5)) { context in
             HStack(spacing: 5) {
                 let age = updated.map { max(0, Int(context.date.timeIntervalSince($0))) }
-                Circle().fill(paused || (live && (age ?? 0) > 30) ? Palette.amber : live ? Palette.green : Theme.inkTertiary).frame(width: 4, height: 4)
+                Circle().fill(paused || (live && (age ?? 0) > 30) ? Palette.amber : live ? Theme.accent : Theme.inkTertiary).frame(width: 4, height: 4)
                 Text(paused ? "Updates paused" : age.map { "Updated \($0 < 60 ? "\($0)s" : "\($0 / 60)m") ago" } ?? "Waiting for data")
                 Spacer(minLength: 0)
                 Text(live ? "ESPN · checks every 10s · may be delayed" : "ESPN · may be delayed")

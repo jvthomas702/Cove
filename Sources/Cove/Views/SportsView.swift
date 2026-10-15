@@ -8,8 +8,7 @@ extension SportsTeam {
 private struct TeamMatchupBackground: View {
     let game: SportsGame
     var body: some View {
-        LinearGradient(colors: [game.away.brandColor.opacity(0.24), Theme.surface, game.home.brandColor.opacity(0.24)],
-                       startPoint: .leading, endPoint: .trailing)
+        Theme.surface
     }
 }
 
@@ -53,7 +52,7 @@ struct SportsPane: View {
                         Image(systemName: showingGames ? "chevron.up" : "chevron.down")
                     }.font(Theme.Font.caption)
                 }
-                .buttonStyle(.plain).foregroundStyle(Palette.blue)
+                .buttonStyle(.plain).foregroundStyle(Theme.accent)
                 .accessibilityIdentifier("sports.games")
                 IconButton(systemImage: "star", size: 12, hit: 24) { model.openSettings?(.features) }
                     .help("Choose favorite teams").accessibilityLabel("Choose favorite teams")
@@ -108,14 +107,14 @@ struct SportsPane: View {
                                         .font(Theme.Font.headline).lineLimit(1).minimumScaleFactor(0.8)
                                         Spacer(minLength: 0)
                                         if game.id == model.config.sportsGameID {
-                                            Image(systemName: "pin.fill").font(.system(size: 10)).foregroundStyle(Palette.blue)
+                                            Image(systemName: "pin.fill").font(.system(size: 10)).foregroundStyle(Theme.accent)
                                         }
                                     }
                                     HStack {
                                         Text(game.state == "pre" ? "" : "\(game.away.score)–\(game.home.score)")
                                             .font(Theme.Font.number)
                                         Text(game.status).font(Theme.Font.caption)
-                                            .foregroundStyle(game.isLive ? Palette.green : Theme.inkSecondary)
+                                            .foregroundStyle(game.isLive ? Theme.accent : Theme.inkSecondary)
                                             .lineLimit(1)
                                     }
                                 }
@@ -129,7 +128,7 @@ struct SportsPane: View {
                             .help("Follow \(game.away.name) at \(game.home.name)")
                             .accessibilityIdentifier("sports.game.\(game.id)")
                             Button(model.config.sportsWatchedGames.contains(game.key) ? "Unfollow game" : "Follow game") { model.toggleWatchedGame(game) }
-                                .font(.system(size: 9)).foregroundStyle(Palette.blue).buttonStyle(.plain)
+                                .font(.system(size: 9)).foregroundStyle(Theme.accent).buttonStyle(.plain)
                                 .accessibilityIdentifier("sports.watch.\(game.id)")
                             }
                         }
@@ -157,7 +156,7 @@ struct SportsWidget: View {
                 SectionTitle(title: "Following", count: nil)
                 Spacer()
                 Button("Choose game") { model.tab = .sports }
-                    .font(Theme.Font.caption).foregroundStyle(Palette.blue).buttonStyle(.plain)
+                    .font(Theme.Font.caption).foregroundStyle(Theme.accent).buttonStyle(.plain)
             }
             if !sports.enabled {
                 SportsEmpty(title: "Sports is turned off", detail: "Enable sports in Settings → Features.")
@@ -172,7 +171,7 @@ struct SportsWidget: View {
                         if let team = game.team(play.teamID) { TeamLogo(team: team, size: 16) }
                         Text(play.timeLabel).font(Theme.Font.number).foregroundStyle(Theme.inkTertiary)
                         Spacer(minLength: 0)
-                        if let badge = play.badge { Text(badge).font(Theme.Font.number).foregroundStyle(game.team(play.teamID)?.tint ?? Palette.green).lineLimit(1) }
+                        if let badge = play.badge { Text(badge).font(Theme.Font.number).foregroundStyle(game.team(play.teamID)?.tint ?? Theme.accent).lineLimit(1) }
                     }
                     if !play.context.isEmpty { Text(play.context).font(Theme.Font.caption).foregroundStyle(Theme.inkSecondary).lineLimit(1) }
                     Text(play.text).font(Theme.Font.body).foregroundStyle(Theme.inkSecondary).lineLimit(3)
@@ -182,7 +181,7 @@ struct SportsWidget: View {
                 }
                 HStack {
                     Button("Play-by-play →") { model.tab = .sports }
-                        .buttonStyle(.plain).font(Theme.Font.caption).foregroundStyle(Palette.blue)
+                        .buttonStyle(.plain).font(Theme.Font.caption).foregroundStyle(Theme.accent)
                     Spacer()
                     Text(game.isLive ? "ESPN · 10s updates" : "ESPN").font(.system(size: 9)).foregroundStyle(Theme.inkTertiary)
                 }
@@ -209,7 +208,7 @@ struct SportsScoreHeader: View {
                 Text(game.league.title).font(Theme.Font.caption).foregroundStyle(Theme.inkSecondary)
                 Spacer()
                 Text(game.status).font(Theme.Font.number)
-                    .foregroundStyle(game.isLive ? Palette.green : Theme.inkSecondary).lineLimit(1)
+                    .foregroundStyle(game.isLive ? Theme.accent : Theme.inkSecondary).lineLimit(1)
             }
             HStack(spacing: 12) {
                 teamScore(game.away)

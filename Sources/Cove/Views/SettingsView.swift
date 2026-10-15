@@ -367,6 +367,9 @@ private struct GeneralPane: View {
                       isOn: Binding(get: { controller.launchAtLogin }, set: { controller.setLaunchAtLogin($0) }))
         }
         SettingsGroup(title: "The island") {
+            Picker("Appearance", selection: controller.binding(\.islandTheme)) {
+                ForEach(IslandTheme.allCases, id: \.self) { Text($0.title).tag($0) }
+            }
             Picker("Home widget", selection: controller.binding(\.homeWidget)) {
                 ForEach(HomeWidget.allCases, id: \.self) { Text($0.title).tag($0) }
             }

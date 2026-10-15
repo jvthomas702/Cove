@@ -134,12 +134,16 @@ final class NotchWindowController {
             .store(in: &cancellables)
 
         panel.orderFrontRegardless()
+        model.$config.map(\.islandTheme).removeDuplicates().sink { [weak self] theme in
+            self?.panel.appearance = NSAppearance(named: theme == .whiteMatte ? .aqua : .darkAqua)
+        }.store(in: &cancellables)
     }
 
     /// Picks the screen with a notch (or the main screen) and re-measures.
     func relocate() {
         guard let s = NSScreen.screens.first(where: { $0.hasNotch }) ?? NSScreen.main ?? NSScreen.screens.first else { return }
         screen = s
+        model.availableIslandWidth = max(300, s.frame.width - 48)
         model.hasHardwareNotch = s.hasNotch
         model.notchSize = s.notchSize
         applyFrame(windowSize(for: model.currentSize))

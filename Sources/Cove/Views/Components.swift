@@ -142,7 +142,7 @@ struct PlaybackBar: View {
             VStack(spacing: 3) {
                 GeometryReader { geo in
                     ZStack(alignment: .leading) {
-                        Capsule().fill(Color.white.opacity(0.14))
+                        Capsule().fill(Theme.surfaceRaised)
                         Capsule()
                             .fill(tint)
                             .frame(width: duration > 0 ? geo.size.width * min(elapsed / duration, 1) : 0)

@@ -163,6 +163,7 @@ final class UIFlowTests: XCTestCase {
         window.buttons["tab.sports"].click()
         XCTAssertTrue(window.scrollViews["sports.followedScores"].waitForExistence(timeout: 8))
         window.buttons["tab.home"].click()
+        XCTAssertTrue(window.popUpButtons["home.widget"].waitForExistence(timeout: 5))
         window.descendants(matching: .any).matching(identifier: "ui.fixtures").firstMatch.click(); app.menuItems["Add AI task"].click()
         let chooser = window.popUpButtons["home.widget"]
         chooser.click(); app.menuItems["AI work"].click()
@@ -219,5 +220,37 @@ final class UIFlowTests: XCTestCase {
         let attachment = XCTAttachment(screenshot: window.screenshot())
         attachment.name = "Home UI"; attachment.lifetime = .keepAlways
         add(attachment)
+    }
+
+    func testMatteDashboardAndGamecastInBothThemes() {
+        for theme in ["dark", "white"] {
+            app.terminate()
+            app.launchArguments = theme == "white" ? ["--white-matte"] : []
+            app.launch()
+            XCTAssertTrue(window.waitForExistence(timeout: 10))
+            var previousEdge: CGFloat = 0
+            for tile in ["music", "sports", "activity", "controls"] {
+                let element = window.descendants(matching: .any).matching(identifier: "home.\(tile)Tile").firstMatch
+                XCTAssertTrue(element.waitForExistence(timeout: 8))
+                XCTAssertGreaterThan(element.frame.width, 100)
+                XCTAssertGreaterThanOrEqual(element.frame.minX, previousEdge)
+                previousEdge = element.frame.maxX
+            }
+            let appearance = window.descendants(matching: .any).matching(identifier: "island.appearance").firstMatch
+            XCTAssertTrue(appearance.exists)
+            window.buttons["Show notch"].click()
+            let notch = app.dialogs["Cove Test Notch"]
+            let pin = notch.buttons["notch.pin"]
+            XCTAssertTrue(pin.waitForExistence(timeout: 5)); pin.click()
+            let dashboard = XCTAttachment(screenshot: notch.screenshot())
+            dashboard.name = "\(theme.capitalized) Matte Dashboard"; dashboard.lifetime = .keepAlways; add(dashboard)
+            notch.buttons["notch.close"].click()
+            window.buttons["home.openGamecast"].click()
+            XCTAssertTrue(window.scrollViews["sports.plays"].waitForExistence(timeout: 8))
+            window.radioButtons["Stats"].click()
+            XCTAssertTrue(window.scrollViews["sports.stats"].waitForExistence(timeout: 5))
+            let attachment = XCTAttachment(screenshot: window.screenshot())
+            attachment.name = "\(theme.capitalized) Matte Gamecast"; attachment.lifetime = .keepAlways; add(attachment)
+        }
     }
 }

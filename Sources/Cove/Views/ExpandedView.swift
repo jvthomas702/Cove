@@ -24,6 +24,8 @@ struct ExpandedView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
         .foregroundStyle(Theme.ink)
+        .tint(Theme.accent)
+        .environment(\.colorScheme, model.config.islandTheme.colorScheme)
         .animation(Theme.snappy, value: model.tab)
     }
 
@@ -35,6 +37,13 @@ struct ExpandedView: View {
             Group {
                 HStack(spacing: 5) {
                     if let battery = model.battery { BatteryGlyph(state: battery) }
+                    Menu {
+                        ForEach(IslandTheme.allCases, id: \.self) { theme in
+                            Button(theme.title) { model.chooseIslandTheme(theme) }
+                        }
+                    } label: { Image(systemName: "circle.lefthalf.filled").font(.system(size: 11)) }
+                    .menuStyle(.borderlessButton).fixedSize()
+                    .help("Island appearance").accessibilityIdentifier("island.appearance")
                     IconButton(systemImage: model.isPinnedOpen ? "pin.fill" : "pin", size: 11, hit: 22) { model.togglePinnedOpen() }
                         .foregroundStyle(model.isPinnedOpen ? Palette.blue : Theme.inkSecondary)
                         .help(model.isPinnedOpen ? "Unpin the notch" : "Keep the notch open")
@@ -65,7 +74,7 @@ private struct TabSwitcher: View {
                 } label: {
                     Image(systemName: symbol(for: tab))
                         .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(model.tab == tab ? Theme.ink : Theme.inkTertiary)
+                        .foregroundStyle(model.tab == tab ? Theme.accent : Theme.inkTertiary)
                         .frame(width: 30, height: 20)
                         .background {
                             if model.tab == tab {
@@ -110,7 +119,7 @@ private struct TabSwitcher: View {
 
 // MARK: - Home
 
-struct HomePane: View {
+struct FocusedHomePane: View {
     @ObservedObject var model: IslandModel
 
     var body: some View {
