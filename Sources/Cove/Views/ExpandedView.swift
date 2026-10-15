@@ -38,18 +38,14 @@ struct ExpandedView: View {
             HStack(spacing: 6) {
                 Button("Connect AI") { model.openAIConnections() }
                     .font(Theme.Font.caption).foregroundStyle(Theme.accent)
-                    .buttonStyle(.plain).padding(.horizontal, 7).frame(height: 28)
+                    .padding(.horizontal, 9).frame(height: 30)
+                    .background(RoundedRectangle(cornerRadius: 8).fill(Theme.accent.opacity(0.10)))
+                    .buttonStyle(PressableStyle())
                     .contentShape(Rectangle()).accessibilityIdentifier("ai.connect")
                 DeviceSettingsMenu()
-                Menu {
-                    Button("Cove settings…") { model.openSettings?(.general) }
-                    Divider()
-                    ForEach(IslandTheme.allCases, id: \.self) { theme in
-                        Button(theme.title) { model.chooseIslandTheme(theme) }
-                    }
-                } label: { Image(systemName: "gearshape").font(.system(size: 12)) }
-                .menuStyle(.borderlessButton).fixedSize().help("Settings and appearance")
-                .accessibilityIdentifier("island.settings")
+                IconButton(systemImage: "gearshape", size: 12, hit: 28) { model.openSettings?(.general) }
+                    .help("Cove settings").accessibilityLabel("Cove settings")
+                    .accessibilityIdentifier("island.settings")
                 IconButton(systemImage: model.isPinnedOpen ? "pin.fill" : "pin", size: 12, hit: 28) { model.togglePinnedOpen() }
                     .foregroundStyle(model.isPinnedOpen ? Theme.accent : Theme.inkSecondary)
                     .help(model.isPinnedOpen ? "Unpin the notch" : "Keep the notch open")
@@ -62,7 +58,7 @@ struct ExpandedView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.horizontal, 14)
-        .frame(height: max(32, model.notchSize.height))
+        .frame(height: max(34, model.notchSize.height))
     }
 }
 
@@ -79,10 +75,10 @@ private struct TabSwitcher: View {
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: symbol(for: tab)).font(.system(size: 10))
-                        Text(label(for: tab)).font(.system(size: 11, weight: .medium))
+                        Text(label(for: tab)).font(.system(size: 12, weight: .medium))
                     }
                         .foregroundStyle(model.tab == tab ? Theme.accent : Theme.inkSecondary)
-                        .padding(.horizontal, 7).frame(height: 28)
+                        .padding(.horizontal, 7).frame(height: 30)
                         .background {
                             if model.tab == tab {
                                 Capsule().fill(Theme.surfaceRaised).matchedGeometryEffect(id: "pill", in: pill)
@@ -99,6 +95,7 @@ private struct TabSwitcher: View {
                 .help(label(for: tab))
                 .accessibilityLabel(label(for: tab))
                 .accessibilityIdentifier("tab.\(tab.rawValue)")
+                .accessibilityAddTraits(model.tab == tab ? .isSelected : [])
             }
         }
         .padding(2)
@@ -135,7 +132,9 @@ struct AIWorkspacePane: View {
         HStack(alignment: .top, spacing: 10) {
             AIWorkWidget(model: model)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-            AIWorkOverview(model: model).frame(width: 250)
+            if !model.aiActivities.isEmpty {
+                AIWorkOverview(model: model).frame(width: 250)
+            }
         }
     }
 }

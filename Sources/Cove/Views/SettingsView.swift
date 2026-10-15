@@ -209,7 +209,8 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             defer: false
         )
         window.title = "Cove Settings"
-        window.appearance = NSAppearance(named: controller.model.config.islandTheme == .whiteMatte ? .aqua : .darkAqua)
+        window.appearance = NSAppearance(named: .darkAqua)
+        window.backgroundColor = .black
         window.titlebarAppearsTransparent = true
         window.isReleasedWhenClosed = false
         window.contentView = NSHostingView(rootView: SettingsView(controller: controller))
@@ -279,6 +280,8 @@ struct SettingsView: View {
                     .tag(pane)
             }
             .navigationSplitViewColumnWidth(170)
+            .scrollContentBackground(.hidden)
+            .background(Theme.surface)
         } detail: {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
@@ -296,7 +299,9 @@ struct SettingsView: View {
                 .padding(24)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
+            .background(Theme.background)
         }
+        .background(Theme.background)
         .frame(minWidth: 620, minHeight: 520)
         .preferredColorScheme(model.config.islandTheme.colorScheme)
     }
@@ -334,7 +339,7 @@ private struct SettingsGroup<Content: View>: View {
             VStack(alignment: .leading, spacing: 12) { content }
                 .padding(14)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.primary.opacity(0.05)))
+                .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Theme.surface))
             if let footer {
                 Text(footer).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }
@@ -369,9 +374,6 @@ private struct GeneralPane: View {
                       isOn: Binding(get: { controller.launchAtLogin }, set: { controller.setLaunchAtLogin($0) }))
         }
         SettingsGroup(title: "The island") {
-            Picker("Appearance", selection: controller.binding(\.islandTheme)) {
-                ForEach(IslandTheme.allCases, id: \.self) { Text($0.title).tag($0) }
-            }
             Picker("Home widget", selection: controller.binding(\.homeWidget)) {
                 ForEach(HomeWidget.allCases.filter { $0 != .ai }, id: \.self) { Text($0.title).tag($0) }
             }
@@ -408,7 +410,7 @@ private struct FeaturesPane: View {
         SettingsGroup(title: "AI activity",
                       footer: "Open the AI tab to inspect your connected agents. App tracking reads visible window titles and generation controls locally; it needs Accessibility. Keep ChatGPT's chat window open. Browser reply previews can be turned off in the extension.") {
             ToggleRow(title: "Follow the ChatGPT desktop app", isOn: controller.binding(\.desktopAIActivity))
-            Text(controller.model.desktopAIStatus).font(.caption).foregroundStyle(.secondary)
+            Text(controller.model.desktopAITrackingStatus).font(.caption).foregroundStyle(.secondary)
             if controller.model.config.desktopAIActivity && !Permission.accessibility.isGranted {
                 Button("Allow Accessibility…") { controller.request(.accessibility) }
             }
@@ -732,8 +734,8 @@ private struct ConnectionsPane: View {
         SettingsGroup(title: "ChatGPT desktop",
                       footer: "Reads visible generation controls locally. Accessibility is required to follow the desktop app.") {
             ToggleRow(title: "Follow ChatGPT", isOn: controller.binding(\.desktopAIActivity))
-            Text(controller.model.desktopAIStatus).font(.caption).foregroundStyle(.secondary)
-            if !Permission.accessibility.isGranted {
+            Text(controller.model.desktopAITrackingStatus).font(.caption).foregroundStyle(.secondary)
+            if controller.model.config.desktopAIActivity && !Permission.accessibility.isGranted {
                 Button("Allow Accessibility…") { controller.request(.accessibility) }
             }
         }

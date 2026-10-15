@@ -134,9 +134,6 @@ final class NotchWindowController {
             .store(in: &cancellables)
 
         panel.orderFrontRegardless()
-        model.$config.map(\.islandTheme).removeDuplicates().sink { [weak self] theme in
-            self?.panel.appearance = NSAppearance(named: theme == .whiteMatte ? .aqua : .darkAqua)
-        }.store(in: &cancellables)
     }
 
     /// Picks the screen with a notch (or the main screen) and re-measures.

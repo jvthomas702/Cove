@@ -54,6 +54,7 @@ final class IslandModel: ObservableObject {
     /// When the browser extension last reported in (shown in Settings → Connections).
     @Published private(set) var lastExtensionEvent: Date?
     @Published var selectedAIActivityID: String?
+    @Published var aiActivityFilter: AIActivityFilter = .all
     @Published var desktopAIStatus = "Checking ChatGPT app…"
     @Published private(set) var presentation: Presentation = .idle
     @Published private(set) var expanded = false
@@ -719,6 +720,39 @@ final class IslandModel: ObservableObject {
             if $0.isLive != $1.isLive { return $0.isLive }
             return $0.updatedAt > $1.updatedAt
         }
+    }
+
+    var filteredAIActivities: [Activity] { aiActivities.filter(aiActivityFilter.includes) }
+
+    var selectedAIActivity: Activity? {
+        let visible = filteredAIActivities
+        return visible.first { $0.id == selectedAIActivityID } ?? visible.first
+    }
+
+    func selectAIActivity(_ activity: Activity) {
+        if !aiActivityFilter.includes(activity) { aiActivityFilter = .all }
+        selectedAIActivityID = activity.id
+    }
+
+    var aiStatusState: ActivityState? {
+        let work = aiActivities
+        for state in [ActivityState.attention, .running, .failed, .done] {
+            if work.contains(where: { $0.state == state }) { return state }
+        }
+        return nil
+    }
+
+    var aiStatusTitle: String {
+        let waiting = aiActivities.filter { $0.state == .attention }.count
+        if waiting > 0 { return "\(waiting) \(waiting == 1 ? "needs" : "need") you" }
+        let running = aiActivities.filter { $0.state == .running }.count
+        if running > 0 { return "\(running) working" }
+        if aiActivities.contains(where: { $0.state == .failed }) { return "Task failed" }
+        return aiActivities.isEmpty ? "Ready when you are" : "All caught up"
+    }
+
+    var desktopAITrackingStatus: String {
+        config.desktopAIActivity ? desktopAIStatus : "Tracking is off"
     }
 
     private func updateAIContext(id: String, phase: String?, url: String?) {

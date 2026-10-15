@@ -24,7 +24,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
     private var statusLine: NSMenuItem!
     private var hideItem: NSMenuItem!
-    private var themeItems: [NSMenuItem] = []
     private var hiddenUntil: Date?
     private var unhideTimer: Timer?
     private var observers: [NSObjectProtocol] = []
@@ -38,6 +37,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var version: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev" }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        NSApp.appearance = NSAppearance(named: .darkAqua)
         guard !anotherCopyIsRunning() else {
             NSApp.terminate(nil)
             return
@@ -176,7 +176,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let old = model.config
         CoveConfig.save(new)
         model.config = new
-        for item in themeItems { item.state = item.representedObject as? String == new.islandTheme.rawValue ? .on : .off }
         model.sports.update(config: new)
         if new.desktopAIActivity != old.desktopAIActivity { desktopAI.start(enabled: new.desktopAIActivity) }
 
@@ -440,16 +439,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusLine.isEnabled = false
         menu.addItem(statusLine)
         menu.addItem(.separator())
-        let appearance = NSMenuItem(title: "Appearance", action: nil, keyEquivalent: "")
-        let themes = NSMenu(title: "Appearance")
-        for theme in IslandTheme.allCases {
-            let item = addItem(to: themes, theme.title, #selector(selectIslandTheme(_:)))
-            item.representedObject = theme.rawValue
-            item.state = model.config.islandTheme == theme ? .on : .off
-            themeItems.append(item)
-        }
-        appearance.submenu = themes
-        menu.addItem(appearance)
         addItem(to: menu, "Settings…", #selector(openSettingsFromMenu), key: ",")
         addItem(to: menu, "Check for Updates…", #selector(checkForUpdates))
         addItem(to: menu, "Pin / unpin notch", #selector(togglePinFromMenu))
@@ -489,10 +478,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func checkForUpdates() { updater.check() }
-    @objc private func selectIslandTheme(_ sender: NSMenuItem) {
-        guard let value = sender.representedObject as? String, let theme = IslandTheme(rawValue: value) else { return }
-        model.chooseIslandTheme(theme)
-    }
     @objc private func togglePinFromMenu() { model.togglePinnedOpen() }
     @objc private func openSettingsFromMenu() { openSettings() }
     @objc private func runDemoFromMenu() { runDemo() }

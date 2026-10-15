@@ -1,8 +1,8 @@
 import Foundation
 
 enum IslandTheme: String, Codable, CaseIterable {
-    case darkMatte, whiteMatte
-    var title: String { self == .darkMatte ? "Black" : "White Matte" }
+    case darkMatte
+    var title: String { "Black" }
 }
 
 /// User settings, stored as JSON at ~/.config/cove/config.json.
@@ -118,6 +118,7 @@ struct CoveConfig: Codable {
         bannerSeconds = value(.bannerSeconds, d.bannerSeconds)
         hoverToExpand = value(.hoverToExpand, d.hoverToExpand)
         hoverDelay = value(.hoverDelay, d.hoverDelay)
+        // Older white-theme values fall back to the consistent black appearance.
         islandTheme = value(.islandTheme, d.islandTheme)
         mirrorNotifications = value(.mirrorNotifications, d.mirrorNotifications)
         ignoreApps = value(.ignoreApps, d.ignoreApps)

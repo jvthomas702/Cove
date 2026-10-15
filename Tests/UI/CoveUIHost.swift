@@ -52,6 +52,9 @@ struct UIHostView: View {
                     Button("Add AI task") {
                         model.ingest(CoveEvent(id: "web:claude:ui:tab:2", title: "Second AI task", body: "A second simulated response", kind: "running", source: "claude", phase: "Reasoning", url: "https://claude.ai/chat/ui"))
                     }
+                    Button("Finish AI task") {
+                        model.ingest(CoveEvent(id: "web:chatgpt:ui:tab:1", title: "Example reply", body: "Finished simulated reply", kind: "done", source: "chatgpt", silent: true))
+                    }
                     Button("Follow slate") {
                         var config = model.config; config.sportsWatchedGames = model.sports.allGames.map(\.key)
                         model.applyConfig?(config)
@@ -93,7 +96,7 @@ struct UIHostView: View {
         var config = CoveConfig()
         config.calendar = false; config.sounds = false; config.desktopAIActivity = false
         config.homeWidget = .sports; config.sportsLeague = .nba; config.sportsGameID = "401810946"
-        if CommandLine.arguments.contains("--white-matte") { config.islandTheme = .whiteMatte }
+        NSApp.appearance = NSAppearance(named: CommandLine.arguments.contains("--light-system") ? .aqua : .darkAqua)
         let shelfDefaults = UserDefaults(suiteName: "app.cove.ui-test.shelf")!
         if !CommandLine.arguments.contains("--preserve-shelf") {
             ShelfStore(defaults: shelfDefaults, root: FileManager.default.temporaryDirectory.appendingPathComponent("cove-ui-shelf")).clear()
@@ -104,7 +107,9 @@ struct UIHostView: View {
             self.model.config = config; self.model.sports.update(config: config)
             print("CONFIG widget=\(config.homeWidget.rawValue) league=\(config.sportsLeague.rawValue) game=\(config.sportsGameID ?? "none")")
         }
-        model.ingest(CoveEvent(id: "web:chatgpt:ui:tab:1", title: "A long example title for checking truncation and controls", body: "This simulated reply checks the widget layout without reading any of your chats.", kind: "running", source: "chatgpt", phase: "Writing reply"))
+        if !CommandLine.arguments.contains("--no-ai") {
+            model.ingest(CoveEvent(id: "web:chatgpt:ui:tab:1", title: "A long example title for checking truncation and controls", body: "This simulated reply checks the widget layout without reading any of your chats.", kind: "running", source: "chatgpt", phase: "Writing reply"))
+        }
         model.openSettings = { [weak self] pane in
             guard let self else { return }
             if self.settings == nil { self.settings = SettingsWindowController(controller: SettingsController(model: self.model)) }

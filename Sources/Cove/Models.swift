@@ -84,6 +84,18 @@ enum ActivityState: Equatable {
     case running, attention, done, failed
 }
 
+enum AIActivityFilter: String, CaseIterable {
+    case all = "All", live = "Live", finished = "Done"
+
+    func includes(_ activity: Activity) -> Bool {
+        switch self {
+        case .all: return true
+        case .live: return activity.isLive
+        case .finished: return !activity.isLive
+        }
+    }
+}
+
 struct Activity: Identifiable, Equatable {
     let id: String
     var agent: AgentKind

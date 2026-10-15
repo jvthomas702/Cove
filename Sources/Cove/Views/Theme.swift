@@ -1,28 +1,19 @@
 import AppKit
 import SwiftUI
 
-/// Matte surfaces use the selected appearance. Closed states keep the real notch black.
+/// Cove uses black surfaces consistently, independent of the system appearance.
 enum Theme {
     // MARK: Ink (text and icons on black)
-    static let ink = adaptive(light: 0x1E2129, dark: 0xE3E7EF)
-    static let inkSecondary = adaptive(light: 0x545A69, dark: 0xA4ABBA)
+    static let ink = Color(hex: 0xE3E7EF)
+    static let inkSecondary = Color(hex: 0xA4ABBA)
     static let inkTertiary = inkSecondary.opacity(0.72)
 
     // MARK: Surfaces (layered on the black island)
-    static let background = adaptive(light: 0xF7F8FA, dark: 0x000000)
-    static let surface = adaptive(light: 0xFBFBFC, dark: 0x111216)
-    static let surfaceRaised = adaptive(light: 0xE8EBEF, dark: 0x222329)
-    static let hairline = adaptive(light: 0x1E2129, dark: 0xE3E7EF).opacity(0.10)
-    static let accent = adaptive(light: 0x3B82D0, dark: 0x8FC7FF)
-
-    private static func adaptive(light: UInt32, dark: UInt32) -> Color {
-        Color(nsColor: NSColor(name: nil) { appearance in
-            let hex = appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua ? dark : light
-            return NSColor(srgbRed: CGFloat((hex >> 16) & 255) / 255,
-                           green: CGFloat((hex >> 8) & 255) / 255,
-                           blue: CGFloat(hex & 255) / 255, alpha: 1)
-        })
-    }
+    static let background = Color(hex: 0x000000)
+    static let surface = Color(hex: 0x111216)
+    static let surfaceRaised = Color(hex: 0x222329)
+    static let hairline = Color(hex: 0xE3E7EF).opacity(0.10)
+    static let accent = Color(hex: 0x8FC7FF)
 
     // MARK: Spacing (4-pt grid)
     enum Space {
@@ -67,7 +58,7 @@ enum Theme {
 }
 
 extension IslandTheme {
-    var colorScheme: ColorScheme { self == .whiteMatte ? .light : .dark }
+    var colorScheme: ColorScheme { .dark }
 }
 
 /// Trackpad haptic tap (only felt on Force Touch trackpads while a finger is resting on them).

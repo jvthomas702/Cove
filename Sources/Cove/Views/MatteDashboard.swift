@@ -194,7 +194,7 @@ private struct MatteContextTile: View {
                     ForEach(model.activities.prefix(2)) { activity in
                         Button {
                             if activity.agent.isAI {
-                                model.selectedAIActivityID = activity.id
+                                model.selectAIActivity(activity)
                                 model.navigate(to: .ai)
                             } else { model.open(activity) }
                         } label: {
@@ -226,15 +226,39 @@ private struct AIConnectionsTile: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Label("AI connections", systemImage: "link").font(Theme.Font.headline)
-            Text("Claude Code · Codex\nChatGPT · Gemini")
-                .font(.system(size: 10)).foregroundStyle(Theme.inkSecondary).lineSpacing(3)
+            HStack(spacing: 5) {
+                Circle().fill(statusTint)
+                    .frame(width: 5, height: 5)
+                Text(model.aiStatusTitle).font(Theme.Font.caption).lineLimit(1)
+            }.accessibilityIdentifier("home.aiStatus")
+            if model.aiActivities.isEmpty {
+                Text("Coding agents & AI chats")
+                    .font(.system(size: 10)).foregroundStyle(Theme.inkSecondary).lineLimit(2)
+            } else {
+                Button("View AI work →") { model.navigate(to: .ai) }
+                    .font(Theme.Font.caption).foregroundStyle(Theme.accent).buttonStyle(.plain)
+                    .frame(height: 24).contentShape(Rectangle()).accessibilityIdentifier("home.viewAI")
+            }
             Spacer(minLength: 0)
-            Button("Set up AI →") { model.openAIConnections() }
-                .font(Theme.Font.caption).foregroundStyle(Theme.accent).buttonStyle(.plain)
-                .frame(height: 28).contentShape(Rectangle())
+            Button { model.openAIConnections() } label: {
+                Label("Connect AI", systemImage: "plus")
+                    .font(Theme.Font.caption).foregroundStyle(Theme.accent)
+                    .frame(maxWidth: .infinity).frame(height: 28)
+                    .background(RoundedRectangle(cornerRadius: 8).fill(Theme.accent.opacity(0.12)))
+                    .contentShape(Rectangle())
+            }.buttonStyle(PressableStyle())
                 .accessibilityIdentifier("home.connectAI")
         }.modifier(MatteTile())
             .accessibilityIdentifier("home.connectionsTile")
+    }
+
+    private var statusTint: Color {
+        switch model.aiStatusState {
+        case .attention: return Palette.amber
+        case .failed: return Palette.red
+        case nil: return Theme.inkTertiary
+        default: return Theme.accent
+        }
     }
 }
 

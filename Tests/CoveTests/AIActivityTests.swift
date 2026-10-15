@@ -132,4 +132,68 @@ final class AIWidgetTests: XCTestCase {
         XCTAssertEqual(model.aiSteps["claude:private"]?.last?.phase, "Working")
         XCTAssertEqual(model.aiSteps["claude:private"]?.last?.detail, "Working…")
     }
+
+    func testFilteredSelectionAndDetailAlwaysAgree() {
+        let model = model()
+        model.ingest(CoveEvent(id: "codex:live", title: "Active", kind: "running", source: "codex"))
+        model.ingest(CoveEvent(id: "web:chatgpt:done", title: "Finished", kind: "done", source: "chatgpt", silent: true))
+        model.selectedAIActivityID = "codex:live"
+        model.aiActivityFilter = .finished
+        XCTAssertEqual(model.filteredAIActivities.map(\.id), ["web:chatgpt:done"])
+        XCTAssertEqual(model.selectedAIActivity?.id, "web:chatgpt:done")
+        model.aiActivityFilter = .live
+        XCTAssertEqual(model.selectedAIActivity?.id, "codex:live")
+        model.ingest(CoveEvent(id: "codex:live", title: "Active", kind: "done", source: "codex", silent: true))
+        XCTAssertNil(model.selectedAIActivity)
+        XCTAssertTrue(model.filteredAIActivities.isEmpty)
+    }
+
+    func testOpeningTaskOutsideFilterRevealsIt() throws {
+        let model = model()
+        model.ingest(CoveEvent(id: "codex:live", title: "Active", kind: "running", source: "codex"))
+        let live = try XCTUnwrap(model.aiActivities.first)
+        model.aiActivityFilter = .finished
+        model.selectAIActivity(live)
+        XCTAssertEqual(model.aiActivityFilter, .all)
+        XCTAssertEqual(model.selectedAIActivity?.id, live.id)
+        model.removeActivity(live.id)
+        XCTAssertNil(model.selectedAIActivity)
+    }
+
+    func testActivitySummaryUsesObservedTasksAndPrioritizesAttention() {
+        let model = model()
+        XCTAssertEqual(model.aiStatusTitle, "Ready when you are")
+        XCTAssertNil(model.aiStatusState)
+        model.ingest(CoveEvent(id: "command", title: "Build", kind: "running", source: "command"))
+        XCTAssertNil(model.aiStatusState)
+        model.ingest(CoveEvent(id: "codex:live", title: "Active", kind: "running", source: "codex"))
+        XCTAssertEqual(model.aiStatusTitle, "1 working")
+        model.ingest(CoveEvent(id: "claude:waiting", title: "Approval", kind: "attention", source: "claude"))
+        XCTAssertEqual(model.aiStatusTitle, "1 needs you")
+        XCTAssertEqual(model.aiStatusState, .attention)
+        model.removeActivity("claude:waiting")
+        model.ingest(CoveEvent(id: "codex:live", title: "Failed", kind: "failed", source: "codex"))
+        XCTAssertEqual(model.aiStatusTitle, "Task failed")
+        XCTAssertEqual(model.aiStatusState, .failed)
+        model.removeActivity("codex:live")
+        model.ingest(CoveEvent(id: "codex:done", title: "Finished", kind: "done", source: "codex", silent: true))
+        XCTAssertEqual(model.aiStatusTitle, "All caught up")
+    }
+
+    func testDisabledDesktopTrackingDoesNotClaimToBeChecking() {
+        let model = model()
+        model.config.desktopAIActivity = false
+        XCTAssertEqual(model.desktopAITrackingStatus, "Tracking is off")
+        model.config.desktopAIActivity = true
+        model.desktopAIStatus = "ChatGPT is ready"
+        XCTAssertEqual(model.desktopAITrackingStatus, "ChatGPT is ready")
+    }
+
+    func testOldWhitePreferenceLoadsBlackAndPreservesOtherSettings() throws {
+        let config = try JSONDecoder().decode(CoveConfig.self, from: Data(#"{"islandTheme":"whiteMatte","sounds":false,"hoverDelay":0.4,"sportsLeague":"nfl"}"#.utf8))
+        XCTAssertEqual(config.islandTheme, .darkMatte)
+        XCTAssertFalse(config.sounds)
+        XCTAssertEqual(config.hoverDelay, 0.4)
+        XCTAssertEqual(config.sportsLeague, .nfl)
+    }
 }

@@ -219,10 +219,10 @@ final class UIFlowTests: XCTestCase {
         add(attachment)
     }
 
-    func testMatteDashboardAndGamecastInBothThemes() {
-        for theme in ["dark", "white"] {
+    func testBlackDashboardAndGamecastInBothSystemAppearances() {
+        for theme in ["dark", "light-system"] {
             app.terminate()
-            app.launchArguments = theme == "white" ? ["--white-matte"] : []
+            app.launchArguments = theme == "light-system" ? ["--light-system"] : []
             app.launch()
             XCTAssertTrue(window.waitForExistence(timeout: 10))
             var previousEdge: CGFloat = 0
@@ -251,10 +251,10 @@ final class UIFlowTests: XCTestCase {
         }
     }
 
-    func testAICompanionAndAgentPillsInBothThemes() {
-        for theme in ["dark", "white"] {
+    func testBlackAICompanionInBothSystemAppearances() {
+        for theme in ["dark", "light-system"] {
             app.terminate()
-            app.launchArguments = theme == "white" ? ["--white-matte"] : []
+            app.launchArguments = theme == "light-system" ? ["--light-system"] : []
             app.launch()
             XCTAssertTrue(window.waitForExistence(timeout: 10))
             window.buttons["home.activity.web:chatgpt:ui:tab:1"].click()
@@ -284,8 +284,42 @@ final class UIFlowTests: XCTestCase {
             let label = settings.staticTexts.matching(NSPredicate(format: "label CONTAINS %@ OR value CONTAINS %@", title, title)).firstMatch
             XCTAssertTrue(label.waitForExistence(timeout: 5))
         }
+        XCTAssertTrue(settings.staticTexts["Tracking is off"].exists)
+        XCTAssertFalse(settings.buttons["Allow Accessibility…"].exists)
         let screenshot = XCTAttachment(screenshot: settings.screenshot())
         screenshot.name = "AI connections"; screenshot.lifetime = .keepAlways; add(screenshot)
+    }
+
+    func testAIFiltersKeepDetailsInSyncAndRecoverFromEmptyResults() {
+        window.buttons["home.viewAI"].click()
+        window.buttons["ai.filter.done"].click()
+        XCTAssertTrue(text("No finished tasks yet").waitForExistence(timeout: 5))
+        XCTAssertFalse(window.buttons["Open ChatGPT"].exists)
+        window.buttons["ai.emptyAction"].click()
+        XCTAssertTrue(window.buttons["Open ChatGPT"].waitForExistence(timeout: 5))
+        window.descendants(matching: .any).matching(identifier: "ui.fixtures").firstMatch.click()
+        app.menuItems["Finish AI task"].click()
+        window.buttons["ai.filter.live"].click()
+        XCTAssertTrue(text("Nothing working right now").waitForExistence(timeout: 5))
+        XCTAssertFalse(window.buttons["Open ChatGPT"].exists)
+        window.buttons["ai.filter.done"].click()
+        XCTAssertTrue(text("Finished simulated reply").waitForExistence(timeout: 5))
+        XCTAssertTrue(window.buttons["Open ChatGPT"].exists)
+    }
+
+    func testEmptyAIWorkspaceOpensConnectionsInLightSystemAppearance() {
+        app.terminate()
+        app.launchArguments = ["--no-ai", "--light-system"]
+        app.launch()
+        XCTAssertTrue(window.waitForExistence(timeout: 10))
+        window.buttons["tab.ai"].click()
+        XCTAssertTrue(text("Ready for your next task").waitForExistence(timeout: 5))
+        XCTAssertTrue(text("Tracking is off").exists)
+        window.buttons["ai.emptyAction"].click()
+        let settings = app.windows["Cove Settings"]
+        XCTAssertTrue(settings.waitForExistence(timeout: 5))
+        let screenshot = XCTAttachment(screenshot: settings.screenshot())
+        screenshot.name = "Black settings in light macOS appearance"; screenshot.lifetime = .keepAlways; add(screenshot)
     }
 
 }

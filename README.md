@@ -52,7 +52,7 @@ Open Settings any time from the menu bar icon, or by opening Cove.app again.
 
 ### Matte appearance
 
-**Black** is the default. Choose **Black** or **White Matte** from the menu bar’s **Appearance** submenu, the island’s settings menu, or **Settings → General → Appearance**. The real notch and closed pill stay black in both themes. Home keeps music, sports, activity and AI setup side by side; on smaller displays the tile row scrolls horizontally. Click **Play-by-play →** to open Gamecast with plays, drives, stats and followed games. **Devices** opens Sound, Displays, Wi-Fi and AirDrop settings. **Connect AI**, available on every tab, opens the connection screen for Claude Code, Codex, ChatGPT desktop and browser chats. The appearance choice is saved locally and needs no new permissions.
+Cove uses a consistent **black theme** across the island, AI workspace, Settings and image editor, including when macOS uses Light appearance. Older white-theme preferences fall back to black. Home keeps music, sports, activity and AI setup side by side; on smaller displays the tile row scrolls horizontally. Click **Play-by-play →** to open Gamecast with plays, drives, stats and followed games. **Devices** opens Sound, Displays, Wi-Fi and AirDrop settings. **Connect AI**, available on every tab, opens the connection screen for Claude Code, Codex, ChatGPT desktop and browser chats. The AI tile shows observed task status, including work that needs your attention.
 
 ### Simple navigation
 
@@ -180,7 +180,7 @@ Double-click a shelf image to preview it in Cove. Rename changes only the saved 
 
 ### AI task overview
 
-Open the **AI** tab to see the selected reply alongside an overview of tracked app and browser work. Filter All, Working or Finished, choose a task, and jump back to its app or tab. Completed tasks stay for ten minutes. Browser setup and desktop Accessibility requirements still apply; reply previews remain a browser-extension preference.
+Open the **AI** tab to see the selected reply alongside an overview of tracked app and browser work. Use the All, Live or Done buttons, choose a task, and jump back to its app or tab. The selected task and its details always follow the active filter. Empty filters offer Show all tasks. Completed tasks stay for ten minutes. Browser setup and desktop Accessibility requirements still apply; reply previews remain a browser-extension preference.
 
 ### App updates
 
