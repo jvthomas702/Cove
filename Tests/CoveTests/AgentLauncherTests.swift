@@ -26,6 +26,19 @@ import XCTest
         XCTAssertFalse(FileManager.default.fileExists(atPath: command.deletingLastPathComponent().path))
     }
 
+    func testFloatingPanelSelectAllWorksWithoutAnEditMenu() throws {
+        _ = NSApplication.shared
+        let panel = NotchPanel(contentRect: NSRect(x: 0, y: 0, width: 300, height: 100), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+        panel.acceptsKeyboardInput = true
+        let editor = NSTextView(frame: panel.contentView!.bounds)
+        editor.string = "A draft to replace"
+        panel.contentView = editor
+        XCTAssertTrue(panel.makeFirstResponder(editor))
+        let event = try XCTUnwrap(NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [.command], timestamp: 0, windowNumber: panel.windowNumber, context: nil, characters: "a", charactersIgnoringModifiers: "a", isARepeat: false, keyCode: 0))
+        XCTAssertTrue(panel.performKeyEquivalent(with: event))
+        XCTAssertEqual(editor.selectedRange(), NSRange(location: 0, length: editor.string.utf16.count))
+    }
+
     func testInvalidInputsDoNotCreateCommands() {
         let executable = URL(fileURLWithPath: "/usr/bin/true")
         let folder = FileManager.default.temporaryDirectory

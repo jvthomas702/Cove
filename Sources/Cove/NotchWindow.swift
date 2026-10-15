@@ -20,6 +20,27 @@ final class NotchPanel: NSPanel {
     var acceptsKeyboardInput = false
     override var canBecomeKey: Bool { acceptsKeyboardInput }
     override var canBecomeMain: Bool { false }
+
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        // The accessory app may have no Edit menu. Route text shortcuts to this panel's
+        // field editor instead of the application that remains active behind the notch.
+        let modifiers = event.modifierFlags.intersection([.command, .shift, .control, .option])
+        guard acceptsKeyboardInput, modifiers.contains(.command),
+              !modifiers.contains(.control), !modifiers.contains(.option),
+              let editor = firstResponder as? NSTextView else { return super.performKeyEquivalent(with: event) }
+        switch event.charactersIgnoringModifiers?.lowercased() {
+        case "a" where !modifiers.contains(.shift): editor.selectAll(self)
+        case "c" where !modifiers.contains(.shift): editor.copy(self)
+        case "x" where !modifiers.contains(.shift): editor.cut(self)
+        case "v" where !modifiers.contains(.shift): editor.paste(self)
+        case "z":
+            guard let undo = editor.undoManager else { return super.performKeyEquivalent(with: event) }
+            if modifiers.contains(.shift) { if undo.canRedo { undo.redo() } }
+            else if undo.canUndo { undo.undo() }
+        default: return super.performKeyEquivalent(with: event)
+        }
+        return true
+    }
 }
 
 /// Hosts the SwiftUI island. Lets clicks land without activating Cove first, and does hover

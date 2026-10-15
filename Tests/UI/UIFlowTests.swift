@@ -359,10 +359,13 @@ final class UIFlowTests: XCTestCase {
         let prompt = notch.descendants(matching: .any).matching(identifier: "agent.prompt").firstMatch
         XCTAssertTrue(prompt.waitForExistence(timeout: 5)); prompt.click(); prompt.typeText("Review this code")
         XCTAssertEqual(prompt.value as? String, "Review this code")
+        prompt.typeKey("a", modifierFlags: .command)
+        prompt.typeText("Replace this draft")
+        XCTAssertEqual(prompt.value as? String, "Replace this draft")
         window.buttons["Offline"].click()
         Thread.sleep(forTimeInterval: 0.8)
         XCTAssertTrue(prompt.exists)
-        XCTAssertEqual(prompt.value as? String, "Review this code")
+        XCTAssertEqual(prompt.value as? String, "Replace this draft")
     }
 
 }

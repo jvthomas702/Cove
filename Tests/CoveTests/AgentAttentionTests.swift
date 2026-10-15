@@ -6,6 +6,15 @@ import XCTest
         var config = CoveConfig(); config.sounds = false; config.calendar = false
         return IslandModel(config: config)
     }
+    func testOptionalNotificationSetupIsQuietNonstickyAndDoesNotRepeat() {
+        let model = model()
+        model.notificationAccessDenied()
+        model.notificationAccessDenied()
+        XCTAssertEqual(model.banner?.style, .info)
+        XCTAssertEqual(model.banner?.sticky, false)
+        XCTAssertEqual(model.history.count, 1)
+        XCTAssertNil(model.aiStatusState)
+    }
     func testRepeatedWaitRingsOnceAndNewPromptClearsStickyBanner() {
         let model = model()
         for _ in 0..<4 { model.agentAttention(id: "a", agent: .codex, title: "Project", message: "Answer needed") }

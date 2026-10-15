@@ -1,4 +1,9 @@
-# Cove 1.3.0
+# Cove 1.3.1
+
+- Optional notification-mirroring setup stays quiet and dismisses itself, instead of ringing and pinning a Needs you alert.
+
+- Standard text shortcuts, including Command-A, Copy, Cut, Paste and Undo, work inside the floating notch composer.
+- Temporary chat-catalog file errors clear after a successful refresh and retain your destination and draft.
 
 - Send prompts to existing local Codex chats from the AI tab. Choose Existing chat, select the destination, type, and Send. A working chat receives a follow-up; an idle open chat starts its next turn. Open chat brings the selected conversation forward if it needs to reconnect.
 - Existing chat and New task keep separate drafts. Switching tabs preserves your text and destination. An unavailable destination never silently changes to another chat.

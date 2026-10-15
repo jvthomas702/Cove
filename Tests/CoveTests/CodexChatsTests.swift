@@ -63,6 +63,17 @@ import SQLite3
         XCTAssertEqual(chats.selectedID, chat.id); XCTAssertFalse(chats.canSend)
         chats.send(); XCTAssertEqual(calls, 1)
     }
+    func testRecoveredCatalogClearsStaleErrorWithoutChangingDraftOrDestination() {
+        let chats = CodexChats()
+        chats.configureForTesting(chats: [chat]) { _, _, _, _ in XCTFail("Refreshing must not send") }
+        chats.prompt = "Keep this draft"
+        chats.receiveCatalog(.failure(URLError(.cannotOpenFile)))
+        chats.receiveCatalog(.success([chat]))
+        XCTAssertEqual(chats.selectedID, chat.id)
+        XCTAssertEqual(chats.prompt, "Keep this draft")
+        XCTAssertTrue(chats.status.hasPrefix("Sends to the selected chat"))
+        XCTAssertTrue(chats.canSend)
+    }
     func testCatalogExcludesArchivedAndSubagentsAndKeepsNamedChatTitles() throws {
         let home = FileManager.default.temporaryDirectory.appendingPathComponent("cove-catalog-\(UUID())")
         try FileManager.default.createDirectory(at: home, withIntermediateDirectories: true)

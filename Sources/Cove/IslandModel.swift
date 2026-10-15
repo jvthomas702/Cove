@@ -98,6 +98,7 @@ final class IslandModel: ObservableObject {
     private var suppressHoverUntilExit = false
     private var artworkKey: String?
     private var lastAgentSignal: Date?
+    private var reportedNotificationAccessDenied = false
     private var hudTimer: Timer?
     private var clockTimer: Timer?
     private var lastAlertCheck = Date()
@@ -821,12 +822,14 @@ final class IslandModel: ObservableObject {
     }
 
     func notificationAccessDenied() {
+        guard !reportedNotificationAccessDenied else { return }
+        reportedNotificationAccessDenied = true
         show(Banner(
-            title: "Allow Full Disk Access to mirror notifications",
-            body: "Click to open Settings, add Cove, then relaunch it.",
-            style: .attention,
-            icon: .symbol("lock.shield.fill", Palette.amber),
-            sticky: true,
+            title: "Notification mirroring is optional",
+            body: "Allow Full Disk Access in Settings if you want macOS notifications in Cove.",
+            style: .info,
+            icon: .symbol("lock.shield.fill", Palette.blue),
+            sticky: false,
             openURL: URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles")
         ))
     }

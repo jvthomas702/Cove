@@ -22,8 +22,13 @@ enum CodexChatCatalog {
         var statement: OpaquePointer?
         let sql = "SELECT id, COALESCE(NULLIF(name,''), title), cwd FROM threads WHERE archived=0 AND (source IN ('cli','vscode','appServer') OR source LIKE '%appServer%') ORDER BY updated_at DESC LIMIT 100"
         // Parent relationships vary between CLI versions; source filtering excludes subagents.
-        guard sqlite3_prepare_v2(db, sql, -1, &statement, nil) == SQLITE_OK else {
-            throw AgentLauncher.LaunchError.message("This Codex version uses an unsupported chat catalog.")
+        let prepared = sqlite3_prepare_v2(db, sql, -1, &statement, nil)
+        guard prepared == SQLITE_OK else {
+            if let statement { sqlite3_finalize(statement) }
+            let transient = [SQLITE_BUSY, SQLITE_LOCKED, SQLITE_CANTOPEN, SQLITE_IOERR].contains(prepared)
+            throw AgentLauncher.LaunchError.message(transient
+                ? "Codex’s chat list is temporarily unavailable. Refresh to retry."
+                : "This Codex version uses an unsupported chat catalog.")
         }
         defer { sqlite3_finalize(statement) }
         var result: [CodexChat] = []
@@ -60,6 +65,8 @@ struct CodexChatStatus: Equatable {
     var onDisconnect: (() -> Void)?
     var sendRequest: ((String, [String: Any], Int, @escaping (Result<[String: Any], Error>) -> Void) -> Void)?
     private var connection: CodexDesktopConnection?
+    private var catalogUnavailable = false
+    private var readyStatus: String { connected ? "Sends to the selected chat. Working chats receive a follow-up." : "Open Codex to connect. Your draft stays here." }
     private var states: [String: CodexChatStatus] = [:]
     private var delivered: [String: CodexChatStatus] = [:]
     private var waits: [String: Date] = [:]
@@ -71,17 +78,13 @@ struct CodexChatStatus: Equatable {
         let connection = CodexDesktopConnection()
         self.connection = connection
         connection.onCatalog = { [weak self] result in Task { @MainActor in
-            guard let self else { return }
-            switch result {
-            case .success(let chats): self.setChats(chats)
-            case .failure(let error): self.status = error.localizedDescription
-            }
+            self?.receiveCatalog(result)
         } }
         connection.onConnection = { [weak self] connected in Task { @MainActor in
             guard let self else { return }
             self.connected = connected
             if !connected { self.states.removeAll(); self.waits.removeAll(); self.delivered.removeAll(); self.onDisconnect?() }
-            self.status = connected ? "Sends to the selected chat. Working chats receive a follow-up." : "Open Codex to connect. Your draft stays here."
+            self.status = self.readyStatus
         } }
         connection.onState = { [weak self] id, state in Task { @MainActor in self?.receive(id: id, state: state) } }
         sendRequest = { [weak connection] method, params, version, completion in connection?.request(method, params, version: version, completion: completion) }
@@ -89,6 +92,14 @@ struct CodexChatStatus: Equatable {
     }
     func stop() { connection?.stop(); connection = nil }
     func refresh() { connection?.refresh() }
+    func receiveCatalog(_ result: Result<[CodexChat], Error>) {
+        switch result {
+        case .success(let chats):
+            setChats(chats)
+            if catalogUnavailable { catalogUnavailable = false; status = readyStatus }
+        case .failure(let error): catalogUnavailable = true; status = error.localizedDescription
+        }
+    }
     func setChats(_ chats: [CodexChat]) {
         self.chats = chats
         let ids = Set(chats.map(\.id))
