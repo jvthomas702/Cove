@@ -84,6 +84,7 @@ struct AIWorkWidget: View {
         .padding(14)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(RoundedRectangle(cornerRadius: Theme.Radius.card).fill(Theme.surface))
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("ai.session")
     }
 
