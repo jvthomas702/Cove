@@ -72,6 +72,8 @@ import XCTest
         XCTAssertEqual(model.activity("codex:\(chat.id)")?.state, .attention)
         chats.receive(id: chat.id, state: running, now: now.addingTimeInterval(6))
         XCTAssertNil(model.banner)
+        model.ingest(CoveEvent(id: "codex:\(chat.id)", title: "Project", body: "Reading", kind: "running", source: "codex", phase: "Read"))
+        XCTAssertEqual(model.activity("codex:\(chat.id)")?.phase, "Read")
         chats.receive(id: chat.id, state: CodexChatStatus(["type": "idle"])!)
         XCTAssertEqual(model.activity("codex:\(chat.id)")?.state, .done)
     }

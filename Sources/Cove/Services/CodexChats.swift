@@ -114,6 +114,11 @@ struct CodexChatStatus: Equatable {
         onState?(chat, state)
     }
     func hasLiveState(_ id: String) -> Bool { connected && states[id] != nil }
+    func ignoresHook(_ id: String, kind: String) -> Bool {
+        guard hasLiveState(id), let state = states[id] else { return false }
+        // Tool detail can enrich a confirmed running turn, but cannot clear a confirmed wait.
+        return !(["running", "progress", "start", "started"].contains(kind) && state.type == "active" && !state.needsYou)
+    }
 
     func send() {
         guard canSend, let chat = selectedChat, let transport = sendRequest else { return }

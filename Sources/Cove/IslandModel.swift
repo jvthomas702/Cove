@@ -700,7 +700,7 @@ final class IslandModel: ObservableObject {
         let kind = (e.kind ?? "info").lowercased()
         // Desktop runtime state supersedes early hooks and duplicate completion notifiers.
         if e.source?.lowercased() == "codex", let id = e.id, id.hasPrefix("codex:"),
-           codexChats.hasLiveState(String(id.dropFirst(6))) { return }
+           codexChats.ignoresHook(String(id.dropFirst(6)), kind: kind) { return }
         let sourceName = (e.source ?? "custom").lowercased()
         if ["chatgpt", "gemini", "claude-web"].contains(sourceName), e.id?.hasPrefix("desktop:") != true { lastExtensionEvent = Date() }
         let agent = AgentKind(rawValue: sourceName == "claude-web" ? "claude" : sourceName) ?? .custom
