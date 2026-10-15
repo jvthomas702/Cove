@@ -83,6 +83,7 @@ struct UIHostView: View {
     var window: NSWindow!
     var model: IslandModel!
     var notch: NotchWindowController!
+    var settings: SettingsWindowController?
     func applicationDidFinishLaunching(_ notification: Notification) {
         setbuf(stdout, nil)
         let fixturePath = CommandLine.arguments.dropFirst().first { $0.hasPrefix("/") && FileManager.default.fileExists(atPath: $0) }
@@ -104,6 +105,11 @@ struct UIHostView: View {
             print("CONFIG widget=\(config.homeWidget.rawValue) league=\(config.sportsLeague.rawValue) game=\(config.sportsGameID ?? "none")")
         }
         model.ingest(CoveEvent(id: "web:chatgpt:ui:tab:1", title: "A long example title for checking truncation and controls", body: "This simulated reply checks the widget layout without reading any of your chats.", kind: "running", source: "chatgpt", phase: "Writing reply"))
+        model.openSettings = { [weak self] pane in
+            guard let self else { return }
+            if self.settings == nil { self.settings = SettingsWindowController(controller: SettingsController(model: self.model)) }
+            self.settings?.show(pane: pane)
+        }
         model.sports.start(config: config)
         model.setExpanded(true)
         notch = NotchWindowController(model: model)

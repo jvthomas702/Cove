@@ -9,9 +9,9 @@ enum Theme {
     static let inkTertiary = inkSecondary.opacity(0.72)
 
     // MARK: Surfaces (layered on the black island)
-    static let background = adaptive(light: 0xF7F8FA, dark: 0x16181F)
-    static let surface = adaptive(light: 0xFBFBFC, dark: 0x21242D)
-    static let surfaceRaised = adaptive(light: 0xE8EBEF, dark: 0x303440)
+    static let background = adaptive(light: 0xF7F8FA, dark: 0x000000)
+    static let surface = adaptive(light: 0xFBFBFC, dark: 0x111216)
+    static let surfaceRaised = adaptive(light: 0xE8EBEF, dark: 0x222329)
     static let hairline = adaptive(light: 0x1E2129, dark: 0xE3E7EF).opacity(0.10)
     static let accent = adaptive(light: 0x3B82D0, dark: 0x8FC7FF)
 
@@ -55,14 +55,14 @@ enum Theme {
     // MARK: Motion
     static var reduceMotion: Bool { NSWorkspace.shared.accessibilityDisplayShouldReduceMotion }
 
-    /// The island's morph: a little overshoot when it grows, like the iPhone.
+    /// A quick, well-damped spring keeps the panel anchored without overshoot.
     static var morph: Animation {
-        reduceMotion ? .easeInOut(duration: 0.18) : .spring(response: 0.46, dampingFraction: 0.74, blendDuration: 0.1)
+        reduceMotion ? .easeInOut(duration: 0.18) : .spring(response: 0.34, dampingFraction: 0.90, blendDuration: 0.1)
     }
 
     /// Small state changes inside the island.
     static var snappy: Animation {
-        reduceMotion ? .easeInOut(duration: 0.15) : .spring(response: 0.3, dampingFraction: 0.86)
+        reduceMotion ? .easeInOut(duration: 0.15) : .spring(response: 0.25, dampingFraction: 0.92)
     }
 }
 
@@ -83,26 +83,10 @@ enum Haptics {
 
 // MARK: - Morph transition
 
-/// Content dissolves through a blur while the island changes shape, instead of a plain cross-fade.
-struct BlurMorph: ViewModifier {
-    let active: Bool
-
-    func body(content: Content) -> some View {
-        content
-            .blur(radius: active ? 10 : 0)
-            .opacity(active ? 0 : 1)
-            .scaleEffect(active ? 0.9 : 1, anchor: .top)
-    }
-}
-
+/// Content fades while the shell moves; text and controls keep their scale.
 extension AnyTransition {
     static var islandMorph: AnyTransition {
-        let base = AnyTransition.modifier(active: BlurMorph(active: true), identity: BlurMorph(active: false))
-        if Theme.reduceMotion { return .opacity }
-        return .asymmetric(
-            insertion: base.animation(.spring(response: 0.42, dampingFraction: 0.82).delay(0.07)),
-            removal: base.animation(.easeOut(duration: 0.14))
-        )
+        .opacity.animation(.easeOut(duration: Theme.reduceMotion ? 0.10 : 0.16))
     }
 }
 

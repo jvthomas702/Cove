@@ -209,6 +209,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             defer: false
         )
         window.title = "Cove Settings"
+        window.appearance = NSAppearance(named: controller.model.config.islandTheme == .whiteMatte ? .aqua : .darkAqua)
         window.titlebarAppearsTransparent = true
         window.isReleasedWhenClosed = false
         window.contentView = NSHostingView(rootView: SettingsView(controller: controller))
@@ -297,6 +298,7 @@ struct SettingsView: View {
             }
         }
         .frame(minWidth: 620, minHeight: 520)
+        .preferredColorScheme(model.config.islandTheme.colorScheme)
     }
 
     private var missingPermissions: Int {
@@ -371,7 +373,7 @@ private struct GeneralPane: View {
                 ForEach(IslandTheme.allCases, id: \.self) { Text($0.title).tag($0) }
             }
             Picker("Home widget", selection: controller.binding(\.homeWidget)) {
-                ForEach(HomeWidget.allCases, id: \.self) { Text($0.title).tag($0) }
+                ForEach(HomeWidget.allCases.filter { $0 != .ai }, id: \.self) { Text($0.title).tag($0) }
             }
             ToggleRow(title: "Show live AI work beside the notch", detail: "Temporarily shows active AI work, then returns to your sports score",
                       isOn: controller.binding(\.aiWorkInNotch))
@@ -404,7 +406,7 @@ private struct FeaturesPane: View {
 
     var body: some View {
         SettingsGroup(title: "AI activity",
-                      footer: "Choose AI work as your Home widget in General. App tracking reads visible window titles and generation controls locally; it needs Accessibility. Keep ChatGPT's chat window open. Browser reply previews can be turned off in the extension.") {
+                      footer: "Open the AI tab to inspect your connected agents. App tracking reads visible window titles and generation controls locally; it needs Accessibility. Keep ChatGPT's chat window open. Browser reply previews can be turned off in the extension.") {
             ToggleRow(title: "Follow the ChatGPT desktop app", isOn: controller.binding(\.desktopAIActivity))
             Text(controller.model.desktopAIStatus).font(.caption).foregroundStyle(.secondary)
             if controller.model.config.desktopAIActivity && !Permission.accessibility.isGranted {
@@ -705,6 +707,9 @@ private struct ConnectionsPane: View {
     @ObservedObject var controller: SettingsController
 
     var body: some View {
+        Text("AI connections").font(.title2.weight(.semibold))
+        Text("Connect your coding agents and AI chats to follow their work in the notch.")
+            .font(.subheadline).foregroundStyle(.secondary)
         SettingsGroup(title: "Claude Code",
               footer: controller.claudeCodePresent ? "Adds hooks to ~/.claude/settings.json (a backup is kept). Start a new session afterwards." : "Claude Code isn't set up on this Mac yet.") {
             statusRow(title: "Agent pings and permission prompts", connected: controller.claudeHooks) {
@@ -722,6 +727,14 @@ private struct ConnectionsPane: View {
                 statusRow(title: "Turn-finished pings", connected: controller.codex == .connected) {
                     controller.connectCodex(controller.codex != .connected)
                 }
+            }
+        }
+        SettingsGroup(title: "ChatGPT desktop",
+                      footer: "Reads visible generation controls locally. Accessibility is required to follow the desktop app.") {
+            ToggleRow(title: "Follow ChatGPT", isOn: controller.binding(\.desktopAIActivity))
+            Text(controller.model.desktopAIStatus).font(.caption).foregroundStyle(.secondary)
+            if !Permission.accessibility.isGranted {
+                Button("Allow Accessibility…") { controller.request(.accessibility) }
             }
         }
         SettingsGroup(title: "Browser chat tabs",
@@ -750,7 +763,7 @@ private struct ConnectionsPane: View {
 
     private func statusRow(title: String, connected: Bool, connectTitle: String = "Connect", action: @escaping () -> Void) -> some View {
         HStack {
-            Circle().fill(connected ? Color.green : Color.secondary.opacity(0.4)).frame(width: 8, height: 8)
+            Circle().fill(connected ? Theme.accent : Color.secondary.opacity(0.4)).frame(width: 8, height: 8)
             Text(title)
             Spacer()
             if connected && connectTitle == "Install" {

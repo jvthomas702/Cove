@@ -6,7 +6,7 @@ import Combine
 @MainActor
 final class IslandModel: ObservableObject {
     enum Presentation: Equatable { case idle, compact, banner, expanded, approval }
-    enum Tab: String, CaseIterable { case home, schedule, sports, shelf }
+    enum Tab: String, CaseIterable { case home, ai, schedule, sports, shelf }
 
     /// What the two "wings" beside the notch show in compact mode, in priority order.
     enum CompactItem: Equatable {
@@ -123,6 +123,10 @@ final class IslandModel: ObservableObject {
         self.sports.onAlert = { [weak self] alert in
             self?.show(Banner(title: alert.title, body: alert.body, style: .info, icon: .symbol("sportscourt.fill", Palette.blue), source: "Sports"))
         }
+        if config.homeWidget == .ai {
+            tab = .ai
+            self.config.homeWidget = .sports
+        }
         loadShelf()
         pruneTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.prune() }
@@ -145,10 +149,8 @@ final class IslandModel: ObservableObject {
         case .banner: return CGSize(width: max(n.width + 250, 440), height: n.height + 72)
         case .expanded:
             let width = min(1000, availableIslandWidth)
-            if tab == .home && config.homeWidget != .ai {
-                return CGSize(width: width, height: n.height + 166)
-            }
-            if tab == .home { return CGSize(width: width, height: n.height + 320) }
+            if tab == .home { return CGSize(width: width, height: n.height + 174) }
+            if tab == .ai { return CGSize(width: width, height: n.height + 290) }
             if tab == .sports { return CGSize(width: width, height: n.height + 342) }
             if tab == .shelf { return CGSize(width: width, height: n.height + (shelf.count <= 4 ? 172 : 252)) }
             return CGSize(width: width, height: n.height + 252)
@@ -258,10 +260,10 @@ final class IslandModel: ObservableObject {
                 }
             }
             hoverWork = work
-            DispatchQueue.main.asyncAfter(deadline: .now() + config.hoverDelay, execute: work)
+            DispatchQueue.main.asyncAfter(deadline: .now() + max(config.hoverDelay, 0.20), execute: work)
         } else if changed {
             suppressHoverUntilExit = false
-            scheduleCollapse(after: 0.3)
+            scheduleCollapse(after: 0.65)
         }
     }
 
@@ -284,7 +286,7 @@ final class IslandModel: ObservableObject {
         menuTrackingDepth = tracking ? menuTrackingDepth + 1 : max(0, menuTrackingDepth - 1)
         hoverWork?.cancel()
         hoverWork = nil
-        if menuTrackingDepth == 0, !isHovering { scheduleCollapse(after: 0.3) }
+        if menuTrackingDepth == 0, !isHovering { scheduleCollapse(after: 0.65) }
     }
 
     func setExpanded(_ value: Bool) {
@@ -311,10 +313,26 @@ final class IslandModel: ObservableObject {
 
     func toggleExpanded() { setExpanded(!expanded) }
 
+    func openByClick() {
+        isPinnedOpen = true
+        hoverWork?.cancel(); hoverWork = nil
+        setExpanded(true)
+    }
+
+    func navigate(to destination: Tab) {
+        openByClick()
+        tab = destination
+    }
+
+    func openAIConnections() {
+        openByClick()
+        openSettings?(.connections)
+    }
+
     func togglePinnedOpen() {
         isPinnedOpen.toggle()
         if isPinnedOpen { hoverWork?.cancel(); hoverWork = nil; setExpanded(true) }
-        else if !isHovering { scheduleCollapse(after: 0.3) }
+        else if !isHovering { scheduleCollapse(after: 0.65) }
     }
 
     func toggleFavorite(_ teamID: String, league: SportsLeague) {

@@ -2,7 +2,7 @@ import Foundation
 
 enum IslandTheme: String, Codable, CaseIterable {
     case darkMatte, whiteMatte
-    var title: String { self == .darkMatte ? "Dark Matte" : "White Matte" }
+    var title: String { self == .darkMatte ? "Black" : "White Matte" }
 }
 
 /// User settings, stored as JSON at ~/.config/cove/config.json.
@@ -18,7 +18,7 @@ struct CoveConfig: Codable {
     var bannerSeconds: Double = 4.5
     /// Expand the island when the pointer rests on it.
     var hoverToExpand: Bool = true
-    var hoverDelay: Double = 0.12
+    var hoverDelay: Double = 0.25
     var islandTheme: IslandTheme = .darkMatte
     /// Mirror macOS notifications into the island (needs Full Disk Access).
     var mirrorNotifications: Bool = true

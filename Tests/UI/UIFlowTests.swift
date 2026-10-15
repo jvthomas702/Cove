@@ -37,29 +37,27 @@ final class UIFlowTests: XCTestCase {
     }
 
     func testWidgetMenuAndQuietScreenshotPreserveChoice() {
-        let chooser = window.popUpButtons["home.widget"]
-        XCTAssertTrue(chooser.waitForExistence(timeout: 8))
-        chooser.click()
-        app.menuItems["AI work"].click()
+        window.buttons["tab.ai"].click()
         XCTAssertTrue(text("Writing reply").waitForExistence(timeout: 5))
         window.buttons["Quiet screenshot"].click()
+        XCTAssertTrue(window.scrollViews["ai.detail"].exists)
         XCTAssertTrue(text("Writing reply").exists)
-        chooser.click()
-        app.menuItems["Sports · play-by-play"].click()
+        window.buttons["tab.home"].click()
         XCTAssertTrue(window.buttons["Play-by-play →"].waitForExistence(timeout: 5))
     }
 
     func testRealNotchPopupRemainsOpenOutsideIsland() {
         window.buttons["Show notch"].click()
         let notch = app.dialogs["Cove Test Notch"]
-        let chooser = notch.popUpButtons["home.widget"]
-        XCTAssertTrue(chooser.waitForExistence(timeout: 5))
-        chooser.click()
-        // Exercise the former 0.3-second collapse while a native popup extends outside the island.
-        Thread.sleep(forTimeInterval: 0.6)
-        XCTAssertTrue(chooser.exists)
-        app.menuItems["AI work"].click()
-        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@ OR value CONTAINS %@", "Writing reply", "Writing reply")).firstMatch.waitForExistence(timeout: 5))
+        let devices = notch.descendants(matching: .any).matching(identifier: "device.settings").firstMatch
+        XCTAssertTrue(devices.waitForExistence(timeout: 5))
+        devices.click()
+        Thread.sleep(forTimeInterval: 0.8)
+        XCTAssertTrue(devices.exists)
+        app.typeKey(XCUIKeyboardKey.escape, modifierFlags: [])
+        notch.buttons["tab.ai"].click()
+        XCTAssertTrue(notch.scrollViews["ai.detail"].waitForExistence(timeout: 5))
+        XCTAssertTrue(notch.buttons["notch.pin"].exists)
     }
 
     func testCollegeFootballRankedFilter() {
@@ -125,7 +123,7 @@ final class UIFlowTests: XCTestCase {
         let item = window.descendants(matching: .any).matching(identifier: "shelf.item.Cove UI Screenshot.png").firstMatch
         XCTAssertTrue(item.waitForExistence(timeout: 5))
         window.buttons["tab.home"].click()
-        XCTAssertTrue(window.popUpButtons["home.widget"].waitForExistence(timeout: 5))
+        XCTAssertTrue(window.buttons["home.openGamecast"].waitForExistence(timeout: 5))
         window.buttons["tab.shelf"].click()
         XCTAssertTrue(item.waitForExistence(timeout: 5))
         window.buttons["Delete source"].click()
@@ -163,10 +161,9 @@ final class UIFlowTests: XCTestCase {
         window.buttons["tab.sports"].click()
         XCTAssertTrue(window.scrollViews["sports.followedScores"].waitForExistence(timeout: 8))
         window.buttons["tab.home"].click()
-        XCTAssertTrue(window.popUpButtons["home.widget"].waitForExistence(timeout: 5))
+        XCTAssertTrue(window.buttons["home.openGamecast"].waitForExistence(timeout: 5))
         window.descendants(matching: .any).matching(identifier: "ui.fixtures").firstMatch.click(); app.menuItems["Add AI task"].click()
-        let chooser = window.popUpButtons["home.widget"]
-        chooser.click(); app.menuItems["AI work"].click()
+        window.buttons["tab.ai"].click()
         XCTAssertTrue(window.scrollViews["ai.overview"].waitForExistence(timeout: 5))
         let task = window.buttons["ai.task.web:claude:ui:tab:2"]
         XCTAssertTrue(task.waitForExistence(timeout: 5)); task.click()
@@ -212,7 +209,7 @@ final class UIFlowTests: XCTestCase {
     }
 
     func testAllTabsRemainUsable() {
-        for tab in ["schedule", "sports", "shelf", "home"] {
+        for tab in ["ai", "schedule", "sports", "shelf", "home"] {
             window.buttons["tab.\(tab)"].click()
             XCTAssertTrue(window.buttons["tab.\(tab)"].isHittable)
         }
@@ -229,14 +226,14 @@ final class UIFlowTests: XCTestCase {
             app.launch()
             XCTAssertTrue(window.waitForExistence(timeout: 10))
             var previousEdge: CGFloat = 0
-            for tile in ["music", "sports", "activity", "controls"] {
+            for tile in ["music", "sports", "activity", "connections"] {
                 let element = window.descendants(matching: .any).matching(identifier: "home.\(tile)Tile").firstMatch
                 XCTAssertTrue(element.waitForExistence(timeout: 8))
                 XCTAssertGreaterThan(element.frame.width, 100)
                 XCTAssertGreaterThanOrEqual(element.frame.minX, previousEdge)
                 previousEdge = element.frame.maxX
             }
-            let appearance = window.descendants(matching: .any).matching(identifier: "island.appearance").firstMatch
+            let appearance = window.descendants(matching: .any).matching(identifier: "island.settings").firstMatch
             XCTAssertTrue(appearance.exists)
             window.buttons["Show notch"].click()
             let notch = app.dialogs["Cove Test Notch"]
@@ -275,4 +272,20 @@ final class UIFlowTests: XCTestCase {
             screenshot.name = "\(theme.capitalized) Matte AI workspace"; screenshot.lifetime = .keepAlways; add(screenshot)
         }
     }
+    func testAIConnectionsAreAvailableFromEveryTab() {
+        for tab in ["home", "schedule", "sports", "shelf", "ai"] {
+            window.buttons["tab.\(tab)"].click()
+            XCTAssertTrue(window.buttons["ai.connect"].isHittable)
+        }
+        window.buttons["ai.connect"].click()
+        let settings = app.windows["Cove Settings"]
+        XCTAssertTrue(settings.waitForExistence(timeout: 8))
+        for title in ["AI connections", "Claude Code", "Codex", "ChatGPT desktop"] {
+            let label = settings.staticTexts.matching(NSPredicate(format: "label CONTAINS %@ OR value CONTAINS %@", title, title)).firstMatch
+            XCTAssertTrue(label.waitForExistence(timeout: 5))
+        }
+        let screenshot = XCTAttachment(screenshot: settings.screenshot())
+        screenshot.name = "AI connections"; screenshot.lifetime = .keepAlways; add(screenshot)
+    }
+
 }

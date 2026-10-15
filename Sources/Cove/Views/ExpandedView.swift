@@ -11,13 +11,14 @@ struct ExpandedView: View {
             Group {
                 switch model.tab {
                 case .home: HomePane(model: model)
+                case .ai: AIWorkspacePane(model: model)
                 case .schedule: SchedulePane(model: model)
                 case .sports: SportsPane(model: model)
                 case .shelf: ShelfPane(model: model)
                 }
             }
             .id(model.tab)
-            .transition(.opacity.combined(with: .scale(scale: 0.98, anchor: .top)))
+            .transition(.opacity)
             .padding(.horizontal, 14)
             .padding(.top, Theme.Space.s)
             .padding(.bottom, 14)
@@ -34,30 +35,34 @@ struct ExpandedView: View {
             TabSwitcher(model: model)
                 .frame(maxWidth: .infinity, alignment: .trailing)
             Color.clear.frame(width: model.notchSize.width)
-            Group {
-                HStack(spacing: 5) {
-                    if let battery = model.battery { BatteryGlyph(state: battery) }
-                    Menu {
-                        ForEach(IslandTheme.allCases, id: \.self) { theme in
-                            Button(theme.title) { model.chooseIslandTheme(theme) }
-                        }
-                    } label: { Image(systemName: "circle.lefthalf.filled").font(.system(size: 11)) }
-                    .menuStyle(.borderlessButton).fixedSize()
-                    .help("Island appearance").accessibilityIdentifier("island.appearance")
-                    IconButton(systemImage: model.isPinnedOpen ? "pin.fill" : "pin", size: 11, hit: 22) { model.togglePinnedOpen() }
-                        .foregroundStyle(model.isPinnedOpen ? Palette.blue : Theme.inkSecondary)
-                        .help(model.isPinnedOpen ? "Unpin the notch" : "Keep the notch open")
-                        .accessibilityLabel(model.isPinnedOpen ? "Unpin notch" : "Pin notch open")
-                        .accessibilityIdentifier("notch.pin")
-                    IconButton(systemImage: "xmark", size: 10, hit: 22) { model.setExpanded(false) }
-                        .help("Close the notch").accessibilityLabel("Close notch")
-                        .accessibilityIdentifier("notch.close")
-                }
+            HStack(spacing: 6) {
+                Button("Connect AI") { model.openAIConnections() }
+                    .font(Theme.Font.caption).foregroundStyle(Theme.accent)
+                    .buttonStyle(.plain).padding(.horizontal, 7).frame(height: 28)
+                    .contentShape(Rectangle()).accessibilityIdentifier("ai.connect")
+                DeviceSettingsMenu()
+                Menu {
+                    Button("Cove settings…") { model.openSettings?(.general) }
+                    Divider()
+                    ForEach(IslandTheme.allCases, id: \.self) { theme in
+                        Button(theme.title) { model.chooseIslandTheme(theme) }
+                    }
+                } label: { Image(systemName: "gearshape").font(.system(size: 12)) }
+                .menuStyle(.borderlessButton).fixedSize().help("Settings and appearance")
+                .accessibilityIdentifier("island.settings")
+                IconButton(systemImage: model.isPinnedOpen ? "pin.fill" : "pin", size: 12, hit: 28) { model.togglePinnedOpen() }
+                    .foregroundStyle(model.isPinnedOpen ? Theme.accent : Theme.inkSecondary)
+                    .help(model.isPinnedOpen ? "Unpin the notch" : "Keep the notch open")
+                    .accessibilityLabel(model.isPinnedOpen ? "Unpin notch" : "Pin notch open")
+                    .accessibilityIdentifier("notch.pin")
+                IconButton(systemImage: "xmark", size: 11, hit: 28) { model.setExpanded(false) }
+                    .help("Close the notch").accessibilityLabel("Close notch")
+                    .accessibilityIdentifier("notch.close")
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.horizontal, 14)
-        .frame(height: model.notchSize.height)
+        .frame(height: max(32, model.notchSize.height))
     }
 }
 
@@ -70,12 +75,14 @@ private struct TabSwitcher: View {
         HStack(spacing: 2) {
             ForEach(IslandModel.Tab.allCases, id: \.self) { tab in
                 Button {
-                    model.tab = tab
+                    model.navigate(to: tab)
                 } label: {
-                    Image(systemName: symbol(for: tab))
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(model.tab == tab ? Theme.accent : Theme.inkTertiary)
-                        .frame(width: 30, height: 20)
+                    HStack(spacing: 4) {
+                        Image(systemName: symbol(for: tab)).font(.system(size: 10))
+                        Text(label(for: tab)).font(.system(size: 11, weight: .medium))
+                    }
+                        .foregroundStyle(model.tab == tab ? Theme.accent : Theme.inkSecondary)
+                        .padding(.horizontal, 7).frame(height: 28)
                         .background {
                             if model.tab == tab {
                                 Capsule().fill(Theme.surfaceRaised).matchedGeometryEffect(id: "pill", in: pill)
@@ -101,6 +108,7 @@ private struct TabSwitcher: View {
     private func symbol(for tab: IslandModel.Tab) -> String {
         switch tab {
         case .home: return "house.fill"
+        case .ai: return "sparkles"
         case .schedule: return "calendar"
         case .sports: return "sportscourt.fill"
         case .shelf: return "tray.full.fill"
@@ -110,37 +118,24 @@ private struct TabSwitcher: View {
     private func label(for tab: IslandModel.Tab) -> String {
         switch tab {
         case .home: return "Home"
-        case .schedule: return "Schedule"
+        case .ai: return "AI"
+        case .schedule: return "Calendar"
         case .sports: return "Sports"
-        case .shelf: return "Shelf"
+        case .shelf: return "Files"
         }
     }
 }
 
 // MARK: - Home
 
-struct FocusedHomePane: View {
+struct AIWorkspacePane: View {
     @ObservedObject var model: IslandModel
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text("Workspace").font(Theme.Font.caption).foregroundStyle(Theme.inkSecondary)
-                Picker("Home widget", selection: Binding(get: { model.config.homeWidget }, set: { widget in
-                    var next = model.config; next.homeWidget = widget; model.applyConfig?(next)
-                })) {
-                    ForEach(HomeWidget.allCases, id: \.self) { Text($0.title).tag($0) }
-                }
-                .labelsHidden().pickerStyle(.menu).frame(width: 180)
-                .accessibilityIdentifier("home.widget")
-                Spacer()
-            }
-            HStack(alignment: .top, spacing: 10) {
-                AIWorkWidget(model: model)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                AIWorkOverview(model: model)
-                    .frame(width: 250)
-            }
+        HStack(alignment: .top, spacing: 10) {
+            AIWorkWidget(model: model)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            AIWorkOverview(model: model).frame(width: 250)
         }
     }
 }

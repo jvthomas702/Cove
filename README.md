@@ -15,7 +15,7 @@ Native Swift and SwiftUI, no dependencies, MIT licensed. Every commit is built, 
 | **Pip** | Naps beside the notch, works along with your agents, hops with confetti when something finishes, waves an amber "!" when something needs you, and droops when something fails. |
 | **Approve from the notch** | When Claude Code asks permission, the island drops down with exactly what it wants to do (the command, or a red and green diff) and **Allow**, **Always allow**, **Deny** and **Answer in terminal**. |
 | **Agent pings** | Claude Code and Codex sessions show as live activities with what they're doing right now, then a banner with the final message. Click to jump back to the terminal. |
-| **AI work** | Follow ChatGPT desktop activity, ChatGPT/Claude/Gemini browser replies, Claude Code and Codex. Live status, elapsed time and browser reply previews appear in a selectable widget. |
+| **AI work** | Follow ChatGPT desktop activity, ChatGPT/Claude/Gemini browser replies, Claude Code and Codex. Live status, elapsed time and browser reply previews appear in the AI tab. |
 | **Classes and due dates** | "CPE 3000 Lecture, 50 min left" beside the notch, a heads-up before each class with a Join button for Zoom, Meet or Teams, and a Due soon list from your D2L or Canvas calendar and Reminders. |
 | **Sports** | Choose an NBA, NFL or college football game to pin its score beside the notch and follow its latest plays. College football defaults to games featuring a Top 25 team. |
 | **Screenshot shelf** | Every screenshot lands on the shelf the moment it's saved, with a thumbnail you can drag straight out of the notch into a doc, Slack or a chat. |
@@ -52,19 +52,19 @@ Open Settings any time from the menu bar icon, or by opening Cove.app again.
 
 ### Matte appearance
 
-Choose **Dark Matte** or **White Matte** from the menu bar’s **Appearance** submenu, the island’s appearance menu, or **Settings → General → Appearance**. The real notch and closed pill stay black in both themes. Home keeps music, sports, activity and controls side by side; on smaller displays the tile row scrolls horizontally. Click **Play-by-play →** to open the existing Gamecast with plays, drives, stats and followed games. The quick controls open Wi-Fi, AirDrop, Sound, Displays and Cove settings. The appearance choice is saved locally and needs no new permissions.
+**Black** is the default. Choose **Black** or **White Matte** from the menu bar’s **Appearance** submenu, the island’s settings menu, or **Settings → General → Appearance**. The real notch and closed pill stay black in both themes. Home keeps music, sports, activity and AI setup side by side; on smaller displays the tile row scrolls horizontally. Click **Play-by-play →** to open Gamecast with plays, drives, stats and followed games. **Devices** opens Sound, Displays, Wi-Fi and AirDrop settings. **Connect AI**, available on every tab, opens the connection screen for Claude Code, Codex, ChatGPT desktop and browser chats. The appearance choice is saved locally and needs no new permissions.
 
-### Choose your widget
+### Simple navigation
 
-**Settings → General → Home widget** lets you choose Calendar, Music, Focus, Sports or AI work. Home uses a wide row of matte tiles: music with vinyl artwork, a sports score and latest play, activity, and quick controls. Calendar and Focus put their content in the context tile; AI work opens the detailed task overview. The island remembers your selected tab when you close it. Team logos and provider colors identify teams; blue marks active controls and live status.
+The labeled **Home**, **AI**, **Calendar**, **Sports** and **Files** tabs open their views directly. The island remembers your selected tab when you close it. **Settings → General → Home widget** chooses Calendar, Music, Focus or Sports for the dashboard; Calendar and Focus put their content in the context tile. Team logos and provider colors identify teams; blue marks active controls and live status.
 
-Open the **Sports** tab (court icon), choose **NBA**, **NFL** or **College football**, then click a game. This pins its score to the notch and its latest play to Home. The Sports tab shows all returned plays, newest first, with game clock, quarter filters, drives and game stats. Selected games and leagues survive a restart.
+Open the **Sports** tab, choose **NBA**, **NFL** or **College football**, then click a game. This pins its score to the notch and its latest play to Home. The Sports tab shows all returned plays, newest first, with game clock, quarter filters, drives and game stats. Selected games and leagues survive a restart.
 
 College football shows games with at least one **Top 25** team by default; turn off **Top 25** to browse all FBS games. NBA shows the day's slate, while NFL and college football show the current week's slate. Live selected games refresh about every 10 seconds; other states and followed scoreboards refresh every minute. ESPN provides the data, so coverage and delays vary. If a request fails, Cove keeps the last data and indicates that updates have paused. These public feed endpoints are not a documented API contract and may change.
 
 ### AI work from apps and browser tabs
 
-Choose **Settings → General → Home widget → AI work**. Live AI work can temporarily replace a sports score beside the notch, then return to it when the work finishes; turn this off with **Show live AI work beside the notch**. The AI workspace takes visual cues from [Coucou](https://github.com/Louis-CFM/coucou): a large Pip beside the selected session, observed phases down the left, live detail in the main card, and colored agent pills on the right. Click a pill to inspect that session; Open returns to its app or terminal. Clicking an AI activity in the matte dashboard opens this workspace. Pip is drawn with Cove’s own native shapes; no Coucou character assets or sounds are bundled. Phase history stays in memory, is bounded to 24 phases per session, and coalesces streaming reply updates. Only reported steps are shown. Disable Show Pip to use agent glyphs instead.
+Open the **AI** tab. Live AI work can temporarily replace a sports score beside the notch, then return to it when the work finishes; turn this off with **Show live AI work beside the notch**. The AI workspace takes visual cues from [Coucou](https://github.com/Louis-CFM/coucou): a large Pip beside the selected session, observed phases down the left, live detail in the main card, and colored agent pills on the right. Click a pill to inspect that session; Open returns to its app or terminal. Clicking an AI activity in the matte dashboard opens this workspace. Pip is drawn with Cove’s own native shapes; no Coucou character assets or sounds are bundled. Phase history stays in memory, is bounded to 24 phases per session, and coalesces streaming reply updates. Only reported steps are shown. Disable Show Pip to use agent glyphs instead.
 
 - **ChatGPT desktop app:** enable **Settings → Features → Follow the ChatGPT desktop app**, and grant Cove **Accessibility** in Permissions. Keep the chat window open. Cove reads only window titles and generation/composer button metadata; it does not read the app’s chat database, text-field contents, screenshots or hidden reasoning. Two consistent observations are required to start or finish work. If controls cannot be read, Cove reports that status rather than claiming a reply finished. Desktop tracking is a best-effort observer of visible windows; it cannot follow chats whose generation controls are not exposed, and UI updates may change those controls. Desktop completion opens the app to read the response rather than copying its contents.
 - **Browser tabs:** use **Settings → Connections → Browser chat tabs → Set up** to install the bundled Cove extension in Chrome, Arc, Brave or Edge. After a Cove update, reload the unpacked extension and refresh already-open chat tabs. The extension reports ChatGPT, Claude and Gemini generation status, live visible reply excerpts and completion. Turn off **Include reply previews** in its popup to send status and character counts instead. These events go only to Cove’s loopback server. A reply you watched finish stays in the widget quietly; the popup’s notification toggle controls whether it also shows a banner.
@@ -150,7 +150,7 @@ MIT © 2026 Jason Thomas
 
 ### Native UI testing
 
-Run `./scripts/ui-test-host.sh` to open an isolated native test app with the production Cove views and recorded sports feeds. It uses its own preferences and starts no screenshot watcher, calendar, notification reader, or desktop AI monitor. Use Home’s widget menu, each tab, game selection, the Offline control, and Quiet screenshot to check visible behavior. The fixture summary adapts to the selected fixture team pair; these are repeatable scenarios, not current game data.
+Run `./scripts/ui-test-host.sh` to open an isolated native test app with the production Cove views and recorded sports feeds. It uses its own preferences and starts no screenshot watcher, calendar, notification reader, or desktop AI monitor. Use each labeled tab, Connect AI, the Devices menu, game selection, the Offline control, and Quiet screenshot to check visible behavior. The fixture summary adapts to the selected fixture team pair; these are repeatable scenarios, not current game data.
 
 With full Xcode installed, run:
 
@@ -172,7 +172,7 @@ Live detail checks every 10 seconds, independently of the slower scoreboard refr
 
 In **Settings → Features → Favorite teams**, search NBA, NFL and FBS teams and click their stars. Auto-follow selects a live favorite when no active game is selected, then an upcoming favorite; it respects an active game you selected manually. Favorite college teams stay visible with Top 25 enabled. Use **Follow game** in the game chooser to add individual matchups. The compact score strip switches between followed games across leagues. Start and score alerts are optional and off initially.
 
-Use the pin beside the notch to keep it open while the pointer is elsewhere. Unpin restores hover behavior; the close button closes and unpins it. Tab controls stay beside the physical notch when the panel changes width.
+Click the closed island or a tab to keep it open while you work. Hover opens it temporarily with a short delay; leaving gives you 0.65 seconds to return. Native menus keep the island open while you use them. Unpin restores hover behavior; the close button closes and unpins it. Tab controls stay beside the physical notch when the panel changes width. The island uses a damped spring for resizing and a short fade for content changes; Reduce Motion removes the spring.
 
 ### Screenshot preview, annotation and undo
 
@@ -180,7 +180,7 @@ Double-click a shelf image to preview it in Cove. Rename changes only the saved 
 
 ### AI task overview
 
-Choose **AI work** on Home to see the selected reply alongside an overview of tracked app and browser work. Filter All, Working or Finished, choose a task, and jump back to its app or tab. Completed tasks stay for ten minutes. Browser setup and desktop Accessibility requirements still apply; reply previews remain a browser-extension preference.
+Open the **AI** tab to see the selected reply alongside an overview of tracked app and browser work. Filter All, Working or Finished, choose a task, and jump back to its app or tab. Completed tasks stay for ten minutes. Browser setup and desktop Accessibility requirements still apply; reply previews remain a browser-extension preference.
 
 ### App updates
 

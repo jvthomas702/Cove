@@ -56,10 +56,28 @@ import XCTest
         try await Task.sleep(nanoseconds: 400_000_000)
         XCTAssertTrue(model.expanded)
         model.setMenuTracking(false)
-        try await Task.sleep(nanoseconds: 400_000_000)
+        try await Task.sleep(nanoseconds: 800_000_000)
         XCTAssertFalse(model.expanded)
         model.togglePinnedOpen(); model.setExpanded(false)
         XCTAssertFalse(model.isPinnedOpen); XCTAssertFalse(model.expanded)
+    }
+    func testClickNavigationStaysOpenUntilExplicitClose() async throws {
+        var config = CoveConfig(); config.calendar = false; config.sounds = false
+        let model = IslandModel(config: config)
+        model.setHovering(true)
+        model.navigate(to: .ai)
+        model.setHovering(false)
+        try await Task.sleep(nanoseconds: 800_000_000)
+        XCTAssertTrue(model.expanded); XCTAssertTrue(model.isPinnedOpen)
+        XCTAssertEqual(model.tab, .ai)
+        model.setExpanded(false)
+        XCTAssertFalse(model.isPinnedOpen); XCTAssertFalse(model.expanded)
+    }
+    func testLegacyAIHomePreferenceOpensDedicatedAITab() {
+        var config = CoveConfig(); config.calendar = false; config.homeWidget = .ai
+        let model = IslandModel(config: config)
+        XCTAssertEqual(model.tab, .ai)
+        XCTAssertEqual(model.config.homeWidget, .sports)
     }
     func testUndoRemovalAndClearSurviveStoreRestart() throws {
         let suite = "CoveUndoTest.\(UUID())", defaults = UserDefaults(suiteName: suite)!

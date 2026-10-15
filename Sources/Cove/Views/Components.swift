@@ -380,8 +380,8 @@ struct IconButton: View {
 struct PressableStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .scaleEffect(configuration.isPressed ? 0.94 : 1)
+            .scaleEffect(configuration.isPressed ? 0.97 : 1)
             .opacity(configuration.isPressed ? 0.85 : 1)
-            .animation(.spring(response: 0.2, dampingFraction: 0.7), value: configuration.isPressed)
+            .animation(.easeOut(duration: Theme.reduceMotion ? 0.05 : 0.12), value: configuration.isPressed)
     }
 }

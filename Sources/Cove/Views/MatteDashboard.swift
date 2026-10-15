@@ -6,26 +6,22 @@ struct HomePane: View {
     @ObservedObject var model: IslandModel
 
     var body: some View {
-        if model.config.homeWidget == .ai {
-            FocusedHomePane(model: model)
-        } else {
-            GeometryReader { geometry in
-                // A smaller display keeps the same tiles reachable without shrinking their text.
-                let width = max(930, geometry.size.width)
-                let space = width - 30
-                ScrollView(.horizontal) {
-                    HStack(spacing: 10) {
-                        MatteMusicTile(model: model).frame(width: space * 0.25)
-                        MatteSportsTile(model: model).frame(width: space * 0.34)
-                        MatteContextTile(model: model).frame(width: space * 0.26)
-                        MatteControlsTile(model: model).frame(width: space * 0.15)
-                    }
-                    .frame(height: 140)
+        GeometryReader { geometry in
+            // A smaller display keeps the same tiles reachable without shrinking their text.
+            let width = max(930, geometry.size.width)
+            let space = width - 30
+            ScrollView(.horizontal) {
+                HStack(spacing: 10) {
+                    MatteMusicTile(model: model).frame(width: space * 0.23)
+                    MatteSportsTile(model: model).frame(width: space * 0.32)
+                    MatteContextTile(model: model).frame(width: space * 0.26)
+                    AIConnectionsTile(model: model).frame(width: space * 0.19)
                 }
-                .scrollIndicators(.automatic)
+                .frame(height: 140)
             }
-            .accessibilityIdentifier("home.matteDashboard")
+            .scrollIndicators(.automatic)
         }
+        .accessibilityIdentifier("home.matteDashboard")
     }
 }
 
@@ -96,13 +92,7 @@ private struct MatteSportsTile: View {
         VStack(alignment: .leading, spacing: 7) {
             HStack(spacing: 4) {
                 Image(systemName: "sportscourt.fill").foregroundStyle(Theme.accent)
-                Picker("Home widget", selection: Binding(get: { model.config.homeWidget }, set: { widget in
-                    var next = model.config; next.homeWidget = widget; model.applyConfig?(next)
-                })) {
-                    ForEach(HomeWidget.allCases, id: \.self) { Text($0.title).tag($0) }
-                }
-                .labelsHidden().pickerStyle(.menu).controlSize(.small)
-                .accessibilityIdentifier("home.widget")
+                Text("Sports").font(Theme.Font.headline)
                 Spacer(minLength: 0)
                 if let game = sports.selectedGame, sports.enabled {
                     Text(game.isLive ? "LIVE" : game.isFinal ? "FINAL" : "NEXT")
@@ -131,7 +121,7 @@ private struct MatteSportsTile: View {
             }
             Spacer(minLength: 0)
             HStack {
-                Button(sports.selectedGame == nil ? "Choose game →" : "Play-by-play →") { model.tab = .sports }
+                Button(sports.selectedGame == nil ? "Choose game →" : "Play-by-play →") { model.navigate(to: .sports) }
                     .font(Theme.Font.caption).foregroundStyle(Theme.accent).buttonStyle(.plain)
                     .accessibilityIdentifier("home.openGamecast")
                 Spacer(minLength: 0)
@@ -170,7 +160,7 @@ private struct MatteContextTile: View {
                     Text(IslandModel.relative(event.start)).font(Theme.Font.caption).foregroundStyle(Theme.accent)
                 } else { Text("No upcoming events").font(Theme.Font.caption).foregroundStyle(Theme.inkSecondary) }
                 Spacer(minLength: 0)
-                Button("Schedule →") { model.tab = .schedule }.buttonStyle(.plain).foregroundStyle(Theme.accent)
+                Button("Schedule →") { model.navigate(to: .schedule) }.buttonStyle(.plain).foregroundStyle(Theme.accent)
             case .focus:
                 Text("Focus").font(Theme.Font.headline)
                 if let end = model.focusEnd {
@@ -198,14 +188,14 @@ private struct MatteContextTile: View {
                     Text(model.history.first?.body ?? "Connected tasks and notifications appear here")
                         .font(Theme.Font.caption).foregroundStyle(Theme.inkSecondary).lineLimit(2)
                     Spacer(minLength: 0)
-                    Button("Connections →") { model.openSettings?(.connections) }
+                    Button("Connections →") { model.openAIConnections() }
                         .buttonStyle(.plain).font(Theme.Font.caption).foregroundStyle(Theme.accent)
                 } else {
                     ForEach(model.activities.prefix(2)) { activity in
                         Button {
                             if activity.agent.isAI {
                                 model.selectedAIActivityID = activity.id
-                                var config = model.config; config.homeWidget = .ai; model.applyConfig?(config)
+                                model.navigate(to: .ai)
                             } else { model.open(activity) }
                         } label: {
                             HStack(spacing: 7) {
@@ -231,40 +221,37 @@ private struct MatteContextTile: View {
     }
 }
 
-private struct MatteControlsTile: View {
+private struct AIConnectionsTile: View {
     @ObservedObject var model: IslandModel
-
     var body: some View {
-        VStack(spacing: 6) {
-            HStack(spacing: 6) {
-                control("wifi", title: "Wi-Fi settings") { settings("com.apple.wifi-settings-extension") }
-                control("antenna.radiowaves.left.and.right", title: "Open AirDrop") {
-                    NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Library/CoreServices/Finder.app/Contents/Applications/AirDrop.app"))
-                }
-            }
-            HStack(spacing: 6) {
-                control("speaker.wave.2", title: "Sound settings") { settings("com.apple.Sound-Settings.extension") }
-                control("sun.max", title: "Display settings") { settings("com.apple.Displays-Settings.extension") }
-            }
-            HStack(spacing: 6) {
-                control("circle.lefthalf.filled", title: "Switch matte theme") {
-                    model.chooseIslandTheme(model.config.islandTheme == .darkMatte ? .whiteMatte : .darkMatte)
-                }
-                control("gearshape", title: "Cove settings") { model.openSettings?(.general) }
-            }
+        VStack(alignment: .leading, spacing: 8) {
+            Label("AI connections", systemImage: "link").font(Theme.Font.headline)
+            Text("Claude Code · Codex\nChatGPT · Gemini")
+                .font(.system(size: 10)).foregroundStyle(Theme.inkSecondary).lineSpacing(3)
+            Spacer(minLength: 0)
+            Button("Set up AI →") { model.openAIConnections() }
+                .font(Theme.Font.caption).foregroundStyle(Theme.accent).buttonStyle(.plain)
+                .frame(height: 28).contentShape(Rectangle())
+                .accessibilityIdentifier("home.connectAI")
         }.modifier(MatteTile())
-        .accessibilityIdentifier("home.controlsTile")
+            .accessibilityIdentifier("home.connectionsTile")
     }
+}
 
-    private func control(_ symbol: String, title: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: symbol).font(.system(size: 14, weight: .medium))
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Theme.surfaceRaised).clipShape(RoundedRectangle(cornerRadius: 8))
-                .contentShape(Rectangle())
-        }.buttonStyle(.plain).help(title).accessibilityLabel(title)
+/// Explicit shortcuts to macOS settings, rather than switches with guessed state.
+struct DeviceSettingsMenu: View {
+    var body: some View {
+        Menu("Devices") {
+            Button("Sound & volume…") { settings("com.apple.Sound-Settings.extension") }
+            Button("Display & brightness…") { settings("com.apple.Displays-Settings.extension") }
+            Button("Wi-Fi…") { settings("com.apple.wifi-settings-extension") }
+            Button("AirDrop…") {
+                NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Library/CoreServices/Finder.app/Contents/Applications/AirDrop.app"))
+            }
+        }
+        .font(Theme.Font.caption).menuStyle(.borderlessButton).fixedSize()
+        .help("Device settings").accessibilityIdentifier("device.settings")
     }
-
     private func settings(_ pane: String) {
         if let url = URL(string: "x-apple.systempreferences:\(pane)") { NSWorkspace.shared.open(url) }
     }

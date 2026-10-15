@@ -175,6 +175,8 @@ struct IslandShell: View {
         switch p {
         case .idle:
             Color.clear
+                .contentShape(Rectangle())
+                .onTapGesture { model.openByClick() }
         case .compact:
             CompactView(model: model)
         case .banner:

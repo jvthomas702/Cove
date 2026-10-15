@@ -179,6 +179,6 @@ final class NotchWindowController {
             MainActor.assumeIsolated { self?.applyFrame(target) }
         }
         shrinkWork = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.55, execute: work)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.40, execute: work)
     }
 }

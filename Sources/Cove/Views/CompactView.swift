@@ -18,7 +18,7 @@ struct CompactView: View {
         }
         .frame(height: model.notchSize.height)
         .contentShape(Rectangle())
-        .onTapGesture { model.setExpanded(true) }
+        .onTapGesture { model.openByClick() }
         .animation(Theme.snappy, value: model.compactItem)
     }
 

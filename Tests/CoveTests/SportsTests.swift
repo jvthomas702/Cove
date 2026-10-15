@@ -188,7 +188,7 @@ final class TeamLogoTests: XCTestCase {
         try await Task.sleep(nanoseconds: 450_000_000)
         XCTAssertTrue(model.expanded)
         model.setMenuTracking(false)
-        try await Task.sleep(nanoseconds: 450_000_000)
+        try await Task.sleep(nanoseconds: 800_000_000)
         XCTAssertFalse(model.expanded)
     }
     func testNestedMenusAndPointerReturnDoNotCollapse() async throws {
