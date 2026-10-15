@@ -76,6 +76,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         desktopAI.onStatus = { [weak self] status in
             if self?.model.desktopAIStatus != status { self?.model.desktopAIStatus = status }
         }
+        model.codexChats.start()
         desktopAI.start(enabled: config.desktopAIActivity)
         if config.screenshotsToShelf { startScreenshots() }
         startHUD(mode: config.hud)
@@ -114,6 +115,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         calendar?.stop()
         feeds?.stop()
         model.sports.stop()
+        model.codexChats.stop()
         desktopAI.stop()
         screenshots?.stop()
         volume.stop()

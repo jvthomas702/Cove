@@ -48,6 +48,8 @@ final class IslandModel: ObservableObject {
     var applyConfig: ((CoveConfig) -> Void)?
     let sports: SportsMonitor
     let agentLauncher = AgentLauncher()
+    let codexChats = CodexChats()
+    @Published var composeNewTask = false
     private let shelfStore: ShelfStore
     private let shelfEditor = ShelfEditorController()
     @Published private(set) var canUndoShelf = false
@@ -129,6 +131,23 @@ final class IslandModel: ObservableObject {
             tab = .ai
             self.config.homeWidget = .sports
         }
+        codexChats.onState = { [weak self] chat, status in
+            guard let self else { return }
+            let id = "codex:\(chat.id)"
+            if status.needsYou {
+                self.agentAttention(id: id, agent: .codex, title: chat.title, message: status.phase + ". Open this chat in Codex.")
+            } else if status.type == "active" {
+                self.agentStarted(id: id, agent: .codex, title: chat.title, detail: "Codex is working", ownerApp: "com.openai.codex")
+            } else if self.activity(id)?.isLive == true {
+                self.agentFinished(id: id, agent: .codex, title: chat.title, summary: "Turn ended", failed: status.type == "systemError", notify: false)
+            }
+        }
+        codexChats.onDisconnect = { [weak self] in
+            guard let self else { return }
+            for a in self.activities where a.id.hasPrefix("codex:") && a.state == .attention {
+                self.agentUpdate(id: a.id, agent: .codex, title: a.title, detail: "Connection unavailable — check Codex", phase: "Status unavailable")
+            }
+        }
         loadShelf()
         pruneTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.prune() }
@@ -152,7 +171,7 @@ final class IslandModel: ObservableObject {
         case .expanded:
             let width = min(1000, availableIslandWidth)
             if tab == .home { return CGSize(width: width, height: n.height + 174) }
-            if tab == .ai { return CGSize(width: width, height: n.height + 400) }
+            if tab == .ai { return CGSize(width: width, height: n.height + 430) }
             if tab == .sports { return CGSize(width: width, height: n.height + 342) }
             if tab == .shelf { return CGSize(width: width, height: n.height + (shelf.count <= 4 ? 172 : 252)) }
             return CGSize(width: width, height: n.height + 252)
@@ -508,6 +527,7 @@ final class IslandModel: ObservableObject {
 
     func agentStarted(id: String, agent: AgentKind, title: String, detail: String, ownerApp: String?) {
         let now = Date()
+        dropBanners(forActivity: id)
         var a = activity(id) ?? Activity(id: id, agent: agent, title: title, detail: detail, state: .running, startedAt: now, updatedAt: now)
         if !a.isLive { a.startedAt = now }
         a.title = title
@@ -538,7 +558,10 @@ final class IslandModel: ObservableObject {
 
     func agentAttention(id: String, agent: AgentKind, title: String, message: String) {
         let now = Date()
+        let alreadyWaiting = activity(id)?.state == .attention
         var a = activity(id) ?? Activity(id: id, agent: agent, title: title, detail: message, state: .attention, startedAt: now, updatedAt: now)
+        a.finishedAt = nil
+        a.seen = false
         a.state = .attention
         a.phase = "Needs you"
         a.title = title
@@ -546,6 +569,7 @@ final class IslandModel: ObservableObject {
         a.updatedAt = now
         put(a)
         lastAgentSignal = now
+        guard !alreadyWaiting else { return }
         dropBanners(forActivity: id)
         show(Banner(
             title: "\(agent.displayName) needs you · \(title)",
@@ -585,6 +609,11 @@ final class IslandModel: ObservableObject {
                 : .symbol(failed ? "xmark.circle.fill" : agent.symbol, failed ? Palette.red : agent.tint),
             activityID: id
         ))
+    }
+
+    func updateFinishedSummary(id: String, summary: String) {
+        guard let index = activities.firstIndex(where: { $0.id == id }), activities[index].state == .done else { return }
+        activities[index].detail = summary
     }
 
     func removeActivity(_ id: String) {
@@ -669,6 +698,9 @@ final class IslandModel: ObservableObject {
 
     func ingest(_ e: CoveEvent) {
         let kind = (e.kind ?? "info").lowercased()
+        // Desktop runtime state supersedes early hooks and duplicate completion notifiers.
+        if e.source?.lowercased() == "codex", let id = e.id, id.hasPrefix("codex:"),
+           codexChats.hasLiveState(String(id.dropFirst(6))) { return }
         let sourceName = (e.source ?? "custom").lowercased()
         if ["chatgpt", "gemini", "claude-web"].contains(sourceName), e.id?.hasPrefix("desktop:") != true { lastExtensionEvent = Date() }
         let agent = AgentKind(rawValue: sourceName == "claude-web" ? "claude" : sourceName) ?? .custom
@@ -1036,13 +1068,16 @@ final class IslandModel: ObservableObject {
     func requestApproval(_ request: ApprovalRequest, reply: @escaping @MainActor (ApprovalDecision) -> Void) {
         approvals.append(request)
         approvalReplies[request.id] = reply
-        // Reflect it on the session's live activity without a separate banner.
-        if var a = activity(request.sessionID) {
-            a.state = .attention
-            a.detail = "Wants to \(request.action)"
-            a.updatedAt = Date()
-            put(a)
-        }
+        // A reconnect may deliver the permission before a start hook.
+        let now = Date()
+        var a = activity(request.sessionID) ?? Activity(id: request.sessionID, agent: .claude, title: request.project, detail: "", state: .running, startedAt: now, updatedAt: now)
+        dropBanners(forActivity: request.sessionID)
+        a.state = .attention
+        a.phase = "Waiting for approval"
+        a.finishedAt = nil
+        a.detail = "Wants to \(request.action)"
+        a.updatedAt = now
+        put(a)
         lastAgentSignal = Date()
         if config.sounds, let sound = NSSound(named: NSSound.Name(config.attentionSound)) {
             sound.stop()
@@ -1079,8 +1114,13 @@ final class IslandModel: ObservableObject {
 
     /// The hook gave up (Claude Code timed out or was interrupted).
     func cancelApproval(_ id: UUID) {
+        let request = approvals.first { $0.id == id }
         approvals.removeAll { $0.id == id }
         approvalReplies.removeValue(forKey: id)
+        if let request, let a = activity(request.sessionID), a.state == .attention,
+           !approvals.contains(where: { $0.sessionID == request.sessionID }) {
+            agentUpdate(id: a.id, agent: a.agent, title: a.title, detail: "Approval closed; waiting for agent status", phase: "Status unavailable")
+        }
         recompute()
     }
 

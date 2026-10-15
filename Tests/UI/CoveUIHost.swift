@@ -118,6 +118,10 @@ struct UIHostView: View {
         if !CommandLine.arguments.contains("--no-ai") {
             model.ingest(CoveEvent(id: "web:chatgpt:ui:tab:1", title: "A long example title for checking truncation and controls", body: "This simulated reply checks the widget layout without reading any of your chats.", kind: "running", source: "chatgpt", phase: "Writing reply"))
         }
+        model.codexChats.configureForTesting(chats: [
+            CodexChat(id: "11111111-1111-4111-8111-111111111111", title: "Cove updates", folder: "/tmp/Cove"),
+            CodexChat(id: "22222222-2222-4222-8222-222222222222", title: "Other project", folder: "/tmp/Other")
+        ]) { _, _, _, completion in completion(.success([:])) }
         model.openSettings = { [weak self] pane in
             guard let self else { return }
             if self.settings == nil { self.settings = SettingsWindowController(controller: SettingsController(model: self.model)) }

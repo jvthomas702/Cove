@@ -325,6 +325,7 @@ final class UIFlowTests: XCTestCase {
 
     func testAgentPromptSurvivesTabSwitchAndStartsOnlyWhenSubmitted() {
         window.buttons["tab.ai"].click()
+        window.segmentedControls["agent.destination"].buttons["New task"].click()
         let prompt = window.descendants(matching: .any).matching(identifier: "agent.prompt").firstMatch
         XCTAssertTrue(prompt.waitForExistence(timeout: 5)); prompt.click()
         prompt.typeText("Explain this project without changes")
@@ -335,10 +336,26 @@ final class UIFlowTests: XCTestCase {
         XCTAssertEqual(window.descendants(matching: .any).matching(identifier: "agent.prompt").firstMatch.value as? String, "")
     }
 
+    func testExistingChatComposerTargetsAnotherChatAndKeepsDraftAcrossTabs() {
+        window.buttons["tab.ai"].click()
+        let picker = window.popUpButtons["chat.choice"]
+        XCTAssertTrue(picker.waitForExistence(timeout: 5)); picker.click()
+        app.menuItems["Other project"].click()
+        let prompt = window.descendants(matching: .any).matching(identifier: "chat.prompt").firstMatch
+        prompt.click(); prompt.typeText("Review the changes")
+        window.buttons["tab.home"].click(); window.buttons["tab.ai"].click()
+        XCTAssertEqual(prompt.value as? String, "Review the changes")
+        XCTAssertEqual(picker.value as? String, "Other project")
+        window.buttons["chat.send"].click()
+        XCTAssertTrue(text("Sent to Other project").waitForExistence(timeout: 5))
+        XCTAssertEqual(prompt.value as? String, "")
+    }
+
     func testRealNotchAcceptsAgentTypingAndStaysOpen() {
         window.buttons["Show notch"].click()
         let notch = app.dialogs["Cove Test Notch"]
         notch.buttons["tab.ai"].click()
+        notch.segmentedControls["agent.destination"].buttons["New task"].click()
         let prompt = notch.descendants(matching: .any).matching(identifier: "agent.prompt").firstMatch
         XCTAssertTrue(prompt.waitForExistence(timeout: 5)); prompt.click(); prompt.typeText("Review this code")
         XCTAssertEqual(prompt.value as? String, "Review this code")
