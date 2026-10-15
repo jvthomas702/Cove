@@ -18,7 +18,7 @@ struct AgentComposer: View {
                 Picker("Send to", selection: $model.composeNewTask) {
                     Text("Existing chat").tag(false)
                     Text("New task").tag(true)
-                }.pickerStyle(.segmented).frame(width: 220).accessibilityIdentifier("agent.destination")
+                }.pickerStyle(.segmented).labelsHidden().frame(width: 220).accessibilityIdentifier("agent.destination")
                 Spacer()
                 if !model.composeNewTask {
                     Button("Open chat") { model.openByClick(); chats.openSelected() }
