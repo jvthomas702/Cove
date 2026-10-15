@@ -45,6 +45,7 @@ final class UIFeed: URLProtocol {
 struct UIHostView: View {
     @ObservedObject var model: IslandModel
     var showNotch: () -> Void
+    var hideNotch: () -> Void
     var body: some View {
         VStack(spacing: 0) {
             HStack {
@@ -63,6 +64,7 @@ struct UIHostView: View {
                 }.accessibilityIdentifier("ui.fixtures")
                 Spacer()
                 Button("Show notch", action: showNotch)
+                Button("Hide notch", action: hideNotch)
                 Button("Quiet screenshot") {
                     let shot = FileManager.default.temporaryDirectory.appendingPathComponent("Cove UI Screenshot.png")
                     if let logo = Bundle.main.url(forResource: "nba-1", withExtension: "png", subdirectory: "TeamLogos"),
@@ -137,7 +139,7 @@ struct UIHostView: View {
             self.model.tab = .home
             self.model.setExpanded(true)
             self.notch.panel.orderFrontRegardless()
-        }))
+        }, hideNotch: { [weak self] in self?.notch.panel.orderOut(nil) }))
         host.sizingOptions = []
         window.contentView = host
         window.center(); window.makeKeyAndOrderFront(nil)

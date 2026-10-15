@@ -242,6 +242,7 @@ final class UIFlowTests: XCTestCase {
             let dashboard = XCTAttachment(screenshot: notch.screenshot())
             dashboard.name = "\(theme.capitalized) Matte Dashboard"; dashboard.lifetime = .keepAlways; add(dashboard)
             notch.buttons["notch.close"].click()
+            window.buttons["Hide notch"].click()
             window.buttons["home.openGamecast"].click()
             XCTAssertTrue(window.scrollViews["sports.plays"].waitForExistence(timeout: 8))
             window.radioButtons["Stats"].click()
