@@ -60,6 +60,7 @@ final class IslandModel: ObservableObject {
     @Published private(set) var isPinnedOpen = false
     @Published var tab: Tab = .home { didSet { recompute() } }
     @Published private(set) var activities: [Activity] = []
+    @Published private(set) var aiSteps: [String: [AIActivityStep]] = [:]
     @Published private(set) var banner: Banner?
     @Published private(set) var history: [Banner] = []
     @Published private(set) var nowPlaying: NowPlaying?
@@ -147,6 +148,7 @@ final class IslandModel: ObservableObject {
             if tab == .home && config.homeWidget != .ai {
                 return CGSize(width: width, height: n.height + 166)
             }
+            if tab == .home { return CGSize(width: width, height: n.height + 320) }
             if tab == .sports { return CGSize(width: width, height: n.height + 342) }
             if tab == .shelf { return CGSize(width: width, height: n.height + (shelf.count <= 4 ? 172 : 252)) }
             return CGSize(width: width, height: n.height + 252)
@@ -456,12 +458,32 @@ final class IslandModel: ObservableObject {
     func activity(_ id: String) -> Activity? { activities.first { $0.id == id } }
 
     private func put(_ a: Activity) {
+        recordAIStep(a)
         if let i = activities.firstIndex(where: { $0.id == a.id }) {
             activities[i] = a
         } else {
             activities.insert(a, at: 0)
         }
         recompute()
+    }
+
+    private func recordAIStep(_ a: Activity) {
+        guard a.agent.isAI else { return }
+        var steps = aiSteps[a.id] ?? []
+        if let previous = activity(a.id), previous.startedAt != a.startedAt { steps = [] }
+        let phase = a.phase ?? (a.isLive ? "Working" : "Finished")
+        let detail = String(a.detail.prefix(2000))
+        if let last = steps.last, last.phase == phase, last.state == a.state {
+            steps[steps.count - 1].detail = detail
+            steps[steps.count - 1].date = a.updatedAt
+        } else {
+            steps.append(AIActivityStep(phase: phase, detail: detail, state: a.state, date: a.updatedAt))
+        }
+        aiSteps[a.id] = Array(steps.suffix(24))
+        if aiSteps.count > 24 {
+            let oldest = aiSteps.filter { $0.key != a.id }.min { ($0.value.last?.date ?? .distantPast) < ($1.value.last?.date ?? .distantPast) }
+            if let oldest { aiSteps.removeValue(forKey: oldest.key) }
+        }
     }
 
     func agentStarted(id: String, agent: AgentKind, title: String, detail: String, ownerApp: String?) {
@@ -480,7 +502,7 @@ final class IslandModel: ObservableObject {
         put(a)
     }
 
-    func agentUpdate(id: String, agent: AgentKind, title: String, detail: String, progress: Double? = nil) {
+    func agentUpdate(id: String, agent: AgentKind, title: String, detail: String, progress: Double? = nil, phase: String? = nil) {
         let now = Date()
         var a = activity(id) ?? Activity(id: id, agent: agent, title: title, detail: detail, state: .running, startedAt: now, updatedAt: now)
         if a.state == .attention { dropBanners(forActivity: id); a.phase = "Working" }
@@ -488,6 +510,7 @@ final class IslandModel: ObservableObject {
         a.state = .running
         a.title = title
         a.detail = detail
+        if let phase { a.phase = phase.oneLine(max: 60) }
         if let progress { a.progress = min(max(progress, 0), 1) }
         a.updatedAt = now
         put(a)
@@ -546,6 +569,7 @@ final class IslandModel: ObservableObject {
 
     func removeActivity(_ id: String) {
         activities.removeAll { $0.id == id }
+        aiSteps.removeValue(forKey: id)
         dropBanners(forActivity: id)
         recompute()
     }
@@ -616,6 +640,8 @@ final class IslandModel: ObservableObject {
             }
         }
         if activities.count > 12 { activities = Array(activities.prefix(12)) }
+        let retained = Set(activities.map(\.id))
+        aiSteps = aiSteps.filter { retained.contains($0.key) }
         recompute()
     }
 
@@ -634,7 +660,7 @@ final class IslandModel: ObservableObject {
                 let owner = e.app ?? ((agent.isWeb || e.source?.lowercased() == "claude-web") ? Self.runningBrowser() : nil)
                 agentStarted(id: id, agent: agent, title: e.title, detail: body, ownerApp: owner)
             }
-            agentUpdate(id: id, agent: agent, title: e.title, detail: body, progress: e.progress)
+            agentUpdate(id: id, agent: agent, title: e.title, detail: body, progress: e.progress, phase: e.phase)
             updateAIContext(id: id, phase: e.phase, url: e.url)
         case "done", "success", "finished", "complete":
             if let id = e.id, activity(id) != nil || agent.isAI {
@@ -681,6 +707,7 @@ final class IslandModel: ObservableObject {
         guard let index = activities.firstIndex(where: { $0.id == id }) else { return }
         if let phase { activities[index].phase = phase.oneLine(max: 60) }
         if let url = Self.chatURL(url) { activities[index].openURL = url }
+        recordAIStep(activities[index])
         recompute()
     }
 

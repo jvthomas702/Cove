@@ -34,7 +34,8 @@ final class AgentBridge {
             let tool = obj["tool_name"] as? String ?? "tool"
             let input = obj["tool_input"] as? [String: Any] ?? [:]
             let detail = model.config.showToolActivity ? Self.describe(tool: tool, input: input) : "Working…"
-            model.agentUpdate(id: id, agent: .claude, title: project, detail: detail)
+            model.agentUpdate(id: id, agent: .claude, title: project, detail: detail,
+                              phase: model.config.showToolActivity ? tool : "Working")
 
         case "Notification":
             let message = obj["message"] as? String ?? "Claude needs your attention"

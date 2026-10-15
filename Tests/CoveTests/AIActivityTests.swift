@@ -93,4 +93,43 @@ final class AIWidgetTests: XCTestCase {
         XCTAssertNil(IslandModel.chatURL("https://chatgpt.com.evil.example/c/one"))
         XCTAssertNil(IslandModel.chatURL("https://secret@chatgpt.com/c/one"))
     }
+
+    func testObservedPhasesCoalesceReplyChunksAndKeepTheirOwnDetails() {
+        let model = model()
+        model.ingest(CoveEvent(id: "codex:steps", title: "Cove", body: "Read Config.swift", kind: "running", source: "codex", phase: "Reading"))
+        model.ingest(CoveEvent(id: "codex:steps", title: "Cove", body: "Editing AIWorkWidget.swift", kind: "running", source: "codex", phase: "Editing"))
+        for i in 0..<20 {
+            model.ingest(CoveEvent(id: "codex:steps", title: "Cove", body: "Reply chunk \(i)", kind: "running", source: "codex", phase: "Writing reply"))
+        }
+        let steps = model.aiSteps["codex:steps"] ?? []
+        XCTAssertEqual(steps.filter { $0.phase == "Writing reply" }.count, 1)
+        XCTAssertEqual(steps.last?.detail, "Reply chunk 19")
+        XCTAssertEqual(steps.first { $0.phase == "Reading" }?.detail, "Read Config.swift")
+        XCTAssertEqual(steps.first { $0.phase == "Editing" }?.detail, "Editing AIWorkWidget.swift")
+        model.ingest(CoveEvent(id: "codex:steps", title: "Cove", body: "Done", kind: "done", source: "codex", silent: true))
+        XCTAssertEqual(model.aiSteps["codex:steps"]?.last?.state, .done)
+        XCTAssertNil(model.banner)
+    }
+
+    func testStepHistoryIsBoundedAndClearedForNewTurnsAndRemovedSessions() {
+        let model = model()
+        for i in 0..<50 {
+            model.ingest(CoveEvent(id: "codex:bounded", title: "Cove", body: "Step \(i)", kind: "running", source: "codex", phase: "Phase \(i)"))
+        }
+        XCTAssertEqual(model.aiSteps["codex:bounded"]?.count, 24)
+        model.ingest(CoveEvent(id: "codex:bounded", title: "Cove", kind: "done", source: "codex", silent: true))
+        model.ingest(CoveEvent(id: "codex:bounded", title: "New turn", kind: "running", source: "codex", phase: "Thinking"))
+        XCTAssertFalse((model.aiSteps["codex:bounded"] ?? []).contains { $0.phase.hasPrefix("Phase") })
+        model.removeActivity("codex:bounded")
+        XCTAssertNil(model.aiSteps["codex:bounded"])
+    }
+
+    func testClaudeToolStepsRespectHiddenToolActivitySetting() {
+        let model = model()
+        model.config.showToolActivity = false
+        let bridge = AgentBridge(model: model)
+        bridge.handleClaude(Data(#"{"hook_event_name":"PreToolUse","session_id":"private","tool_name":"Read","tool_input":{"file_path":"/private/hidden.swift"}}"#.utf8))
+        XCTAssertEqual(model.aiSteps["claude:private"]?.last?.phase, "Working")
+        XCTAssertEqual(model.aiSteps["claude:private"]?.last?.detail, "Working…")
+    }
 }

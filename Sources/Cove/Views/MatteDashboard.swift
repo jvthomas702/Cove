@@ -202,17 +202,26 @@ private struct MatteContextTile: View {
                         .buttonStyle(.plain).font(Theme.Font.caption).foregroundStyle(Theme.accent)
                 } else {
                     ForEach(model.activities.prefix(2)) { activity in
-                        Button { model.open(activity) } label: {
-                            VStack(alignment: .leading, spacing: 3) {
-                                HStack {
-                                    Text(activity.agent.displayName).font(Theme.Font.headline)
-                                    Spacer()
-                                    Text(activity.phase ?? (activity.isLive ? "Working" : "Finished"))
-                                        .font(.system(size: 9)).foregroundStyle(Theme.accent).lineLimit(1)
-                                }
-                                Text(activity.title).font(Theme.Font.caption).foregroundStyle(Theme.inkSecondary).lineLimit(1)
-                            }.contentShape(Rectangle())
+                        Button {
+                            if activity.agent.isAI {
+                                model.selectedAIActivityID = activity.id
+                                var config = model.config; config.homeWidget = .ai; model.applyConfig?(config)
+                            } else { model.open(activity) }
+                        } label: {
+                            HStack(spacing: 7) {
+                                AIAgentAvatar(activity: activity, showBuddy: model.config.buddy, size: 27)
+                                VStack(alignment: .leading, spacing: 3) {
+                                    HStack {
+                                        Text(activity.agent.displayName).font(Theme.Font.headline)
+                                        Spacer()
+                                        Text(activity.phase ?? (activity.isLive ? "Working" : "Finished"))
+                                            .font(.system(size: 9)).foregroundStyle(Theme.accent).lineLimit(1)
+                                    }
+                                    Text(activity.title).font(Theme.Font.caption).foregroundStyle(Theme.inkSecondary).lineLimit(1)
+                                }.contentShape(Rectangle())
+                            }
                         }.buttonStyle(.plain)
+                        .accessibilityIdentifier("home.activity.\(activity.id)")
                     }
                 }
             }

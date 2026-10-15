@@ -123,53 +123,23 @@ struct FocusedHomePane: View {
     @ObservedObject var model: IslandModel
 
     var body: some View {
-        HStack(alignment: .top, spacing: Theme.Space.m) {
-            VStack(spacing: Theme.Space.s) {
-                HStack {
-                    Text("Widget").font(Theme.Font.caption).foregroundStyle(Theme.inkTertiary)
-                    Picker("Home widget", selection: Binding(get: { model.config.homeWidget }, set: { widget in
-                        var next = model.config
-                        next.homeWidget = widget
-                        model.applyConfig?(next)
-                    })) {
-                        ForEach(HomeWidget.allCases, id: \.self) { Text($0.title).tag($0) }
-                    }
-                    .labelsHidden().pickerStyle(.menu)
-                    .accessibilityIdentifier("home.widget")
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Workspace").font(Theme.Font.caption).foregroundStyle(Theme.inkSecondary)
+                Picker("Home widget", selection: Binding(get: { model.config.homeWidget }, set: { widget in
+                    var next = model.config; next.homeWidget = widget; model.applyConfig?(next)
+                })) {
+                    ForEach(HomeWidget.allCases, id: \.self) { Text($0.title).tag($0) }
                 }
-                ScrollView {
-                    VStack(spacing: Theme.Space.s) {
-                        switch model.config.homeWidget {
-                        case .sports: SportsWidget(model: model)
-                        case .calendar: UpNextCard(model: model)
-                        case .music: MediaCard(model: model)
-                        case .focus: FocusCard(model: model)
-                        case .ai: AIWorkWidget(model: model)
-                        case .auto:
-                            if model.aiActivities.contains(where: \.isLive) {
-                                AIWorkWidget(model: model)
-                            } else if model.config.sportsEnabled, model.sports.selectedGame != nil {
-                                SportsWidget(model: model)
-                            } else {
-                                if model.schedule.nextEvent() != nil || !model.dueSoon.isEmpty { UpNextCard(model: model) }
-                                if model.nowPlaying != nil { MediaCard(model: model) }
-                                FocusCard(model: model)
-                            }
-                        }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .topLeading)
-                }
-                .scrollIndicators(.automatic)
+                .labelsHidden().pickerStyle(.menu).frame(width: 180)
+                .accessibilityIdentifier("home.widget")
+                Spacer()
             }
-            .frame(width: model.showsActivityPane ? 280 : nil)
-            .frame(maxWidth: model.showsActivityPane ? 280 : .infinity)
-
-            if model.showsActivityPane {
-                Group {
-                    if model.config.homeWidget == .ai { AIWorkOverview(model: model) }
-                    else { ActivityList(model: model) }
-                }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            HStack(alignment: .top, spacing: 10) {
+                AIWorkWidget(model: model)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                AIWorkOverview(model: model)
+                    .frame(width: 250)
             }
         }
     }

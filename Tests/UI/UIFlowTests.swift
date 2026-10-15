@@ -253,4 +253,26 @@ final class UIFlowTests: XCTestCase {
             attachment.name = "\(theme.capitalized) Matte Gamecast"; attachment.lifetime = .keepAlways; add(attachment)
         }
     }
+
+    func testAICompanionAndAgentPillsInBothThemes() {
+        for theme in ["dark", "white"] {
+            app.terminate()
+            app.launchArguments = theme == "white" ? ["--white-matte"] : []
+            app.launch()
+            XCTAssertTrue(window.waitForExistence(timeout: 10))
+            window.buttons["home.activity.web:chatgpt:ui:tab:1"].click()
+            let companion = window.descendants(matching: .any).matching(identifier: "ai.companion").firstMatch
+            XCTAssertTrue(companion.waitForExistence(timeout: 8))
+            XCTAssertTrue(window.scrollViews["ai.detail"].exists)
+            window.descendants(matching: .any).matching(identifier: "ui.fixtures").firstMatch.click()
+            app.menuItems["Add AI task"].click()
+            let second = window.buttons["ai.task.web:claude:ui:tab:2"]
+            XCTAssertTrue(second.waitForExistence(timeout: 5)); second.click()
+            XCTAssertTrue(window.buttons["Open Claude"].waitForExistence(timeout: 5))
+            XCTAssertTrue(text("A second simulated response").exists)
+            XCTAssertTrue(window.scrollViews["ai.steps"].exists)
+            let screenshot = XCTAttachment(screenshot: window.screenshot())
+            screenshot.name = "\(theme.capitalized) Matte AI workspace"; screenshot.lifetime = .keepAlways; add(screenshot)
+        }
+    }
 }
