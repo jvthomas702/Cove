@@ -133,10 +133,16 @@ final class NotchWindowController {
             })
         }
 
-        // recompute() sets `presentation` before `currentSize`, so the presentation is current here.
+        // @Published emits before currentSize is stored. Resizing/displaying synchronously can
+        // lay out SwiftUI with the old height, clipping new controls below the visible island.
         model.$currentSize
             .removeDuplicates()
-            .sink { [weak self] size in self?.resize(to: size) }
+            .sink { [weak self] size in
+                Task { @MainActor [weak self] in
+                    guard let self, self.model.currentSize == size else { return }
+                    self.resize(to: size)
+                }
+            }
             .store(in: &cancellables)
 
         panel.orderFrontRegardless()
