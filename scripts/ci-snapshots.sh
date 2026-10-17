@@ -123,6 +123,10 @@ debug collapse; sleep 1
 debug approval; sleep 1.2; island 10-approval
 debug deny-approvals; debug collapse; sleep 1
 
+# A pull request from a Claude cloud session (claude.ai/code, a project thread), as found on GitHub.
+debug cloud; sleep 1.2; island 10b-cloud-pr
+debug collapse; sleep 1
+
 # A "screenshot" appears the way macOS writes one: hidden temp file, then renamed into place.
 SHOT="$HOME/Desktop/Screenshot 2026-10-12 at 9.00.00 PM.png"
 screencapture -x -R 0,0,640,400 "$TMPDIR/fake-shot.png"

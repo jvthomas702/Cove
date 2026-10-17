@@ -72,6 +72,8 @@ final class IslandModel: ObservableObject {
     @Published private(set) var hud: HUDState?
     @Published private(set) var approvals: [ApprovalRequest] = []
     @Published var serverStatus = "Starting…"
+    /// What the cloud-session watcher is doing, for Settings.
+    @Published var cloudStatus = ""
 
     /// Set by the app delegate: (command, bundleID) → sends play/pause/next to Music or Spotify.
     var mediaControl: ((String, String) -> Void)?
@@ -530,6 +532,60 @@ final class IslandModel: ObservableObject {
             a.url = run.url
             put(a)
         }
+    }
+
+    // MARK: - Claude in the cloud
+
+    /// A pull request from a Claude cloud session changed phase. Shown as a Claude activity that opens
+    /// the session (or project thread) when clicked; `announce` adds a banner.
+    func cloudUpdate(_ pr: CloudPR, phase: CloudPR.Phase, announce: Bool) {
+        let id = pr.id
+        guard phase != .closed else { removeActivity(id); return }
+        let now = Date()
+        let title = "\(pr.repoName) #\(pr.number)"
+        var a = activity(id) ?? Activity(id: id, agent: .claude, title: title, detail: "", state: .running,
+                                         startedAt: pr.createdAt, updatedAt: now)
+        a.title = title
+        a.detail = "\(phase.label) · \(pr.title)"
+        a.url = pr.link
+        a.updatedAt = now
+        a.progress = nil
+        switch phase {
+        case .draft, .ciRunning:
+            a.state = .running
+            a.finishedAt = nil
+        case .ciFailed:
+            a.state = .failed
+            a.finishedAt = now
+        case .draftPassed, .ready, .merged, .closed:
+            a.state = .done
+            a.finishedAt = now
+        }
+        a.seen = a.isLive || !announce || expanded
+        put(a)
+        guard announce else { return }
+        lastAgentSignal = now
+
+        let heading: String
+        let style: BannerStyle
+        let mood: BuddyMood
+        switch phase {
+        case .draft, .ciRunning:
+            // Only a brand-new PR is announced while work is still going; new pushes update quietly.
+            heading = "Claude opened a PR"; style = .info; mood = .working
+        case .ciFailed: heading = "CI failed"; style = .failure; mood = .sad
+        case .draftPassed: heading = "CI passed"; style = .success; mood = .happy
+        case .ready: heading = "Ready for review"; style = .success; mood = .happy
+        case .merged, .closed: heading = "Merged"; style = .success; mood = .happy
+        }
+        show(Banner(
+            title: "\(heading) · \(title)",
+            body: pr.title,
+            style: style,
+            icon: config.buddy ? .buddy(mood, .claude) : .symbol(AgentKind.claude.symbol, AgentKind.claude.tint),
+            activityID: id,
+            source: "Claude in the cloud"
+        ))
     }
 
     // MARK: - Generic events (POST /event, cove-notify, cove-run)

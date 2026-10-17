@@ -32,6 +32,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var updates: UpdateChecker?
     private var clipboard: ClipboardMonitor?
     private var actions: GitHubActionsMonitor?
+    private var cloud: CloudSessionsMonitor?
 
     /// Extra routes used by CI to drive the UI for screenshots. Only on with the `--debug-api` launch argument.
     private let debugAPI = CommandLine.arguments.contains("--debug-api")
@@ -79,6 +80,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if config.checkForUpdates { startUpdates() }
         if config.clipboardHistory { startClipboard() }
         if config.ciMonitor { startActions(config) }
+        if config.cloudSessions { startCloud(repos: config.cloudRepos) }
 
         observers.append(NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main
@@ -111,6 +113,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         calendar?.stop()
         feeds?.stop()
         screenshots?.stop()
+        cloud?.stop()
         volume.stop()
         mediaKeys.stop()
     }
@@ -216,6 +219,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         } else if new.ciRepos != old.ciRepos {
             actions?.update(repos: new.ciRepos)
+        if new.cloudSessions != old.cloudSessions {
+            if new.cloudSessions {
+                startCloud(repos: new.cloudRepos)
+            } else {
+                cloud?.stop()
+                cloud = nil
+                model.cloudStatus = ""
+            }
+        } else if new.cloudRepos != old.cloudRepos {
+            cloud?.update(repos: new.cloudRepos)
         }
         if new.hud != old.hud {
             stopHUD()
@@ -349,6 +362,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         monitor.onCopy = { [weak self] text in self?.model.addClip(text) }
         monitor.start()
         clipboard = monitor
+    }
+
+    /// Pull requests from Claude cloud sessions, found on GitHub (those sessions can't reach this Mac directly).
+    private func startCloud(repos: [String]) {
+        // CI has no GitHub sign-in, and real PRs would land in the screenshots.
+        guard !debugAPI, cloud == nil else { return }
+        let monitor = CloudSessionsMonitor(repos: repos)
+        monitor.onChange = { [weak self] pr, phase, announce in
+            self?.model.cloudUpdate(pr, phase: phase, announce: announce)
+        }
+        monitor.onStatus = { [weak self] status in
+            let text: String
+            switch status {
+            case .starting: text = "Signing in…"
+            case .noCLI: text = "Install the GitHub CLI first: brew install gh, then gh auth login"
+            case .signedOut: text = "Run gh auth login in Terminal, then turn this off and on"
+            case .watching(let repos):
+                let names = repos.map { $0.split(separator: "/").last.map(String.init) ?? $0 }
+                text = repos.isEmpty ? "No recent pushes to watch yet" : "Watching \(names.joined(separator: ", "))"
+            case .error(let message): text = message
+            }
+            if self?.model.cloudStatus != text { self?.model.cloudStatus = text }
+        }
+        monitor.start()
+        cloud = monitor
     }
 
     private func startFeeds(_ config: CoveConfig) {
@@ -643,6 +681,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             updateConfig(config)
         case "hud":
             model.showHUD(.volume, level: 0.62)
+        case "cloud":
+            let pr = CloudPR(repo: "you/cove", number: 12, title: "Show cloud sessions in the notch",
+                             url: URL(string: "https://github.com/you/cove/pull/12")!,
+                             link: URL(string: "https://claude.ai/code")!, headSHA: "abc123", draft: false,
+                             state: .open, createdAt: Date().addingTimeInterval(-1800), updatedAt: Date())
+            model.cloudUpdate(pr, phase: arg == "failed" ? .ciFailed : .ready, announce: true)
         case "future-class":
             model.setNowPlaying(nil)
             model.config.calendar = true

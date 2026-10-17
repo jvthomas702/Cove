@@ -60,6 +60,12 @@ Timed sessions show as classes; assignments and "Availability Ends" items from D
 
 Calendars already in the Mac's Calendar app (Google added under System Settings → Internet Accounts, iCloud, Exchange) are read too, if you allow calendar access.
 
+### Claude in the cloud
+
+Sessions on claude.ai/code, in Claude projects and in routines run on Anthropic's machines, so Cove's hooks never hear from them. What does reach your Mac is GitHub: those sessions open pull requests that link back to the session. Cove watches for them and shows each one as a Claude activity: when it opens, while CI runs, when CI fails or passes, when it's ready for review and when it merges. Clicking it opens the session or project thread.
+
+It signs in with the GitHub CLI (`brew install gh`, then `gh auth login`) and watches the repos you pushed to in the last two days, or the ones you list as `cloudRepos` in `~/.config/cove/config.json`. Turn it off in Settings → Connections. Cloud work that never opens a pull request (a question, a document) doesn't show up.
+
 ### Screenshots
 
 New screenshots go to the shelf as soon as macOS saves them. macOS's floating thumbnail holds each screenshot for about 5 seconds first; turn on **Instant screenshots** in Settings → Features to skip it. Cove watches whatever folder your screenshots go to (⌘⇧5 → Options), and can move them off the Desktop into Pictures › Screenshots.
@@ -99,6 +105,7 @@ Sources/Cove/
 └── Services/
     ├── EventServer.swift        HTTP server on 127.0.0.1 (Network.framework)
     ├── AgentBridge.swift        Claude Code hooks, permission prompts, Codex
+    ├── CloudSessions.swift      pull requests from Claude cloud sessions, via GitHub
     ├── Integrations.swift       permissions, hooks, CLI tools, browser extension setup
     ├── CalendarMonitor.swift    EventKit classes and reminders
     ├── ICSFeeds.swift           calendar links (D2L, Canvas, Google iCal): download and parse
