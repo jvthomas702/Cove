@@ -182,7 +182,8 @@ struct IslandShell: View {
             CompactView(model: model)
         case .banner:
             if let banner = model.banner {
-                BannerView(model: model, banner: banner)
+                // A fresh view per banner, so a half-typed reply never carries over to the next one.
+                BannerView(model: model, banner: banner).id(banner.id)
             } else {
                 Color.clear
             }

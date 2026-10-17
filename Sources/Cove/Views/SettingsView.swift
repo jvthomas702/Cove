@@ -388,6 +388,8 @@ private struct GeneralPane: View {
                       isOn: controller.binding(\.sounds))
             ToggleRow(title: "Show what Claude is doing", detail: "\"Editing eval.py\", \"$ pytest\" and so on",
                       isOn: controller.binding(\.showToolActivity))
+            ToggleRow(title: "Reply from banners", detail: "Answer a finished Claude Code or Codex session from its banner; it continues in Terminal",
+                      isOn: controller.binding(\.bannerReplies))
             ToggleRow(title: "Keyboard shortcuts",
                       detail: "⌃⌥Space opens the island. On a permission prompt: ⌃⌥Y allow, ⌃⌥N deny, ⌃⌥A always allow, ⌃⌥T terminal",
                       isOn: controller.binding(\.shortcuts))

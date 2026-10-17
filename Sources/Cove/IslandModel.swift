@@ -69,6 +69,9 @@ final class IslandModel: ObservableObject {
     @Published private(set) var activities: [Activity] = []
     @Published private(set) var aiSteps: [String: [AIActivityStep]] = [:]
     @Published private(set) var banner: Banner?
+    /// The banner on screen is waiting for you (pointer on it, or a reply being typed) instead of timing out.
+    @Published private(set) var bannerHeld = false
+    private var replyEngaged = false
     @Published private(set) var history: [Banner] = []
     @Published private(set) var nowPlaying: NowPlaying?
     /// Album art for the current track and the color pulled from it (tints the music UI).
@@ -178,7 +181,7 @@ final class IslandModel: ObservableObject {
         switch p {
         case .idle: return n
         case .compact: return CGSize(width: n.width + compactWing * 2, height: n.height)
-        case .banner: return CGSize(width: max(n.width + 200, 390), height: n.height + 60)
+        case .banner: return CGSize(width: max(n.width + 200, 390), height: n.height + (bannerAcceptsReply ? 96 : 60))
         case .expanded:
             // Narrow and short, like the iPhone island opened: just wide enough for the tabs and buttons.
             let width = min(max(n.width + 440, 620), availableIslandWidth)
@@ -283,6 +286,11 @@ final class IslandModel: ObservableObject {
     func setHovering(_ hovering: Bool) {
         let changed = hovering != isHovering
         isHovering = hovering
+        // A banner you can reply to stays put under the pointer, so it can be clicked and typed into.
+        if hovering, presentation == .banner, bannerAcceptsReply {
+            holdBanner()
+            return
+        }
         if hovering {
             guard config.hoverToExpand, !expanded, !suppressHoverUntilExit else { return }
             guard changed || hoverWork == nil else { return }
@@ -298,6 +306,7 @@ final class IslandModel: ObservableObject {
             DispatchQueue.main.asyncAfter(deadline: .now() + max(config.hoverDelay, 0.20), execute: work)
         } else if changed {
             suppressHoverUntilExit = false
+            if !replyEngaged { releaseBanner() }
             scheduleCollapse(after: 0.65)
         }
     }
@@ -461,6 +470,8 @@ final class IslandModel: ObservableObject {
 
     private func present(_ b: Banner) {
         banner = b
+        bannerHeld = false
+        replyEngaged = false
         recompute()
         bannerTimer?.invalidate()
         bannerTimer = nil
@@ -496,6 +507,67 @@ final class IslandModel: ObservableObject {
             activateApp(app)
         }
         if banner?.id == b.id { dismissBanner() } else { queue.removeAll { $0.id == b.id } }
+    }
+
+    // MARK: - Replying from a banner
+
+    /// The session a banner's reply would continue, if replies are on and the session is resumable.
+    func replyTarget(for b: Banner) -> ResumeTarget? {
+        guard config.bannerReplies, b.style == .success || b.style == .failure,
+              let id = b.activityID, let a = activity(id), !a.isLive else { return nil }
+        return a.resume
+    }
+
+    var bannerAcceptsReply: Bool { banner.map { replyTarget(for: $0) != nil } ?? false }
+
+    /// Stops the current banner's countdown until `releaseBanner`.
+    func holdBanner() {
+        guard banner != nil else { return }
+        bannerTimer?.invalidate()
+        bannerTimer = nil
+        if !bannerHeld { bannerHeld = true }
+    }
+
+    /// Restarts the full countdown once the pointer leaves and nothing is being typed.
+    private func releaseBanner() {
+        guard bannerHeld, let b = banner else { return }
+        bannerHeld = false
+        guard !b.sticky else { return }
+        bannerTimer = Timer.scheduledTimer(withTimeInterval: b.duration ?? config.bannerSeconds, repeats: false) { [weak self] _ in
+            MainActor.assumeIsolated { self?.dismissBanner() }
+        }
+    }
+
+    /// The reply field gained focus or text (true), or was emptied and left (false).
+    func setBannerReplyEngaged(_ engaged: Bool) {
+        replyEngaged = engaged
+        if engaged { holdBanner() } else if !isHovering { releaseBanner() }
+    }
+
+    /// Continues the banner's session in Terminal with `text` as the next prompt.
+    /// Returns a short error to show in the banner, or nil once Terminal has been asked to open it.
+    @discardableResult
+    func sendBannerReply(_ text: String, for b: Banner) -> String? {
+        guard let target = replyTarget(for: b) else { return "This session can’t take a reply." }
+        guard let executable = agentLauncher.resolveExecutable(target.agent) else {
+            return "Install \(target.agent.rawValue) and sign in from Terminal first."
+        }
+        let script: URL
+        do { script = try ResumeCommand.prepare(target, text: text, executable: executable) }
+        catch { return error.localizedDescription }
+        let name = target.agent.rawValue
+        agentLauncher.openCommand(script) { [weak self] error in
+            Task { @MainActor in
+                guard let error else { return }
+                try? FileManager.default.removeItem(at: script.deletingLastPathComponent())
+                self?.show(Banner(title: "Couldn’t open \(name)", body: error.localizedDescription, style: .failure,
+                                  icon: .symbol("xmark.circle.fill", Palette.red), logged: false))
+            }
+        }
+        if let id = b.activityID { markSeen(id) }
+        replyEngaged = false
+        if banner?.id == b.id { dismissBanner() } else { queue.removeAll { $0.id == b.id } }
+        return nil
     }
 
     private func dropBanners(forActivity id: String) {
@@ -640,6 +712,13 @@ final class IslandModel: ObservableObject {
     func updateFinishedSummary(id: String, summary: String) {
         guard let index = activities.firstIndex(where: { $0.id == id }), activities[index].state == .done else { return }
         activities[index].detail = summary
+    }
+
+    /// Remembers which CLI session an activity belongs to, so its done banner can take a reply.
+    func setResumeTarget(id: String, _ target: ResumeTarget) {
+        guard let index = activities.firstIndex(where: { $0.id == id }), activities[index].resume != target else { return }
+        activities[index].resume = target
+        recompute()
     }
 
     func setUsage(id: String, _ usage: TokenUsage) {

@@ -13,7 +13,11 @@ enum LaunchAgent: String, CaseIterable {
     @Published var folder: URL?
     @Published private(set) var status = "Tasks open in Terminal with your agent’s normal permissions."
     @Published private(set) var launching = false
-    var openCommand: (URL, @escaping (Error?) -> Void) -> Void = { url, completion in
+    var openCommand: (URL, @escaping (Error?) -> Void) -> Void = AgentLauncher.openInTerminal
+    var resolveExecutable: (LaunchAgent) -> URL? = AgentLauncher.findExecutable
+
+    /// Opens a `.command` script in Terminal, where the agent keeps its normal interactive session.
+    nonisolated static func openInTerminal(_ url: URL, completion: @escaping (Error?) -> Void) {
         guard let terminal = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.Terminal") else {
             completion(LaunchError.message("Terminal is unavailable.")); return
         }
@@ -21,7 +25,8 @@ enum LaunchAgent: String, CaseIterable {
             completion(error)
         }
     }
-    var resolveExecutable: (LaunchAgent) -> URL? = { agent in
+
+    nonisolated static func findExecutable(_ agent: LaunchAgent) -> URL? {
         let home = FileManager.default.homeDirectoryForCurrentUser
         let directories = [home.appendingPathComponent(".local/bin"), URL(fileURLWithPath: "/opt/homebrew/bin"),
                            URL(fileURLWithPath: "/usr/local/bin"), home.appendingPathComponent(".npm-global/bin")]
@@ -73,7 +78,7 @@ enum LaunchAgent: String, CaseIterable {
         } catch { status = error.localizedDescription }
     }
 
-    static func quote(_ text: String) -> String { "'" + text.replacingOccurrences(of: "'", with: "'\\''") + "'" }
+    nonisolated static func quote(_ text: String) -> String { "'" + text.replacingOccurrences(of: "'", with: "'\\''") + "'" }
 
     static func prepareCommand(executable: URL, folder: URL, prompt: String) throws -> URL {
         guard !prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, !prompt.contains("\0") else {
@@ -86,16 +91,25 @@ enum LaunchAgent: String, CaseIterable {
         guard FileManager.default.isExecutableFile(atPath: executable.path) else {
             throw LaunchError.message("The selected agent is no longer installed.")
         }
+        return try writeScript(named: "Start agent.command") { _ in
+            """
+            cd -- \(quote(folder.path)) || exit 1
+            exec \(quote(executable.path)) -- \(quote(prompt))
+            """
+        }
+    }
+
+    /// Writes a private, self-deleting zsh script. The prompt never outlives the Terminal launch:
+    /// the script removes itself and its unique directory before running `commands`.
+    nonisolated static func writeScript(named name: String, commands: (URL) -> String) throws -> URL {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent("cove-agent-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
-        let script = directory.appendingPathComponent("Start agent.command")
-        // Remove the temporary prompt before starting the CLI. The containing directory is unique.
+        let script = directory.appendingPathComponent(name)
         let source = """
         #!/bin/zsh -l
         /bin/rm -- "$0"
         /bin/rmdir -- \(quote(directory.path))
-        cd -- \(quote(folder.path)) || exit 1
-        exec \(quote(executable.path)) -- \(quote(prompt))
+        \(commands(directory))
 
         """
         do {

@@ -15,6 +15,7 @@ Native Swift and SwiftUI, no dependencies, MIT licensed. Every commit is built, 
 | **Nori** | A small black buddy with glowing eyes that blends into the island and lights its rim in the status color. Naps beside the notch, reads along with your agents, hops with confetti when something finishes, waves an amber "!" when something needs you, and droops when something fails. |
 | **Approve from the notch** | When Claude Code asks permission, the island drops down with exactly what it wants to do (the command, or a red and green diff) and **Allow**, **Always allow**, **Deny** and **Answer in terminal**. |
 | **Agent pings** | Claude Code and Codex sessions show as live activities with what they're doing right now, then a banner with the final message. Click to jump back to the terminal. |
+| **Reply from the banner** | When a Claude Code or Codex session finishes, its done banner has a small **Reply…** field. Send continues that same session in Terminal (`claude --resume` / `codex resume`), so you stay in control. |
 | **AI work** | Follow ChatGPT desktop activity, ChatGPT/Claude/Gemini browser replies, Claude Code and Codex. Live status, elapsed time and browser reply previews appear in the AI tab. |
 | **Classes and due dates** | "CPE 3000 Lecture, 50 min left" beside the notch, a heads-up before each class with a Join button for Zoom, Meet or Teams, and a Due soon list from your D2L or Canvas calendar and Reminders. |
 | **Sports** | Choose an NBA, NFL or college football game to pin its score beside the notch and follow its latest plays. College football defaults to games featuring a Top 25 team. |
@@ -199,3 +200,7 @@ Packaged Cove embeds Sparkle, with daily checks and automatic installation enabl
 ### Live Codex activity
 
 Codex's legacy completion notifier does not report ongoing work. For start, tool progress, approval waits and completion, use the [live lifecycle connection](docs/CODEX-LIVE.md). Preview it with `python3 scripts/connect-codex-live.py`, then install with `--install` and review/trust the new definitions through Codex `/hooks`. It sends only coarse activity metadata to local Cove and preserves existing hooks. This connection works with the installed Cove 1.1 without replacing the app or requiring Accessibility.
+
+### Reply from the banner
+
+A finished Claude Code session's done banner shows a **Reply…** field with a blue send button. Sending opens Terminal in the session's folder and runs `claude --resume <session> -- "<your reply>"`, so the conversation continues interactively with its normal permissions. Codex CLI completions (the notify hook, which reports a thread id) get `codex resume` the same way; Codex desktop chats don't show the field. The banner waits while the pointer is on it or you're typing. Turn it off in **Settings → General → Reply from banners**.

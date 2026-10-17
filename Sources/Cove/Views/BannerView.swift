@@ -5,10 +5,15 @@ import SwiftUI
 struct BannerView: View {
     @ObservedObject var model: IslandModel
     let banner: Banner
+    @State private var reply = ""
+    @State private var replyError: String?
+    @FocusState private var replyFocused: Bool
 
     var body: some View {
         VStack(spacing: 0) {
             Color.clear.frame(height: model.notchSize.height)
+                .contentShape(Rectangle())
+                .onTapGesture { model.tapBanner(banner) }
             HStack(alignment: .center, spacing: Theme.Space.m) {
                 bannerIcon
                 VStack(alignment: .leading, spacing: 2) {
@@ -42,7 +47,13 @@ struct BannerView: View {
                         .font(Theme.Font.headline)
                         .foregroundStyle(Theme.ink)
                         .lineLimit(1)
-                    if !banner.body.isEmpty {
+                    if let replyError {
+                        Text(replyError)
+                            .font(Theme.Font.body)
+                            .foregroundStyle(Palette.red)
+                            .lineLimit(1)
+                            .accessibilityIdentifier("banner.replyError")
+                    } else if !banner.body.isEmpty {
                         Text(banner.body)
                             .font(Theme.Font.body)
                             .foregroundStyle(Theme.inkSecondary)
@@ -52,15 +63,67 @@ struct BannerView: View {
             }
             .padding(.horizontal, Theme.Space.l)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+            .onTapGesture { model.tapBanner(banner) }
 
-            if !banner.sticky {
+            if let target = model.replyTarget(for: banner) {
+                replyField(target)
+            }
+
+            if !banner.sticky && !model.bannerHeld {
                 CountdownHairline(duration: banner.duration ?? model.config.bannerSeconds, tint: banner.style.tint)
                     .padding(.horizontal, 28)
                     .padding(.bottom, 7)
             }
         }
-        .contentShape(Rectangle())
-        .onTapGesture { model.tapBanner(banner) }
+    }
+
+    /// "Reply…" continues the finished session in Terminal (`claude --resume` / `codex resume`).
+    private func replyField(_ target: ResumeTarget) -> some View {
+        HStack(spacing: Theme.Space.s) {
+            TextField("Reply…", text: $reply)
+                .textFieldStyle(.plain)
+                .font(Theme.Font.body)
+                .foregroundStyle(Theme.ink)
+                .focused($replyFocused)
+                .onSubmit(sendReply)
+                .padding(.horizontal, 10)
+                .frame(height: 26)
+                .background(Capsule().fill(Theme.surface))
+                .help("Continues this \(target.agent.rawValue) session in Terminal")
+                .accessibilityIdentifier("banner.reply")
+            Button(action: sendReply) {
+                Image(systemName: "arrow.up")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(Theme.background)
+                    .frame(width: 26, height: 26)
+                    .background(Circle().fill(Theme.accent))
+            }
+            .buttonStyle(PressableStyle())
+            .disabled(reply.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            .opacity(reply.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.45 : 1)
+            .help("Send")
+            .accessibilityLabel("Send reply")
+            .accessibilityIdentifier("banner.replySend")
+        }
+        .padding(.horizontal, Theme.Space.l)
+        .padding(.bottom, banner.sticky || model.bannerHeld ? 10 : 4)
+        .onChange(of: replyFocused) { _, _ in engagementChanged() }
+        .onChange(of: reply) { _, _ in replyError = nil; engagementChanged() }
+    }
+
+    private func engagementChanged() {
+        model.setBannerReplyEngaged(replyFocused || !reply.isEmpty)
+    }
+
+    private func sendReply() {
+        let text = reply
+        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        if let error = model.sendBannerReply(text, for: banner) {
+            replyError = error
+        } else {
+            reply = ""
+        }
     }
 
     /// Screenshots get a bigger thumbnail you can drag straight out of the notch.

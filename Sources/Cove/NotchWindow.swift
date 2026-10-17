@@ -134,11 +134,20 @@ final class NotchWindowController {
         host.model = model
         host.sizingOptions = []
         panel.contentView = host
+        // Typing is possible in the open island and in a done banner's reply field.
         panel.acceptsKeyboardInput = model.expanded
-        model.$expanded.sink { [weak panel] expanded in
-            panel?.acceptsKeyboardInput = expanded
-            if !expanded { panel?.resignKey() }
-        }.store(in: &cancellables)
+        model.objectWillChange
+            .receive(on: RunLoop.main)
+            .sink { [weak panel, weak model] _ in
+                MainActor.assumeIsolated {
+                    guard let panel, let model else { return }
+                    let accepts = model.expanded || model.bannerAcceptsReply
+                    guard accepts != panel.acceptsKeyboardInput else { return }
+                    panel.acceptsKeyboardInput = accepts
+                    if !accepts { panel.resignKey() }
+                }
+            }
+            .store(in: &cancellables)
 
         relocate()
 

@@ -89,6 +89,10 @@ final class AgentBridge {
         default:
             break
         }
+        // The hook's session and folder are what `claude --resume` needs to continue from the banner.
+        if let target = ResumeTarget(agent: .claude, sessionID: obj["session_id"] as? String, cwd: cwd) {
+            model.setResumeTarget(id: id, target)
+        }
     }
 
     nonisolated static func describe(tool: String, input: [String: Any]) -> String {
@@ -256,6 +260,10 @@ final class AgentBridge {
         let summary = (obj["last-assistant-message"] as? String)?.oneLine(max: 160)
         guard !model.codexChats.hasLiveState(thread) else { return }
         model.agentFinished(id: "codex:\(thread)", agent: .codex, title: project, summary: summary)
+        // Codex CLI thread ids are session ids: `codex resume <id>` continues the conversation.
+        if let target = ResumeTarget(agent: .codex, sessionID: obj["thread-id"] as? String, cwd: cwd) {
+            model.setResumeTarget(id: "codex:\(thread)", target)
+        }
     }
 }
 
