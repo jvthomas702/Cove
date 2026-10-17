@@ -40,6 +40,8 @@ struct CoveConfig: Codable {
     var hoverDelay: Double = 0.25
     var islandTheme: IslandTheme = .darkMatte
     var buttonLook: ButtonLook = .outline
+    /// Which display the island is on: the notch (falls back to the main display), or the one the pointer is on.
+    var islandDisplay: IslandDisplay = .notch
     /// Mirror macOS notifications into the island (needs Full Disk Access).
     var mirrorNotifications: Bool = true
     /// Bundle IDs whose notifications should never be mirrored.
@@ -181,6 +183,7 @@ struct CoveConfig: Codable {
         // Older white-theme values fall back to the consistent black appearance.
         islandTheme = value(.islandTheme, d.islandTheme)
         buttonLook = value(.buttonLook, d.buttonLook)
+        islandDisplay = value(.islandDisplay, d.islandDisplay)
         mirrorNotifications = value(.mirrorNotifications, d.mirrorNotifications)
         ignoreApps = value(.ignoreApps, d.ignoreApps)
         highlightKeywords = value(.highlightKeywords, d.highlightKeywords)

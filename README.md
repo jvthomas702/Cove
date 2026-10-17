@@ -20,6 +20,7 @@ Native Swift and SwiftUI, no dependencies, MIT licensed. Every commit is built, 
 | **Sports** | Choose an NBA, NFL or college football game to pin its score beside the notch and follow its latest plays. College football defaults to games featuring a Top 25 team. |
 | **Screenshot shelf** | Every screenshot lands on the shelf the moment it's saved, with a thumbnail you can drag straight out of the notch into a doc, Slack or a chat. |
 | **Long commands** | `cove-run python train.py` shows a live timer and pings you with how long it took. Scripts can push progress rings. |
+| **External displays** | Docked with the lid closed? The island moves to your main display, or set **Show on → Active display** to have it follow the pointer from screen to screen. Displays without a notch get a floating black pill instead of a fake notch. |
 | **And** | Notifications from other apps, Now Playing with album-art colors, a focus timer, a file shelf, battery alerts, and the volume and brightness meter. |
 
 ## Install
@@ -101,6 +102,10 @@ Your phone then buzzes when an agent needs you, when one finishes or fails, and 
 Turn on **Answer Claude's permission prompts from the phone** to get Allow and Deny buttons. While you're away, permission prompts then wait for your phone (up to `approvalTimeout`) instead of going to a terminal nobody is looking at.
 
 Pings travel through ntfy.sh in plain text, and anyone who knows the topic can read them and press the buttons, so treat the topic like a password (**New topic** replaces it). To keep them private, run your own ntfy server and set `phoneServer` (and `phoneToken` if it needs sign-in) in `~/.config/cove/config.json`. The Mac has to be awake for answers to reach it.
+
+### External displays
+
+Settings → General → **Show on** picks where the island lives. **Notch display** (the default) keeps it on the MacBook's notch and moves it to the main display when the lid is closed or no notch is connected. **Active display** follows the pointer: move to another screen and the island goes with it (an open island waits until it closes). On a display without a notch the island is a floating pill just below the top edge, the same size as on the notch. Plugging in, unplugging or rearranging displays re-places it automatically.
 
 ### Screenshots
 
