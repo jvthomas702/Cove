@@ -62,6 +62,8 @@ struct UIHostView: View {
                     }
                     Button("Favorite Miami Heat") { model.toggleFavorite("14", league: .nba) }
                 }.accessibilityIdentifier("ui.fixtures")
+                // Left of the island, so the real notch never covers it.
+                Button("Offline") { UIFeed.offline.toggle(); model.sports.refresh() }
                 Spacer()
                 Button("Show notch", action: showNotch)
                 Button("Hide notch", action: hideNotch)
@@ -75,7 +77,6 @@ struct UIHostView: View {
                 Button("Delete source") {
                     try? FileManager.default.removeItem(at: FileManager.default.temporaryDirectory.appendingPathComponent("Cove UI Screenshot.png"))
                 }
-                Button("Offline") { UIFeed.offline.toggle(); model.sports.refresh() }
             }.controlSize(.small).font(.system(size: 10.5)).padding(8)
             ExpandedView(model: model).frame(width: model.size(for: .expanded).width, height: model.size(for: .expanded).height).background(Theme.background)
         }
