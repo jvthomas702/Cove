@@ -183,6 +183,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 source: "Updated"
             ))
         }
+        warnAboutLostPermissions()
+    }
+
+    /// macOS can drop a permission Cove had (for example after an update with a new signature) while
+    /// System Settings still shows it on. Say so once per launch instead of features quietly stopping.
+    private func warnAboutLostPermissions() {
+        guard !debugAPI else { return }
+        let granted = Dictionary(uniqueKeysWithValues: Permission.checkable.map { ($0, $0.isGranted) })
+        let lost = Permission.lost(granted: granted)
+        guard !lost.isEmpty else { return }
+        let names = Permission.checkable.filter(lost.contains).map(\.title).joined(separator: " and ")
+        model.show(Banner(
+            title: "\(names) stopped working",
+            body: "Click to fix it in Settings → Permissions.",
+            style: .attention,
+            icon: .buddy(.alert, nil),
+            sticky: true,
+            showsPermissions: true,
+            source: "Permissions"
+        ))
     }
 
     // MARK: - Settings

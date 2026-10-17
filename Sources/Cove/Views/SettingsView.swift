@@ -18,6 +18,8 @@ final class SettingsController: ObservableObject {
     var onPermissionChanged: ((Permission) -> Void)?
 
     @Published private(set) var granted: [Permission: Bool] = [:]
+    /// Granted before but not now, usually because an update changed Cove's signature.
+    @Published private(set) var lost: Set<Permission> = []
     @Published private(set) var cliInstalled = false
     @Published private(set) var claudeHooks = false
     @Published private(set) var claudeCodePresent = false
@@ -61,6 +63,8 @@ final class SettingsController: ObservableObject {
             map[permission] = permission == .desktop ? model.screenshotAccess == .ok : permission.isGranted
         }
         if map != granted { granted = map }
+        let lostNow = Permission.lost(granted: map)
+        if lostNow != lost { lost = lostNow }
         cliInstalled = CLIInstaller.isInstalled
         claudeHooks = ClaudeHooks.isInstalled
         claudeCodePresent = ClaudeHooks.claudeCodeExists
@@ -181,6 +185,19 @@ final class SettingsController: ObservableObject {
             await permission.request()
             refresh()
             onPermissionChanged?(permission)
+        }
+    }
+
+    /// Quits and reopens Cove, which some permissions (Full Disk Access) need before they apply.
+    func restart() {
+        let relaunch = Process()
+        relaunch.executableURL = URL(fileURLWithPath: "/bin/sh")
+        relaunch.arguments = ["-c", "sleep 1; /usr/bin/open \"$0\"", Bundle.main.bundlePath]
+        do {
+            try relaunch.run()
+            NSApp.terminate(nil)
+        } catch {
+            message = "Couldn't restart Cove: \(error.localizedDescription)"
         }
     }
 
@@ -694,7 +711,14 @@ private struct PermissionsPane: View {
                         .foregroundStyle(.secondary)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(permission.title)
-                        Text(permission.reason).font(.caption).foregroundStyle(.secondary)
+                        if controller.lost.contains(permission) {
+                            Text("Stopped working. If System Settings still shows Cove switched on, select Cove, click −, then click Allow… again.")
+                                .font(.caption)
+                                .foregroundStyle(.orange)
+                                .fixedSize(horizontal: false, vertical: true)
+                        } else {
+                            Text(permission.reason).font(.caption).foregroundStyle(.secondary)
+                        }
                     }
                     Spacer()
                     if controller.granted[permission] == true {
@@ -708,9 +732,13 @@ private struct PermissionsPane: View {
                 if permission != Permission.allCases.last { Divider() }
             }
         }
-        Text("After turning on Full Disk Access or Accessibility, quit Cove from the menu bar and open it again.")
-            .font(.caption)
-            .foregroundStyle(.secondary)
+        HStack {
+            Text("Full Disk Access applies after Cove restarts.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Spacer()
+            Button("Restart Cove") { controller.restart() }
+        }
     }
 }
 
