@@ -4,6 +4,7 @@
 # Signing: uses a local "Cove Local Signing" certificate (created once by
 # scripts/make-signing-identity.sh) so macOS keeps permissions across rebuilds.
 # Override with COVE_SIGN_IDENTITY="Your Identity" or COVE_SIGN_IDENTITY="-" for ad-hoc.
+# Release builds set COVE_REQUIRE_SIGNING=1 so a signing failure stops the build instead of going ad-hoc.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -56,6 +57,10 @@ fi
 python3 scripts/sign-sparkle.py "$APP/Contents/Frameworks/Sparkle.framework" "$IDENTITY"
 echo "→ Signing with: $([ "$IDENTITY" = "-" ] && echo "ad-hoc signature" || echo "$IDENTITY")"
 if ! codesign --force --sign "$IDENTITY" "$APP" 2>/dev/null; then
+  if [ "${COVE_REQUIRE_SIGNING:-0}" = "1" ]; then
+    echo "✗ Couldn't sign with \"$IDENTITY\". Releases must keep one signature, or updates revoke permissions." >&2
+    exit 1
+  fi
   echo "  (couldn't use \"$IDENTITY\"; falling back to an ad-hoc signature)"
   codesign --force --sign - "$APP"
 fi

@@ -48,12 +48,24 @@ jobs:
             ui-tests.xcresult
             ui-tests.log
 
+      # Releases are signed with one stable certificate so in-app updates keep macOS permissions.
       - name: Package app
         env:
           COVE_UNIVERSAL: ${{ startsWith(github.ref, 'refs/tags/v') || inputs.release }}
+          COVE_SIGNING_P12: ${{ secrets.COVE_SIGNING_P12 }}
+          COVE_SIGNING_P12_PASSWORD: ${{ secrets.COVE_SIGNING_P12_PASSWORD }}
         run: |
-          if [ "$COVE_UNIVERSAL" = "true" ]; then export COVE_UNIVERSAL=1; fi
+          if [ "$COVE_UNIVERSAL" = "true" ]; then
+            export COVE_UNIVERSAL=1
+            if [ -z "$COVE_SIGNING_P12" ]; then
+              echo "::error::Releases need the COVE_SIGNING_P12 secret. Run ./scripts/make-release-certificate.sh once."
+              exit 1
+            fi
+            COVE_SIGN_IDENTITY="$(./scripts/import-release-identity.sh)"
+            export COVE_SIGN_IDENTITY COVE_REQUIRE_SIGNING=1
+          fi
           ./scripts/build-app.sh 2>&1 | tee package.log
+          codesign --display --requirements - build/Cove.app 2>&1 | tee -a package.log
 
       - name: Signed update validation
         run: |
@@ -92,8 +104,12 @@ jobs:
         continue-on-error: true
         run: ./scripts/ci-snapshots.sh 2>&1 | tee snapshots.log
 
-      - name: Test signing identity script
-        run: ./scripts/make-signing-identity.sh --test 2>&1 | tee signing.log
+      - name: Test signing identity scripts
+        run: |
+          {
+            ./scripts/make-signing-identity.sh --test
+            ./scripts/test-release-signing.sh
+          } 2>&1 | tee signing.log
 
       - name: Zip app
         run: |

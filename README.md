@@ -30,7 +30,9 @@ Native Swift and SwiftUI, no dependencies, MIT licensed. Every commit is built, 
 2. Drag **Cove.app** into **Applications** and open it.
 3. macOS says it can't verify the developer, because Cove isn't notarized by Apple. Click **Done**, open **System Settings → Privacy & Security**, scroll down and click **Open Anyway**.
 
-### Build from source (keeps permissions across updates)
+Cove updates itself from then on. Every release is signed with the same certificate, so the permissions you grant stay granted across updates.
+
+### Build from source
 
 ```bash
 git clone https://github.com/jvthomas702/Cove.git
