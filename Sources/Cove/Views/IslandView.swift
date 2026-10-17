@@ -90,7 +90,8 @@ struct IslandShell: View {
     var body: some View {
         let p = model.presentation
         let size = model.currentSize
-        let shape = IslandShape(ear: p == .idle ? 0 : IslandModel.ear, bottomRadius: radius(for: p))
+        // No concave ears: like the iPhone's Dynamic Island, the shape is a plain black pill or rounded slab.
+        let shape = IslandShape(ear: 0, bottomRadius: radius(for: p))
         let isOpen = p == .expanded || p == .banner || p == .approval
 
         ZStack(alignment: .top) {
@@ -104,17 +105,6 @@ struct IslandShell: View {
                 .clipShape(shape)
                 .transition(.islandMorph)
                 .id(p)
-        }
-        // A faint rim along the lower edge gives the open island some depth against dark wallpapers.
-        .overlay {
-            if isOpen {
-                shape.stroke(
-                    LinearGradient(colors: [.clear, Theme.hairline, Color.white.opacity(0.12)],
-                                   startPoint: .top, endPoint: .bottom),
-                    lineWidth: 1
-                )
-                .allowsHitTesting(false)
-            }
         }
         .overlay {
             if let glow = glowColor(for: p) {
@@ -142,7 +132,7 @@ struct IslandShell: View {
     private func radius(for p: IslandModel.Presentation) -> CGFloat {
         switch p {
         case .idle: return 10
-        case .compact: return 14
+        case .compact: return model.notchSize.height / 2   // a full pill
         case .banner: return Theme.Radius.islandBanner
         case .expanded, .approval: return Theme.Radius.islandExpanded
         }
