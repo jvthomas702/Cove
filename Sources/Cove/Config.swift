@@ -110,10 +110,6 @@ struct CoveConfig: Codable {
     /// ⌃⌥Space opens the island; ⌃⌥Y / N / A / T answer Claude's permission prompts.
     var shortcuts: Bool = true
 
-    // MARK: Updates
-    /// Check GitHub once a day and show a banner when a newer release is out.
-    var checkForUpdates: Bool = true
-
     // MARK: GitHub Actions
     /// Live activity while your GitHub Actions runs work, and a banner when they pass or fail.
     /// Signs in through the GitHub CLI (`gh auth login`).
@@ -190,7 +186,6 @@ struct CoveConfig: Codable {
         hud = value(.hud, d.hud)
         hudSeconds = value(.hudSeconds, d.hudSeconds)
         shortcuts = value(.shortcuts, d.shortcuts)
-        checkForUpdates = value(.checkForUpdates, d.checkForUpdates)
         ciMonitor = value(.ciMonitor, d.ciMonitor)
         ciRepos = value(.ciRepos, d.ciRepos)
         cloudSessions = value(.cloudSessions, d.cloudSessions)

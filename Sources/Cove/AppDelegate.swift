@@ -32,7 +32,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let updater = CoveUpdater()
     private var settingsController: SettingsController!
     private var settingsWindow: SettingsWindowController?
-    private var updates: UpdateChecker?
     private var clipboard: ClipboardMonitor?
     private var actions: GitHubActionsMonitor?
     private var cloud: CloudSessionsMonitor?
@@ -89,7 +88,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         hotKeys.onAction = { [weak self] action in self?.model.handleShortcut(action) }
         if config.shortcuts { hotKeys.start() }
         BrowserExtension.syncFromBundle()
-        if config.checkForUpdates { startUpdates() }
         if config.clipboardHistory { startClipboard() }
         if config.ciMonitor { startActions(config) }
         if config.cloudSessions { startCloud(repos: config.cloudRepos) }
@@ -136,7 +134,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         actions?.stop()
         clipboard?.stop()
         bluetooth?.stop()
-        updates?.stop()
         hotKeys.stop()
         volume.stop()
         mediaKeys.stop()
@@ -260,9 +257,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         if new.shortcuts != old.shortcuts {
             if new.shortcuts { hotKeys.start() } else { hotKeys.stop() }
-        }
-        if new.checkForUpdates != old.checkForUpdates {
-            if new.checkForUpdates { startUpdates() } else { updates?.stop(); updates = nil }
         }
         if new.clipboardHistory != old.clipboardHistory {
             if new.clipboardHistory {
@@ -410,20 +404,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         calendar = monitor
     }
 
-    /// Calendar links pasted in Settings (D2L, Canvas, Google's secret iCal address). Always running;
-    /// with no links it does nothing.
-    private func startUpdates() {
-        // CI drives the UI for screenshots; an update banner would land in them.
-        guard !debugAPI, updates == nil else { return }
-        let checker = UpdateChecker(currentVersion: version)
-        checker.onNewRelease = { [weak self] release in
-            self?.model.show(Banner(title: "Cove \(release.version) is out", body: "Update from Settings → About",
-                                    style: .info, icon: .symbol("arrow.down.circle.fill", Palette.blue),
-                                    showsUpdates: true, source: "Update"))
-        }
-        checker.start()
-        updates = checker
-    }
     private func startClipboard() {
         guard clipboard == nil else { return }
         let monitor = ClipboardMonitor()

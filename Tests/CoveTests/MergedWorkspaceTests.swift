@@ -9,20 +9,6 @@ import XCTest
         return IslandModel(config: config)
     }
 
-    func testReleaseNoticeOpensInAppUpdatesWithoutAnAttentionAlert() {
-        let model = model()
-        var opened: SettingsPane?
-        model.openSettings = { opened = $0 }
-        let notice = Banner(title: "Cove 1.4.0 is out", body: "Update from Settings → About",
-                            style: .info, icon: .symbol("arrow.down.circle.fill", Palette.blue),
-                            showsUpdates: true, source: "Update")
-        model.show(notice)
-        model.tapBanner(notice)
-        XCTAssertEqual(opened, .about)
-        XCTAssertNil(model.banner)
-        XCTAssertNil(model.aiStatusState)
-    }
-
     func testCloudWorkAppearsInTheAIWorkspaceWithItsActualPhaseAndDestination() {
         let model = model()
         let pr = CloudPR(repo: "owner/Cove", number: 11, title: "Cloud sessions",
