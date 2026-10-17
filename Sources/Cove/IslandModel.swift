@@ -91,6 +91,10 @@ final class IslandModel: ObservableObject {
     @Published private(set) var accent: Color?
     /// A file drag is hovering over the island.
     @Published private(set) var isDropTargeted = false
+    /// Which drop target (AirDrop or Keep) the dragged file is over.
+    @Published private(set) var dropHover: DropTarget?
+    /// Where the drop targets are, in the island's coordinate space (reported by the views).
+    var dropFrames: [DropTarget: CGRect] = [:]
     @Published private(set) var battery: BatteryState?
     /// Whether another app is using a camera or microphone (drives the privacy dot).
     @Published private(set) var mediaUse = MediaUse()
@@ -472,6 +476,7 @@ final class IslandModel: ObservableObject {
 
     func setDropTargeted(_ targeted: Bool) {
         isDropTargeted = targeted
+        if !targeted { dropHover = nil }
         if targeted {
             tab = .shelf
             setExpanded(true)
@@ -1508,13 +1513,42 @@ final class IslandModel: ObservableObject {
 
     // MARK: - Shelf
 
-    func receiveDrop(_ providers: [NSItemProvider]) {
-        for provider in providers {
-            _ = provider.loadObject(ofClass: URL.self) { [weak self] url, _ in
-                guard let url, url.isFileURL else { return }
-                Task { @MainActor in self?.addToShelf([url]) }
+    func setDropHover(_ target: DropTarget?) {
+        if dropHover != target { dropHover = target }
+    }
+
+    /// Files dropped on the island go to the shelf, or to AirDrop when dropped on its target.
+    func receiveDrop(_ providers: [NSItemProvider], target: DropTarget = .keep) {
+        Task { @MainActor [weak self] in
+            var urls: [URL] = []
+            for provider in providers {
+                if let url = await Self.loadFileURL(provider) { urls.append(url) }
+            }
+            let files = DropRouting.acceptedFiles(urls)
+            guard let self, !files.isEmpty else { return }
+            switch target {
+            case .keep: self.addToShelf(files)
+            case .airDrop: self.airDrop(files)
             }
         }
+    }
+
+    private nonisolated static func loadFileURL(_ provider: NSItemProvider) async -> URL? {
+        await withCheckedContinuation { continuation in
+            _ = provider.loadObject(ofClass: URL.self) { url, _ in continuation.resume(returning: url) }
+        }
+    }
+
+    /// Opens the AirDrop picker for the files. The island closes so the picker isn't hidden behind it.
+    func airDrop(_ urls: [URL]) {
+        guard let service = NSSharingService(named: .sendViaAirDrop), service.canPerform(withItems: urls) else {
+            show(Banner(title: "AirDrop isn't available", body: "Turn on Wi-Fi and Bluetooth, then try again. The file wasn't moved.",
+                        style: .failure, icon: .symbol("dot.radiowaves.left.and.right", Palette.red), logged: false, source: "AirDrop"))
+            return
+        }
+        setExpanded(false)
+        NSApp.activate(ignoringOtherApps: true)
+        service.perform(withItems: urls)
     }
 
     func addToShelf(_ urls: [URL], atFront: Bool = false) {

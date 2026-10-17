@@ -517,6 +517,9 @@ private struct FeaturesPane: View {
                           isOn: controller.binding(\.screenshotsMoveOffDesktop))
             }
             .disabled(!controller.model.config.screenshotsToShelf)
+            ToggleRow(title: "AirDrop drop zone",
+                      detail: "Drag a file onto the notch, then drop it on AirDrop to send it or on Keep to shelve it",
+                      isOn: controller.binding(\.airDropDropZone))
             ToggleRow(title: "Keep recent copied text on the shelf",
                       detail: "The last 12 clips, kept in memory only. Skips passwords from password managers",
                       isOn: controller.binding(\.clipboardHistory))

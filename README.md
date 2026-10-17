@@ -25,6 +25,7 @@ Native Swift and SwiftUI, no dependencies, MIT licensed. Every commit is built, 
 | **External displays** | Docked with the lid closed? The island moves to your main display, or set **Show on → Active display** to have it follow the pointer from screen to screen. Displays without a notch get a floating black pill instead of a fake notch. |
 | **Camera and mic dot** | A green dot beside the notch while any app has a camera on, orange while one is using a microphone, like the iPhone. No permissions needed; turn it off in Settings → Features. |
 | **Charging** | Plug in and a green battery fills to your current level beside the notch with the percentage, then folds away, like the iPhone. Follows Reduce Motion; turn it off in Settings → Features. |
+| **AirDrop drop zone** | Drag a file onto the notch and it opens with two targets: **AirDrop** sends it to a nearby iPhone or Mac, **Keep** puts it on the shelf. |
 | **And** | Notifications from other apps, Now Playing with album-art colors, a focus timer, a file shelf, battery alerts, and the volume and brightness meter. |
 
 ## Install
@@ -114,6 +115,10 @@ Settings → General → **Show on** picks where the island lives. **Notch displ
 ### GitHub Actions
 
 Turn on **Settings → Connections → Watch my CI runs** to see your workflow runs live in the notch. It signs in with the GitHub CLI (`gh auth login`); Cove stores no token. On Home's activity tile, a failed run has a blue **Re-run** pill (re-runs just the failed jobs, or the whole run if none can be retried). A passed run shows **Run <name>** when the repo has a workflow with a `workflow_dispatch` trigger whose name or file mentions "deploy" or "release"; it starts that workflow on the run's branch. Progress and the result appear in place of the button. GitHub needs the token's `repo` scope for this (and `workflow` for some repos): if it says no, run `gh auth refresh -s repo,workflow`. Turn the buttons off with **Re-run and deploy buttons**.
+
+### Dropping files on the notch
+
+Drag any file onto the notch, open or closed. It opens with two targets: drop on **AirDrop** to pick a nearby device in the AirDrop window, or on **Keep** to put the file on the shelf. Dropping anywhere else on the island keeps it. Turn the targets off in Settings → Features → Screenshots → **AirDrop drop zone** to go back to dropping straight onto the shelf.
 
 ### Screenshots
 
