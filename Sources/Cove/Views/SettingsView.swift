@@ -686,6 +686,10 @@ private struct PermissionsPane: View {
     var body: some View {
         Text("Cove only asks for what each feature needs. Everything stays on this Mac.")
             .foregroundStyle(.secondary)
+        SettingsGroup(title: "Startup") {
+            ToggleRow(title: "Open Cove when you log in", detail: "So the island is back after a restart",
+                      isOn: Binding(get: { controller.launchAtLogin }, set: { controller.setLaunchAtLogin($0) }))
+        }
         SettingsGroup(title: "Access") {
             ForEach(Permission.allCases) { permission in
                 HStack(spacing: 12) {

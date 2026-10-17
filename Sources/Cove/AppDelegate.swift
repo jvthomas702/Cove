@@ -117,6 +117,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         buildStatusItem()
         if !debugAPI { updater.start() }
+        if !debugAPI { openAtLoginOnce() }
         welcomeIfNeeded()
     }
 
@@ -156,6 +157,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return true
         }
         return false
+    }
+
+    /// Turns on "Open Cove when you log in" once, so Cove is still there after a restart.
+    /// Only for an installed copy (not a build folder or a translocated download); Settings can turn it off.
+    private func openAtLoginOnce() {
+        let defaults = UserDefaults.standard
+        guard !defaults.bool(forKey: "openAtLoginDefaulted") else { return }
+        let path = Bundle.main.bundlePath
+        let installed = path.hasPrefix("/Applications/") || path.hasPrefix(NSHomeDirectory() + "/Applications/")
+        guard installed else { return }
+        defaults.set(true, forKey: "openAtLoginDefaulted")
+        guard SMAppService.mainApp.status == .notRegistered else { return }
+        do {
+            try SMAppService.mainApp.register()
+            coveLog.info("Turned on open at login")
+        } catch {
+            coveLog.error("Couldn't turn on open at login: \(error.localizedDescription, privacy: .public)")
+        }
     }
 
     /// First launch: open Settings on the Permissions page. After an update: a small "updated" banner.
