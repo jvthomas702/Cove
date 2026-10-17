@@ -44,9 +44,9 @@ final class ConfigTests: XCTestCase {
         XCTAssertEqual(config.port, 8000)
         XCTAssertFalse(config.sounds)
         XCTAssertEqual(config.approvals, "smart")
+        XCTAssertTrue(config.buddy)
         XCTAssertTrue(config.screenshotsToShelf)
         XCTAssertTrue(config.shortcuts)
-        XCTAssertTrue(config.screenshotsToShelf)
     }
 
     func testWrongTypesFallBackInsteadOfFailing() throws {
