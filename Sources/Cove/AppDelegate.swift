@@ -684,6 +684,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             openSettings(pane: SettingsPane(rawValue: arg) ?? .general)
         case "close-settings":
             settingsWindow?.close()
+        case "sports":
+            var next = model.config
+            next.sportsEnabled = true
+            next.sportsLeague = SportsLeague(rawValue: arg) ?? .nba
+            model.applyConfig?(next)
         case "theme":
             var next = model.config
             next.islandTheme = IslandTheme(rawValue: arg) ?? .darkMatte
