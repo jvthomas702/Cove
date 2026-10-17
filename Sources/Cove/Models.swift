@@ -121,7 +121,7 @@ struct Activity: Identifiable, Equatable {
     var seen: Bool = true
     /// The app that was frontmost when the work started (usually your terminal); clicking jumps back to it.
     var ownerApp: String? = nil
-    /// A web page to open instead (a CI run on GitHub).
+    /// A web page to open instead (a CI run on GitHub, a Claude cloud session at claude.ai).
     var url: URL? = nil
     /// Tokens used so far (Claude Code sessions, read from the transcript).
     var tokens: TokenUsage? = nil

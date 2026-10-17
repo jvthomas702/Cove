@@ -99,6 +99,13 @@ struct CoveConfig: Codable {
     /// "owner/repo" to watch every run on. Empty: your own runs on repos you pushed to recently.
     var ciRepos: [String] = []
 
+    // MARK: Claude in the cloud
+    /// Show pull requests from Claude cloud sessions (claude.ai/code, Claude projects) as they open,
+    /// run CI and merge. Uses the GitHub CLI's sign-in (`gh auth login`).
+    var cloudSessions: Bool = true
+    /// Repos to watch ("owner/name"). Empty: the ones you pushed to in the last two days.
+    var cloudRepos: [String] = []
+
     // MARK: Bluetooth
     /// AirPods and other Bluetooth accessories: battery when they connect, and when they run low.
     var bluetoothBattery: Bool = false
@@ -149,6 +156,8 @@ struct CoveConfig: Codable {
         checkForUpdates = value(.checkForUpdates, d.checkForUpdates)
         ciMonitor = value(.ciMonitor, d.ciMonitor)
         ciRepos = value(.ciRepos, d.ciRepos)
+        cloudSessions = value(.cloudSessions, d.cloudSessions)
+        cloudRepos = value(.cloudRepos, d.cloudRepos)
         bluetoothBattery = value(.bluetoothBattery, d.bluetoothBattery)
     }
 

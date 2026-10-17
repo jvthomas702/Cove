@@ -731,6 +731,12 @@ private struct ConnectionsPane: View {
               footer: "Shows your workflow runs live in the notch and pings when they pass or fail. Signs in with the GitHub CLI; Cove stores no token.") {
             ToggleRow(title: "Watch my CI runs", detail: ciDetail, isOn: controller.binding(\.ciMonitor))
         }
+        SettingsGroup(title: "Claude in the cloud",
+              footer: "Sessions on claude.ai/code and in Claude projects run on Anthropic's machines, so they can't reach Cove's hooks. Cove finds the pull requests they open on GitHub and shows them opening, running CI and merging. Click one to open its session.") {
+            ToggleRow(title: "Show Claude's cloud pull requests",
+                      detail: model.cloudStatus.isEmpty ? "Repos you pushed to in the last two days, or the cloudRepos list in config.json" : model.cloudStatus,
+                      isOn: controller.binding(\.cloudSessions))
+        }
         SettingsGroup(title: "Terminal",
               footer: "cove-run <command> pings you when a long command finishes. cove-notify \"text\" posts anything to the notch.") {
             statusRow(title: "cove-run and cove-notify", connected: controller.cliInstalled, connectTitle: "Install") {
