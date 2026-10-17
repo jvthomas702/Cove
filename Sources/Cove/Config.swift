@@ -144,6 +144,21 @@ struct CoveConfig: Codable {
     /// Repos to watch ("owner/name"). Empty: the ones you pushed to in the last two days.
     var cloudRepos: [String] = []
 
+    // MARK: Your phone
+    /// Push agent pings to your phone through ntfy (free app for iOS and Android, or ntfy.sh in a browser).
+    var phoneRelay: Bool = false
+    /// The private ntfy topic. Made up randomly the first time you turn this on; treat it like a password.
+    var phoneTopic: String = ""
+    /// ntfy server. The public ntfy.sh works with no account; use your own for privacy.
+    var phoneServer: String = "https://ntfy.sh"
+    /// Access token for a server that needs sign-in (empty for ntfy.sh).
+    var phoneToken: String = ""
+    /// Only buzz the phone when the screen is locked or you've been idle (approvalIdleMinutes).
+    var phoneOnlyWhenAway: Bool = true
+    /// Allow / Deny buttons on Claude's permission prompts. While you're away, prompts wait for the phone
+    /// instead of the terminal.
+    var phoneApprovals: Bool = false
+
     // MARK: Bluetooth
     /// AirPods and other Bluetooth accessories: battery when they connect, and when they run low.
     var bluetoothBattery: Bool = false
@@ -212,6 +227,12 @@ struct CoveConfig: Codable {
         cloudSessions = value(.cloudSessions, d.cloudSessions)
         cloudRepos = value(.cloudRepos, d.cloudRepos)
         bluetoothBattery = value(.bluetoothBattery, d.bluetoothBattery)
+        phoneRelay = value(.phoneRelay, d.phoneRelay)
+        phoneTopic = value(.phoneTopic, d.phoneTopic)
+        phoneServer = value(.phoneServer, d.phoneServer)
+        phoneToken = value(.phoneToken, d.phoneToken)
+        phoneOnlyWhenAway = value(.phoneOnlyWhenAway, d.phoneOnlyWhenAway)
+        phoneApprovals = value(.phoneApprovals, d.phoneApprovals)
     }
 
     static var directory: URL {

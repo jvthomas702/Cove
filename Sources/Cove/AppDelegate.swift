@@ -35,6 +35,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var clipboard: ClipboardMonitor?
     private var actions: GitHubActionsMonitor?
     private var cloud: CloudSessionsMonitor?
+    private var phone: PhoneRelay?
 
     /// Extra routes used by CI to drive the UI for screenshots. Only on with the `--debug-api` launch argument.
     private let debugAPI = CommandLine.arguments.contains("--debug-api")
@@ -92,6 +93,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if config.ciMonitor { startActions(config) }
         if config.cloudSessions { startCloud(repos: config.cloudRepos) }
         if config.bluetoothBattery { startBluetooth() }
+        if config.phoneRelay { startPhone(config) }
+        settingsController.onPhoneTest = { [weak self] in self?.sendPhoneTest() }
 
         observers.append(NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main
@@ -131,6 +134,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         desktopAI.stop()
         screenshots?.stop()
         cloud?.stop()
+        phone?.stop()
         actions?.stop()
         clipboard?.stop()
         bluetooth?.stop()
@@ -289,6 +293,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         } else if new.cloudRepos != old.cloudRepos {
             cloud?.update(repos: new.cloudRepos)
         }
+        if new.phoneRelay != old.phoneRelay {
+            if new.phoneRelay {
+                startPhone(new)
+            } else {
+                stopPhone()
+            }
+        } else if new.phoneServer != old.phoneServer || new.phoneTopic != old.phoneTopic || new.phoneToken != old.phoneToken {
+            if let phone {
+                phone.update(server: new.phoneServer, topic: new.phoneTopic, token: new.phoneToken)
+            } else if new.phoneRelay {
+                startPhone(new)
+            }
+        }
         if new.bluetoothBattery != old.bluetoothBattery {
             if new.bluetoothBattery { startBluetooth() } else { bluetooth?.stop(); bluetooth = nil }
         }
@@ -410,6 +427,64 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         monitor.onCopy = { [weak self] text in self?.model.addClip(text) }
         monitor.start()
         clipboard = monitor
+    }
+
+    /// Agent pings to your phone through ntfy, and Allow / Deny / Refresh answers back from it.
+    private func startPhone(_ config: CoveConfig) {
+        guard phone == nil else { return }
+        guard !config.phoneTopic.isEmpty else {
+            // First time on: make the private topic, then come back through updateConfig.
+            var next = config
+            next.phoneTopic = PhoneRelay.newTopic()
+            updateConfig(next)
+            return
+        }
+        let relay = PhoneRelay(server: config.phoneServer, topic: config.phoneTopic, token: config.phoneToken)
+        relay.onStatus = { [weak self] status in
+            let text: String
+            switch status {
+            case .connecting: text = "Connecting…"
+            case .listening: text = "Connected. Subscribe to the topic below on your phone."
+            case .error(let message): text = message
+            }
+            if self?.model.phoneStatus != text { self?.model.phoneStatus = text }
+        }
+        relay.onCommand = { [weak self] command in self?.handlePhone(command) }
+        model.phoneNotify = { [weak self, weak relay] note in
+            guard let self, let relay else { return }
+            let config = self.model.config
+            guard !config.phoneOnlyWhenAway || IslandModel.isAway(idleMinutes: config.approvalIdleMinutes) else { return }
+            relay.send(note)
+        }
+        if !debugAPI { relay.start() }
+        phone = relay
+    }
+
+    private func stopPhone() {
+        phone?.stop()
+        phone = nil
+        model.phoneNotify = nil
+        model.phoneStatus = ""
+    }
+
+    private func handlePhone(_ command: PhoneCommand) {
+        switch command {
+        case .status:
+            phone?.send(PhoneMessages.status(model.activities))
+        case .approval(let id, let decision):
+            // Buttons on an old notification point at prompts that were already answered; those do nothing.
+            guard model.config.phoneApprovals, model.approvals.contains(where: { $0.id == id }) else { return }
+            model.resolveApproval(id, decision)
+        }
+    }
+
+    private func sendPhoneTest() {
+        guard let phone else {
+            settingsController.message = "Turn on Your phone first."
+            return
+        }
+        phone.send(PhoneMessages.status(model.activities))
+        settingsController.message = "Sent. If nothing arrives, check that your phone is subscribed to \(phone.topic)."
     }
 
     /// Pull requests from Claude cloud sessions, found on GitHub (those sessions can't reach this Mac directly).
@@ -674,6 +749,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         // Calendar links are private (anyone with one can read the calendar), so they're redacted.
         var config = model.config
+        // The phone topic and token work like passwords.
+        if !config.phoneTopic.isEmpty { config.phoneTopic = "(redacted)" }
+        if !config.phoneToken.isEmpty { config.phoneToken = "(redacted)" }
         config.calendarFeeds = config.calendarFeeds.map { link in
             ICSFeedMonitor.normalize(link).map { "\($0.scheme ?? "https")://\($0.host ?? "")/…(redacted)" } ?? "(redacted)"
         }

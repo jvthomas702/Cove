@@ -93,6 +93,11 @@ final class IslandModel: ObservableObject {
     @Published var serverStatus = "Starting…"
     /// What the cloud-session watcher is doing, for Settings.
     @Published var cloudStatus = ""
+    /// Whether the phone relay is connected, for Settings.
+    @Published var phoneStatus = ""
+
+    /// Set by the app delegate: pushes a ping to your phone when Settings → Connections → Your phone is on.
+    var phoneNotify: ((PhoneNote) -> Void)?
 
     /// Set by the app delegate: (command, bundleID) → sends play/pause/next to Music or Spotify.
     var mediaControl: ((String, String) -> Void)?
@@ -599,6 +604,7 @@ final class IslandModel: ObservableObject {
         lastAgentSignal = now
         guard !alreadyWaiting else { return }
         dropBanners(forActivity: id)
+        phoneNotify?(PhoneMessages.attention(agent: agent, title: title, message: message))
         show(Banner(
             title: "\(agent.displayName) needs you · \(title)",
             body: message,
@@ -628,6 +634,15 @@ final class IslandModel: ObservableObject {
         put(a)
         lastAgentSignal = now
         guard notify else { return }
+        if phoneNotify != nil {
+            // Claude's summary is read from its transcript just after Stop; give it a moment so the phone gets it.
+            let wait: UInt64 = summaryText == nil && agent == .claude ? 1_500_000_000 : 0
+            Task { @MainActor [weak self] in
+                if wait > 0 { try? await Task.sleep(nanoseconds: wait) }
+                guard let self, let done = self.activity(id), !done.isLive else { return }
+                self.phoneNotify?(PhoneMessages.finished(agent: agent, title: title, summary: done.detail, failed: done.state == .failed))
+            }
+        }
         show(Banner(
             title: failed ? "\(agent.displayName) failed · \(title)" : "\(agent.doneTitle) · \(title)",
             body: a.detail,
@@ -1187,11 +1202,18 @@ final class IslandModel: ObservableObject {
     // MARK: - Claude Code approvals
 
     /// "smart" mode: use the notch only when you're at the Mac but not looking at Claude's terminal.
+    /// The screen is locked or nobody has touched the keyboard or mouse for a while.
+    static func isAway(idleMinutes: Double) -> Bool {
+        SystemState.screenLocked || SystemState.idleSeconds > idleMinutes * 60
+    }
+
     func shouldRouteApproval(activityID: String) -> Bool {
         switch config.approvals.lowercased() {
         case "off": return false
         case "always": return true
         default:
+            // Away from the Mac with phone answers on: send it to the phone instead of a terminal nobody sees.
+            if config.phoneRelay && config.phoneApprovals && Self.isAway(idleMinutes: config.approvalIdleMinutes) { return true }
             if SystemState.screenLocked { return false }
             if SystemState.idleSeconds > config.approvalIdleMinutes * 60 { return false }
             let front = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
@@ -1215,6 +1237,7 @@ final class IslandModel: ObservableObject {
         a.updatedAt = now
         put(a)
         lastAgentSignal = Date()
+        phoneNotify?(PhoneMessages.approval(request, buttons: config.phoneRelay && config.phoneApprovals))
         if config.sounds, let sound = NSSound(named: NSSound.Name(config.attentionSound)) {
             sound.stop()
             sound.play()
