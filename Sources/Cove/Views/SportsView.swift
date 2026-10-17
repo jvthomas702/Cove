@@ -51,7 +51,7 @@ struct SportsPane: View {
                 }
                 .buttonStyle(PillButtonStyle())
                 .accessibilityIdentifier("sports.games")
-                IconButton(systemImage: "star", size: 12, hit: 24) { model.openSettings?(.features) }
+                IconButton(systemImage: "star", size: 12, hit: 24) { model.openSettings?(.sports) }
                     .help("Choose favorite teams").accessibilityLabel("Choose favorite teams")
                 if sports.loading { ProgressView().controlSize(.mini) }
                 IconButton(systemImage: "arrow.clockwise", size: 12, hit: 24) { sports.refresh() }
@@ -61,7 +61,7 @@ struct SportsPane: View {
             }
             if !sports.enabled {
                 SportsEmpty(title: "Sports is turned off", detail: "Enable it in Settings → Features.")
-                Button("Open settings") { model.openSettings?(.features) }.buttonStyle(PillButtonStyle())
+                Button("Open settings") { model.openSettings?(.sports) }.buttonStyle(PillButtonStyle())
             } else {
                 if showingGames || model.config.sportsGameID == nil {
                     gameList.frame(height: 78)
@@ -185,7 +185,7 @@ struct SportsWidget: View {
             }
             if !sports.enabled {
                 SportsEmpty(title: "Sports is turned off", detail: "Enable sports in Settings → Features.")
-                Button("Open settings") { model.openSettings?(.features) }.buttonStyle(PillButtonStyle())
+                Button("Open settings") { model.openSettings?(.sports) }.buttonStyle(PillButtonStyle())
             } else if let game = sports.selectedGame {
                 SportsScoreHeader(game: game)
                 FollowedScoresStrip(model: model)

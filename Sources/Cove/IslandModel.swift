@@ -1439,7 +1439,7 @@ final class IslandModel: ObservableObject {
     var scheduleSetup: ScheduleSetup? {
         for feed in feedStatuses {
             if case .failed(let reason) = feed.state {
-                return ScheduleSetup(title: "\(feed.name) link didn't load", detail: reason, action: "Fix", pane: .features)
+                return ScheduleSetup(title: "\(feed.name) link didn't load", detail: reason, action: "Fix", pane: .classes)
             }
         }
         if !schedule.events.isEmpty || !schedule.due.isEmpty { return nil }
@@ -1455,7 +1455,7 @@ final class IslandModel: ObservableObject {
         if config.calendar && calendarStatus.access == .granted && !onlyBuiltIn { return nil }
         return ScheduleSetup(title: "Connect D2L and Google Calendar",
                              detail: "Paste your calendar links in Settings and your classes and due dates show up here.",
-                             action: "Add links", pane: .features)
+                             action: "Add links", pane: .classes)
     }
 
     /// Upcoming due items within the lookahead window (overdue ones from the last 3 days included).

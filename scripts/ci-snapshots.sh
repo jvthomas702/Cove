@@ -35,7 +35,8 @@ check "extension origin is allowed" "[ \"\$(curl -s -o /dev/null -w '%{http_code
 
 sleep 1.2; island 01-welcome-banner
 sleep 2; full 02-settings-permissions
-debug settings/features; sleep 1; full 03-settings-features
+debug settings/agents; sleep 1; full 03-settings-agents
+debug settings/alerts; sleep 1; full 03a-settings-alerts
 debug settings/connections; sleep 1; full 04-settings-connections
 debug close-settings; debug collapse; sleep 1.5
 island 05-idle-buddy
@@ -112,7 +113,7 @@ curl -s -m 2 "$API/debug/schedule-state"; echo
 check "calendar links load (classes and due dates)" "curl -s -m 2 $API/debug/schedule-state | grep -q '\"events\":2,\"due\":2,\"feeds\":\"ok:2,ok:2\"'"
 debug expand/schedule; sleep 1; island 08c-schedule-from-links
 debug expand/home; sleep 1; island 07b-home-from-links
-debug collapse; debug settings/features; sleep 1.2; full 03b-settings-calendar-links
+debug collapse; debug settings/classes; sleep 1.2; full 03b-settings-calendar-links
 debug close-settings
 debug collapse; sleep 1
 

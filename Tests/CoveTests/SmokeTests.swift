@@ -450,3 +450,11 @@ final class BluetoothBatteryTests: XCTestCase {
         XCTAssertEqual(model.banner?.body, "50%")
     }
 }
+
+final class SettingsPaneTests: XCTestCase {
+    func testSidebarShowsEveryPaneOnce() {
+        let listed = SettingsPane.island + SettingsPane.system
+        XCTAssertEqual(listed.count, Set(listed).count)
+        XCTAssertEqual(Set(listed), Set(SettingsPane.allCases))
+    }
+}

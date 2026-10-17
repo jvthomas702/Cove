@@ -262,12 +262,16 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
 // MARK: - Views
 
 enum SettingsPane: String, CaseIterable, Identifiable {
-        case general, features, permissions, connections, about
+        case general, agents, classes, sports, shelf, alerts, permissions, connections, about
         var id: String { rawValue }
         var title: String {
             switch self {
             case .general: return "General"
-            case .features: return "Features"
+            case .agents: return "AI agents"
+            case .classes: return "Classes"
+            case .sports: return "Sports"
+            case .shelf: return "Shelf"
+            case .alerts: return "Status and alerts"
             case .permissions: return "Permissions"
             case .connections: return "Connections"
             case .about: return "About"
@@ -276,12 +280,19 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         var symbol: String {
             switch self {
             case .general: return "gearshape"
-            case .features: return "square.grid.2x2"
+            case .agents: return "sparkles"
+            case .classes: return "calendar"
+            case .sports: return "sportscourt"
+            case .shelf: return "tray.full"
+            case .alerts: return "bell"
             case .permissions: return "lock.shield"
             case .connections: return "point.3.connected.trianglepath.dotted"
             case .about: return "info.circle"
             }
         }
+        /// What the island shows, then how Cove is set up, as two sidebar sections.
+        static let island: [SettingsPane] = [.general, .agents, .classes, .sports, .shelf, .alerts]
+        static let system: [SettingsPane] = [.permissions, .connections, .about]
 }
 
 struct SettingsView: View {
@@ -295,10 +306,13 @@ struct SettingsView: View {
 
     var body: some View {
         NavigationSplitView {
-            List(SettingsPane.allCases, selection: $controller.pane) { pane in
-                Label(pane.title, systemImage: pane.symbol)
-                    .badge(pane == .permissions ? missingPermissions : 0)
-                    .tag(pane)
+            List(selection: $controller.pane) {
+                Section {
+                    ForEach(SettingsPane.island) { row($0) }
+                }
+                Section {
+                    ForEach(SettingsPane.system) { row($0) }
+                }
             }
             .navigationSplitViewColumnWidth(170)
             .scrollContentBackground(.hidden)
@@ -311,7 +325,11 @@ struct SettingsView: View {
                     }
                     switch controller.pane ?? .general {
                     case .general: GeneralPane(controller: controller)
-                    case .features: FeaturesPane(controller: controller)
+                    case .agents: AgentsPane(controller: controller)
+                    case .classes: ClassesPane(controller: controller)
+                    case .sports: SportsPane(controller: controller)
+                    case .shelf: ShelfPane(controller: controller)
+                    case .alerts: AlertsPane(controller: controller)
                     case .permissions: PermissionsPane(controller: controller)
                     case .connections: ConnectionsPane(controller: controller)
                     case .about: AboutPane(controller: controller)
@@ -325,6 +343,13 @@ struct SettingsView: View {
         .background(Theme.background)
         .frame(minWidth: 620, minHeight: 520)
         .preferredColorScheme(model.config.islandTheme.colorScheme)
+    }
+
+    private func row(_ pane: SettingsPane) -> some View {
+        Label(pane.title, systemImage: pane.symbol)
+            .badge(pane == .permissions ? missingPermissions : 0)
+            .tag(pane)
+            .accessibilityIdentifier("settings.pane.\(pane.rawValue)")
     }
 
     private var missingPermissions: Int {
@@ -391,7 +416,7 @@ private struct GeneralPane: View {
 
     var body: some View {
         SettingsGroup(title: "Startup") {
-            ToggleRow(title: "Open Cove when you log in",
+            ToggleRow(title: "Open Cove when you log in", detail: "So the island is back after a restart",
                       isOn: Binding(get: { controller.launchAtLogin }, set: { controller.setLaunchAtLogin($0) }))
         }
         SettingsGroup(title: "The island") {
@@ -416,18 +441,12 @@ private struct GeneralPane: View {
                  ? "The MacBook's notch, or the main display when the lid is closed"
                  : "Follows the pointer from display to display")
                 .font(.caption).foregroundStyle(.secondary)
-            ToggleRow(title: "Show live AI work beside the notch", detail: "Temporarily shows active AI work, then returns to your sports score",
-                      isOn: controller.binding(\.aiWorkInNotch))
             ToggleRow(title: "Open when the pointer rests on the notch",
                       detail: "Off: click the notch to open it", isOn: controller.binding(\.hoverToExpand))
             ToggleRow(title: "Play sounds", detail: "When something finishes, fails or needs you",
                       isOn: controller.binding(\.sounds))
             ToggleRow(title: "Quick timers", detail: "A timer button in the island: 5, 10 or 25 minutes, or type 90s, 1h 15m or 12:30",
                       isOn: controller.binding(\.quickTimers))
-            ToggleRow(title: "Show what Claude is doing", detail: "\"Editing eval.py\", \"$ pytest\" and so on",
-                      isOn: controller.binding(\.showToolActivity))
-            ToggleRow(title: "Reply from banners", detail: "Answer a finished Claude Code or Codex session from its banner; it continues in Terminal",
-                      isOn: controller.binding(\.bannerReplies))
             ToggleRow(title: "Keyboard shortcuts",
                       detail: "⌃⌥Space opens the island. On a permission prompt: ⌃⌥Y allow, ⌃⌥N deny, ⌃⌥A always allow, ⌃⌥T terminal",
                       isOn: controller.binding(\.shortcuts))
@@ -447,28 +466,12 @@ private struct GeneralPane: View {
     }
 }
 
-// MARK: Features
+// MARK: AI agents
 
-private struct FeaturesPane: View {
+private struct AgentsPane: View {
     @ObservedObject var controller: SettingsController
 
     var body: some View {
-        SettingsGroup(title: "AI activity") {
-            ToggleRow(title: "Today's agent recap", detail: "Finished Claude Code and Codex runs in the AI tab: how long they ran and files changed",
-                      isOn: controller.binding(\.agentRecap))
-        }
-        SettingsGroup(title: "Sports",
-                      footer: "Choose a game in the Sports tab to pin its score and latest play to the Home widget. Selected live games refresh about every 10 seconds; other followed scores refresh each minute. ESPN coverage and delays vary.") {
-            ToggleRow(title: "Enable sports", detail: "NBA, NFL and college football", isOn: controller.binding(\.sportsEnabled))
-            ToggleRow(title: "College football: Top 25 games only", detail: "At least one ranked team; turn off to browse all FBS games",
-                      isOn: controller.binding(\.sportsRankedOnly))
-        }
-        SettingsGroup(title: "Favorite teams", footer: "Favorites stay visible in the game picker, including unranked college teams. Auto-follow selects your next live or upcoming favorite matchup after the current game ends.") {
-            SportsFavoritesPicker(model: controller.model)
-            ToggleRow(title: "Automatically follow favorite teams", isOn: controller.binding(\.sportsAutoFollow))
-            ToggleRow(title: "Notify when a followed game starts", isOn: controller.binding(\.sportsStartAlerts))
-            ToggleRow(title: "Notify about followed score changes", isOn: controller.binding(\.sportsScoreAlerts))
-        }
         SettingsGroup(title: "Claude Code permission prompts",
               footer: "Smart shows prompts in the notch unless Claude's terminal is in front or you're away from the Mac. Unanswered prompts go back to the terminal.") {
             Picker("Answer prompts from the notch", selection: controller.binding(\.approvals)) {
@@ -481,6 +484,27 @@ private struct FeaturesPane: View {
                 Text("Hand back to the terminal after \(Int(controller.model.config.approvalTimeout)) seconds")
             }
         }
+        SettingsGroup(title: "In the island") {
+            ToggleRow(title: "Show what Claude is doing", detail: "\"Editing eval.py\", \"$ pytest\" and so on",
+                      isOn: controller.binding(\.showToolActivity))
+            ToggleRow(title: "Show live AI work beside the notch", detail: "Temporarily shows active AI work, then returns to your sports score",
+                      isOn: controller.binding(\.aiWorkInNotch))
+            ToggleRow(title: "Reply from banners", detail: "Answer a finished Claude Code or Codex session from its banner; it continues in Terminal",
+                      isOn: controller.binding(\.bannerReplies))
+            ToggleRow(title: "Today's agent recap", detail: "Finished Claude Code and Codex runs in the AI tab: how long they ran and files changed",
+                      isOn: controller.binding(\.agentRecap))
+        }
+        Text("Connect Claude Code, Codex, ChatGPT and browser chats in Connections.")
+            .font(.caption).foregroundStyle(.secondary)
+    }
+}
+
+// MARK: Classes
+
+private struct ClassesPane: View {
+    @ObservedObject var controller: SettingsController
+
+    var body: some View {
         CalendarLinksGroup(controller: controller)
         SettingsGroup(title: "Calendar app") {
             ToggleRow(title: "Also read the Calendar app", detail: "Google, iCloud and Exchange accounts added in System Settings → Internet Accounts",
@@ -511,6 +535,36 @@ private struct FeaturesPane: View {
                 Text("2 weeks").tag(14)
             }
         }
+    }
+}
+
+// MARK: Sports
+
+private struct SportsPane: View {
+    @ObservedObject var controller: SettingsController
+
+    var body: some View {
+        SettingsGroup(title: "Sports",
+                      footer: "Choose a game in the Sports tab to pin its score and latest play to the Home widget. Selected live games refresh about every 10 seconds; other followed scores refresh each minute. ESPN coverage and delays vary.") {
+            ToggleRow(title: "Enable sports", detail: "NBA, NFL and college football", isOn: controller.binding(\.sportsEnabled))
+            ToggleRow(title: "College football: Top 25 games only", detail: "At least one ranked team; turn off to browse all FBS games",
+                      isOn: controller.binding(\.sportsRankedOnly))
+        }
+        SettingsGroup(title: "Favorite teams", footer: "Favorites stay visible in the game picker, including unranked college teams. Auto-follow selects your next live or upcoming favorite matchup after the current game ends.") {
+            SportsFavoritesPicker(model: controller.model)
+            ToggleRow(title: "Automatically follow favorite teams", isOn: controller.binding(\.sportsAutoFollow))
+            ToggleRow(title: "Notify when a followed game starts", isOn: controller.binding(\.sportsStartAlerts))
+            ToggleRow(title: "Notify about followed score changes", isOn: controller.binding(\.sportsScoreAlerts))
+        }
+    }
+}
+
+// MARK: Shelf
+
+private struct ShelfPane: View {
+    @ObservedObject var controller: SettingsController
+
+    var body: some View {
         SettingsGroup(title: "Screenshots",
               footer: "macOS's floating thumbnail holds each screenshot for about 5 seconds before saving it. Turn on instant screenshots to skip it.") {
             ToggleRow(title: "Put new screenshots on the shelf", isOn: controller.binding(\.screenshotsToShelf))
@@ -523,6 +577,8 @@ private struct FeaturesPane: View {
                           isOn: controller.binding(\.screenshotsMoveOffDesktop))
             }
             .disabled(!controller.model.config.screenshotsToShelf)
+        }
+        SettingsGroup(title: "More on the shelf") {
             ToggleRow(title: "AirDrop drop zone",
                       detail: "Drag a file onto the notch, then drop it on AirDrop to send it or on Keep to shelve it",
                       isOn: controller.binding(\.airDropDropZone))
@@ -530,6 +586,15 @@ private struct FeaturesPane: View {
                       detail: "The last 12 clips, kept in memory only. Skips passwords from password managers",
                       isOn: controller.binding(\.clipboardHistory))
         }
+    }
+}
+
+// MARK: Status and alerts
+
+private struct AlertsPane: View {
+    @ObservedObject var controller: SettingsController
+
+    var body: some View {
         SettingsGroup(title: "Volume and brightness") {
             Picker("Show changes", selection: controller.binding(\.hud)) {
                 Text("In the notch").tag("replace")
@@ -538,9 +603,7 @@ private struct FeaturesPane: View {
             }
             .pickerStyle(.segmented)
         }
-        SettingsGroup(title: "Notifications") {
-            ToggleRow(title: "Show notifications from other apps", detail: "Needs Full Disk Access",
-                      isOn: controller.binding(\.mirrorNotifications))
+        SettingsGroup(title: "Battery and devices") {
             ToggleRow(title: "Battery alerts", detail: "Charging, 20% and 10%", isOn: controller.binding(\.batteryAlerts))
             ToggleRow(title: "Charging animation", detail: "A green battery fills up in the island when you plug in, in place of the Charging banner",
                       isOn: controller.binding(\.chargingAnimation))
@@ -548,6 +611,10 @@ private struct FeaturesPane: View {
                       isOn: controller.binding(\.bluetoothBattery))
             ToggleRow(title: "Camera and mic indicator", detail: "A green dot beside the notch while a camera is on, orange while a microphone is",
                       isOn: controller.binding(\.privacyIndicator))
+        }
+        SettingsGroup(title: "Notifications") {
+            ToggleRow(title: "Show notifications from other apps", detail: "Needs Full Disk Access",
+                      isOn: controller.binding(\.mirrorNotifications))
             VStack(alignment: .leading, spacing: 4) {
                 Text("Highlight notifications that mention")
                 TextField("interview, offer, deadline", text: Binding(
@@ -729,10 +796,6 @@ private struct PermissionsPane: View {
     var body: some View {
         Text("Cove only asks for what each feature needs. Everything stays on this Mac.")
             .foregroundStyle(.secondary)
-        SettingsGroup(title: "Startup") {
-            ToggleRow(title: "Open Cove when you log in", detail: "So the island is back after a restart",
-                      isOn: Binding(get: { controller.launchAtLogin }, set: { controller.setLaunchAtLogin($0) }))
-        }
         SettingsGroup(title: "Access") {
             ForEach(Permission.allCases) { permission in
                 HStack(spacing: 12) {
