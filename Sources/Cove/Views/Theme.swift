@@ -1,8 +1,9 @@
 import AppKit
 import SwiftUI
 
-/// Cove's design tokens. The island is pure black; everything on it is built from a few white
-/// tints, one type family (SF Pro, rounded for titles and numbers), and concentric corner radii.
+/// Cove's design tokens. The island is pure black and shaped like the iPhone's Dynamic Island;
+/// everything on it is built from a few white tints, one type family (SF Pro, rounded for titles
+/// and numbers), and concentric corner radii.
 enum Theme {
     // MARK: Ink (text and icons on black)
     static let ink = Color.white.opacity(0.96)
@@ -10,9 +11,9 @@ enum Theme {
     static let inkTertiary = Color.white.opacity(0.40)
 
     // MARK: Surfaces (layered on the black island)
-    static let surface = Color.white.opacity(0.06)
-    static let surfaceRaised = Color.white.opacity(0.10)
-    static let hairline = Color.white.opacity(0.08)
+    static let surface = Color.white.opacity(0.045)
+    static let surfaceRaised = Color.white.opacity(0.09)
+    static let hairline = Color.white.opacity(0.07)
 
     // MARK: Spacing (4-pt grid)
     enum Space {
@@ -22,10 +23,11 @@ enum Theme {
         static let l: CGFloat = 16
     }
 
-    // MARK: Radii — concentric: island 34 → card (34 − 14 inset) 20 → row 12
+    // MARK: Radii — concentric: island 34 → card (34 − 14 inset) 20 → row 12.
+    // The banner is near-pill, like an iPhone live activity dropping out of the island.
     enum Radius {
         static let islandExpanded: CGFloat = 34
-        static let islandBanner: CGFloat = 26
+        static let islandBanner: CGFloat = 30
         static let card: CGFloat = 20
         static let row: CGFloat = 12
         static let thumb: CGFloat = 8
@@ -33,13 +35,13 @@ enum Theme {
 
     // MARK: Type
     enum Font {
-        static let title = SwiftUI.Font.system(size: 14, weight: .semibold, design: .rounded)
-        static let headline = SwiftUI.Font.system(size: 13, weight: .semibold, design: .rounded)
-        static let body = SwiftUI.Font.system(size: 12)
-        static let caption = SwiftUI.Font.system(size: 11)
-        static let section = SwiftUI.Font.system(size: 12, weight: .semibold, design: .rounded)
-        static let number = SwiftUI.Font.system(size: 11, weight: .semibold, design: .rounded).monospacedDigit()
-        static let code = SwiftUI.Font.system(size: 11, design: .monospaced)
+        static let title = SwiftUI.Font.system(size: 13, weight: .semibold, design: .rounded)
+        static let headline = SwiftUI.Font.system(size: 12, weight: .semibold, design: .rounded)
+        static let body = SwiftUI.Font.system(size: 11)
+        static let caption = SwiftUI.Font.system(size: 10)
+        static let section = SwiftUI.Font.system(size: 11, weight: .semibold, design: .rounded)
+        static let number = SwiftUI.Font.system(size: 10, weight: .semibold, design: .rounded).monospacedDigit()
+        static let code = SwiftUI.Font.system(size: 10, design: .monospaced)
     }
 
     // MARK: Motion

@@ -48,18 +48,22 @@ struct ApprovalView: View {
                 ApprovalButton(title: "Deny", systemImage: "xmark", style: .destructive) {
                     model.resolveApproval(request.id, .deny)
                 }
+                .help(shortcutHint("N"))
                 ApprovalButton(title: "Answer in terminal", systemImage: "terminal", style: .quiet) {
                     model.answerInTerminal(request.id)
                 }
+                .help(shortcutHint("T"))
                 Spacer(minLength: Theme.Space.xs)
                 if request.canAlwaysAllow {
                     ApprovalButton(title: "Always allow", systemImage: nil, style: .secondary) {
                         model.resolveApproval(request.id, .allowAlways)
                     }
+                    .help(shortcutHint("A"))
                 }
                 ApprovalButton(title: "Allow", systemImage: "checkmark", style: .primary) {
                     model.resolveApproval(request.id, .allow)
                 }
+                .help(shortcutHint("Y"))
             }
         }
         .padding(.horizontal, 18)
@@ -68,6 +72,8 @@ struct ApprovalView: View {
     }
 
     private var waiting: Int { max(model.approvals.count - 1, 0) }
+
+    private func shortcutHint(_ key: String) -> String { model.config.shortcuts ? "⌃⌥\(key)" : "" }
 }
 
 /// Seconds left before the prompt goes back to the terminal.

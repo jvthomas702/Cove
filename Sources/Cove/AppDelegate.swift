@@ -18,6 +18,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var screenshots: ScreenshotWatcher?
     private let volume = VolumeController()
     private let mediaKeys = MediaKeyTap()
+    private let hotKeys = HotKeys()
     private var volumeStarted = false
     private var trustTimer: Timer?
     private var statusItem: NSStatusItem!
@@ -28,6 +29,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var observers: [NSObjectProtocol] = []
     private var settingsController: SettingsController!
     private var settingsWindow: SettingsWindowController?
+    private var updates: UpdateChecker?
+    private var clipboard: ClipboardMonitor?
     private var actions: GitHubActionsMonitor?
 
     /// Extra routes used by CI to drive the UI for screenshots. Only on with the `--debug-api` launch argument.
@@ -70,7 +73,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         startFeeds(config)
         if config.screenshotsToShelf { startScreenshots() }
         startHUD(mode: config.hud)
+        hotKeys.onAction = { [weak self] action in self?.model.handleShortcut(action) }
+        if config.shortcuts { hotKeys.start() }
         BrowserExtension.syncFromBundle()
+        if config.checkForUpdates { startUpdates() }
+        if config.clipboardHistory { startClipboard() }
         if config.ciMonitor { startActions(config) }
 
         observers.append(NSWorkspace.shared.notificationCenter.addObserver(
@@ -183,6 +190,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         if new.screenshotsToShelf != old.screenshotsToShelf {
             if new.screenshotsToShelf { startScreenshots() } else { screenshots?.stop(); screenshots = nil }
+        }
+        if new.shortcuts != old.shortcuts {
+            if new.shortcuts { hotKeys.start() } else { hotKeys.stop() }
+        }
+        if new.checkForUpdates != old.checkForUpdates {
+            if new.checkForUpdates { startUpdates() } else { updates?.stop(); updates = nil }
+        }
+        if new.clipboardHistory != old.clipboardHistory {
+            if new.clipboardHistory {
+                startClipboard()
+            } else {
+                clipboard?.stop()
+                clipboard = nil
+                model.clearClips()
+            }
         }
         if new.ciMonitor != old.ciMonitor {
             if new.ciMonitor {
@@ -309,6 +331,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// Calendar links pasted in Settings (D2L, Canvas, Google's secret iCal address). Always running;
     /// with no links it does nothing.
+    private func startUpdates() {
+        // CI drives the UI for screenshots; an update banner would land in them.
+        guard !debugAPI, updates == nil else { return }
+        let checker = UpdateChecker(currentVersion: version)
+        checker.onNewRelease = { [weak self] release in
+            self?.model.show(Banner(title: "Cove \(release.version) is out", body: "Click to download it",
+                                    style: .info, icon: .symbol("arrow.down.circle.fill", Palette.blue),
+                                    sticky: true, openURL: release.url, source: "Update"))
+        }
+        checker.start()
+        updates = checker
+    }
+    private func startClipboard() {
+        guard clipboard == nil else { return }
+        let monitor = ClipboardMonitor()
+        monitor.onCopy = { [weak self] text in self?.model.addClip(text) }
+        monitor.start()
+        clipboard = monitor
+    }
+
     private func startFeeds(_ config: CoveConfig) {
         feeds?.stop()
         let monitor = ICSFeedMonitor(config: config)

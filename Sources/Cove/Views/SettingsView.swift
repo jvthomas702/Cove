@@ -201,13 +201,16 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     init(controller: SettingsController) {
         self.controller = controller
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 620, height: 560),
+            contentRect: NSRect(x: 0, y: 0, width: 560, height: 480),
             styleMask: [.titled, .closable, .miniaturizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
         window.title = "Cove Settings"
         window.titlebarAppearsTransparent = true
+        // Black like the island, whatever the system appearance.
+        window.appearance = NSAppearance(named: .darkAqua)
+        window.backgroundColor = .black
         window.isReleasedWhenClosed = false
         window.contentView = NSHostingView(rootView: SettingsView(controller: controller))
         window.center()
@@ -275,7 +278,9 @@ struct SettingsView: View {
                     .badge(pane == .permissions ? missingPermissions : 0)
                     .tag(pane)
             }
-            .navigationSplitViewColumnWidth(170)
+            .navigationSplitViewColumnWidth(164)
+            .scrollContentBackground(.hidden)
+            .background(Color.black)
         } detail: {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
@@ -290,11 +295,13 @@ struct SettingsView: View {
                     case .about: AboutPane(controller: controller)
                     }
                 }
-                .padding(24)
+                .padding(18)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
+            .background(Color.black)
         }
-        .frame(minWidth: 620, minHeight: 520)
+        .frame(minWidth: 560, minHeight: 440)
+        .preferredColorScheme(.dark)
     }
 
     private var missingPermissions: Int {
@@ -363,6 +370,8 @@ private struct GeneralPane: View {
         SettingsGroup(title: "Startup") {
             ToggleRow(title: "Open Cove when you log in",
                       isOn: Binding(get: { controller.launchAtLogin }, set: { controller.setLaunchAtLogin($0) }))
+            ToggleRow(title: "Tell me when a new version is out", detail: "Checks GitHub once a day",
+                      isOn: controller.binding(\.checkForUpdates))
         }
         SettingsGroup(title: "The island") {
             ToggleRow(title: "Open when the pointer rests on the notch",
@@ -371,6 +380,9 @@ private struct GeneralPane: View {
                       isOn: controller.binding(\.sounds))
             ToggleRow(title: "Show what Claude is doing", detail: "\"Editing eval.py\", \"$ pytest\" and so on",
                       isOn: controller.binding(\.showToolActivity))
+            ToggleRow(title: "Keyboard shortcuts",
+                      detail: "⌃⌥Space opens the island. On a permission prompt: ⌃⌥Y allow, ⌃⌥N deny, ⌃⌥A always allow, ⌃⌥T terminal",
+                      isOn: controller.binding(\.shortcuts))
         }
         SettingsGroup(title: "Pip") {
             HStack(spacing: 14) {
@@ -445,6 +457,9 @@ private struct FeaturesPane: View {
                           isOn: controller.binding(\.screenshotsMoveOffDesktop))
             }
             .disabled(!controller.model.config.screenshotsToShelf)
+            ToggleRow(title: "Keep recent copied text on the shelf",
+                      detail: "The last 12 clips, kept in memory only. Skips passwords from password managers",
+                      isOn: controller.binding(\.clipboardHistory))
         }
         SettingsGroup(title: "Volume and brightness") {
             Picker("Show changes", selection: controller.binding(\.hud)) {

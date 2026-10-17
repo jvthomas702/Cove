@@ -46,6 +46,7 @@ final class ConfigTests: XCTestCase {
         XCTAssertEqual(config.approvals, "smart")
         XCTAssertTrue(config.buddy)
         XCTAssertTrue(config.screenshotsToShelf)
+        XCTAssertTrue(config.shortcuts)
     }
 
     func testWrongTypesFallBackInsteadOfFailing() throws {
@@ -319,6 +320,43 @@ final class CalendarClassifierTests: XCTestCase {
     }
 }
 
+// MARK: - Update check
+
+final class UpdateCheckerTests: XCTestCase {
+    func testVersionComparison() {
+        XCTAssertTrue(UpdateChecker.isNewer("1.0.3", than: "1.0.2"))
+        XCTAssertTrue(UpdateChecker.isNewer("1.0.10", than: "1.0.9"))
+        XCTAssertTrue(UpdateChecker.isNewer("1.1", than: "1.0.9"))
+        XCTAssertFalse(UpdateChecker.isNewer("1.0.2", than: "1.0.2"))
+        XCTAssertFalse(UpdateChecker.isNewer("1.0", than: "1.0.0"))
+        XCTAssertFalse(UpdateChecker.isNewer("1.0.1", than: "1.0.2"))
+        XCTAssertFalse(UpdateChecker.isNewer("1.0.3", than: "dev"))
+    }
+
+    func testParsesLatestRelease() {
+        let json = #"{"tag_name": "v1.0.3", "html_url": "https://github.com/jvthomas702/Cove/releases/tag/v1.0.3", "draft": false, "prerelease": false}"#
+        let release = UpdateChecker.parse(Data(json.utf8))
+        XCTAssertEqual(release?.version, "1.0.3")
+        XCTAssertEqual(release?.url.absoluteString, "https://github.com/jvthomas702/Cove/releases/tag/v1.0.3")
+        XCTAssertNil(UpdateChecker.parse(Data(#"{"tag_name": "v2.0.0-beta", "html_url": "https://x", "prerelease": true}"#.utf8)))
+}
+
+// MARK: - Clipboard history
+
+final class ClipboardTests: XCTestCase {
+    func testSkipsSecretsFilesAndBlankText() {
+        let plain: Set<String> = ["public.utf8-plain-text"]
+        XCTAssertEqual(ClipboardMonitor.clip(from: "hello", types: plain), "hello")
+        XCTAssertNil(ClipboardMonitor.clip(from: "hunter2", types: plain.union(["org.nspasteboard.ConcealedType"])))
+        XCTAssertNil(ClipboardMonitor.clip(from: "/tmp/a.png", types: plain.union(["public.file-url"])))
+        XCTAssertNil(ClipboardMonitor.clip(from: "  \n", types: plain))
+        XCTAssertNil(ClipboardMonitor.clip(from: nil, types: plain))
+    }
+
+    @MainActor
+    func testClipsAreNewestFirstAndDeduplicated() {
+}
+
 // MARK: - GitHub Actions
 
 final class GitHubActionsTests: XCTestCase {
@@ -352,6 +390,13 @@ final class GitHubActionsTests: XCTestCase {
         config.sounds = false
         config.calendar = false
         let model = IslandModel(config: config)
+        model.addClip("a")
+        model.addClip("b")
+        model.addClip("a")
+        XCTAssertEqual(model.clips, ["a", "b"])
+        for i in 0..<20 { model.addClip("\(i)") }
+        XCTAssertEqual(model.clips.count, 12)
+        XCTAssertEqual(model.clips.first, "19")
         let run = try XCTUnwrap(CIRun.parse(Data(sample.utf8), repo: "me/app").first)
         model.ciRun(run)
         XCTAssertEqual(model.activity("ci:1")?.state, .running)
