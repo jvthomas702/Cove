@@ -369,3 +369,46 @@ final class ClipboardTests: XCTestCase {
         XCTAssertEqual(model.clips.first, "19")
     }
 }
+
+// MARK: - GitHub Actions
+
+final class GitHubActionsTests: XCTestCase {
+    private let sample = #"""
+    {"total_count": 3, "workflow_runs": [
+      {"id": 1, "name": "build", "head_branch": "main", "status": "in_progress", "conclusion": null,
+       "html_url": "https://github.com/me/app/actions/runs/1", "created_at": "2026-10-17T00:53:23Z",
+       "actor": {"login": "me"}, "head_commit": {"message": "Fix the thing\n\nLonger body"}},
+      {"id": 2, "name": "build", "head_branch": "feature", "status": "completed", "conclusion": "failure",
+       "html_url": "https://github.com/me/app/actions/runs/2", "created_at": "2026-10-17T00:40:00Z",
+       "actor": {"login": "me"}, "head_commit": {"message": "WIP"}},
+      {"id": 3, "name": "deploy", "head_branch": "main", "status": "completed", "conclusion": "cancelled",
+       "html_url": "https://github.com/me/app/actions/runs/3", "created_at": "2026-10-17T00:30:00Z",
+       "actor": {"login": "bot"}}
+    ]}
+    """#
+
+    func testParsesRuns() {
+        let runs = CIRun.parse(Data(sample.utf8), repo: "me/app")
+        XCTAssertEqual(runs.map(\.state), [.running, .failed, .cancelled])
+        XCTAssertEqual(runs[0].commit, "Fix the thing")
+        XCTAssertEqual(runs[0].repoName, "app")
+        XCTAssertEqual(runs[1].branch, "feature")
+        XCTAssertEqual(runs[2].actor, "bot")
+        XCTAssertEqual(runs[2].commit, "")
+    }
+
+    @MainActor
+    func testRunShowsAsActivityThenFinishes() throws {
+        var config = CoveConfig()
+        config.sounds = false
+        config.calendar = false
+        let model = IslandModel(config: config)
+        let run = try XCTUnwrap(CIRun.parse(Data(sample.utf8), repo: "me/app").first)
+        model.ciRun(run)
+        XCTAssertEqual(model.activity("ci:1")?.state, .running)
+        XCTAssertEqual(model.activity("ci:1")?.url, run.url)
+        model.ciRun(CIRun(id: 1, repo: "me/app", workflow: "build", branch: "main", commit: "", actor: "me",
+                          state: .failed, url: run.url, createdAt: run.createdAt))
+        XCTAssertEqual(model.activity("ci:1")?.state, .failed)
+    }
+}

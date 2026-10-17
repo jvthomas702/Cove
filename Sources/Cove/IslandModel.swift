@@ -44,6 +44,8 @@ final class IslandModel: ObservableObject {
     var openSettings: ((SettingsPane) -> Void)?
     /// When the browser extension last reported in (shown in Settings → Connections).
     @Published private(set) var lastExtensionEvent: Date?
+    /// GitHub Actions sign-in and what's being watched (Settings → Connections).
+    @Published var ciStatus: GitHubActionsMonitor.Status?
     @Published private(set) var presentation: Presentation = .idle
     @Published private(set) var expanded = false
     @Published var tab: Tab = .home
@@ -440,7 +442,9 @@ final class IslandModel: ObservableObject {
 
     func open(_ a: Activity) {
         markSeen(a.id)
-        if let owner = a.ownerApp, activateApp(owner) {
+        if let url = a.url {
+            NSWorkspace.shared.open(url)
+        } else if let owner = a.ownerApp, activateApp(owner) {
             // jumped back to the terminal / editor that started it
         } else if let terminal = Self.terminalApps.first(where: { !NSRunningApplication.runningApplications(withBundleIdentifier: $0).isEmpty }) {
             activateApp(terminal)
@@ -501,6 +505,31 @@ final class IslandModel: ObservableObject {
         }
         if activities.count > 12 { activities = Array(activities.prefix(12)) }
         recompute()
+    }
+
+    // MARK: - GitHub Actions
+
+    /// A CI run started or changed state (see GitHubActionsMonitor).
+    func ciRun(_ run: CIRun) {
+        let id = "ci:\(run.id)"
+        let title = "\(run.repoName) · \(run.workflow)"
+        let where_ = [run.branch, run.commit].filter { !$0.isEmpty }.joined(separator: " · ")
+        switch run.state {
+        case .running:
+            if activity(id) == nil { agentStarted(id: id, agent: .ci, title: title, detail: where_, ownerApp: nil) }
+            agentUpdate(id: id, agent: .ci, title: title, detail: where_)
+        case .passed:
+            agentFinished(id: id, agent: .ci, title: title, summary: nil)
+        case .failed:
+            agentFinished(id: id, agent: .ci, title: title, summary: run.branch.isEmpty ? nil : "Failed on \(run.branch)", failed: true)
+        case .cancelled:
+            removeActivity(id)
+            return
+        }
+        if var a = activity(id), a.url != run.url {
+            a.url = run.url
+            put(a)
+        }
     }
 
     // MARK: - Generic events (POST /event, cove-notify, cove-run)

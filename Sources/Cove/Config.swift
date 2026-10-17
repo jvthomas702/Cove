@@ -92,6 +92,13 @@ struct CoveConfig: Codable {
     /// Check GitHub once a day and show a banner when a newer release is out.
     var checkForUpdates: Bool = true
 
+    // MARK: GitHub Actions
+    /// Live activity while your GitHub Actions runs work, and a banner when they pass or fail.
+    /// Signs in through the GitHub CLI (`gh auth login`).
+    var ciMonitor: Bool = false
+    /// "owner/repo" to watch every run on. Empty: your own runs on repos you pushed to recently.
+    var ciRepos: [String] = []
+
     init() {}
 
     init(from decoder: Decoder) throws {
@@ -136,6 +143,8 @@ struct CoveConfig: Codable {
         hudSeconds = value(.hudSeconds, d.hudSeconds)
         shortcuts = value(.shortcuts, d.shortcuts)
         checkForUpdates = value(.checkForUpdates, d.checkForUpdates)
+        ciMonitor = value(.ciMonitor, d.ciMonitor)
+        ciRepos = value(.ciRepos, d.ciRepos)
     }
 
     static var directory: URL {

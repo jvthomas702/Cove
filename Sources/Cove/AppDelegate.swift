@@ -31,6 +31,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var settingsWindow: SettingsWindowController?
     private var updates: UpdateChecker?
     private var clipboard: ClipboardMonitor?
+    private var actions: GitHubActionsMonitor?
 
     /// Extra routes used by CI to drive the UI for screenshots. Only on with the `--debug-api` launch argument.
     private let debugAPI = CommandLine.arguments.contains("--debug-api")
@@ -77,6 +78,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         BrowserExtension.syncFromBundle()
         if config.checkForUpdates { startUpdates() }
         if config.clipboardHistory { startClipboard() }
+        if config.ciMonitor { startActions(config) }
 
         observers.append(NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main
@@ -203,6 +205,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 clipboard = nil
                 model.clearClips()
             }
+        }
+        if new.ciMonitor != old.ciMonitor {
+            if new.ciMonitor {
+                startActions(new)
+            } else {
+                actions?.stop()
+                actions = nil
+                model.ciStatus = nil
+            }
+        } else if new.ciRepos != old.ciRepos {
+            actions?.update(repos: new.ciRepos)
         }
         if new.hud != old.hud {
             stopHUD()
@@ -355,6 +368,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func publishSchedule() {
         let parts = model.config.calendar ? [eventKitSchedule, feedSchedule] : [feedSchedule]
         model.setSchedule(Schedule.merged(parts))
+    }
+
+    private func startActions(_ config: CoveConfig) {
+        actions?.stop()
+        let monitor = GitHubActionsMonitor(repos: config.ciRepos)
+        monitor.onRun = { [weak self] run in self?.model.ciRun(run) }
+        monitor.onStatus = { [weak self] status in
+            if self?.model.ciStatus != status { self?.model.ciStatus = status }
+        }
+        monitor.start()
+        actions = monitor
     }
 
     private func startScreenshots() {

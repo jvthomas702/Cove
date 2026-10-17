@@ -686,6 +686,13 @@ private struct PermissionsPane: View {
 
 private struct ConnectionsPane: View {
     @ObservedObject var controller: SettingsController
+    /// Observed directly so the GitHub Actions status line updates live.
+    @ObservedObject private var model: IslandModel
+
+    init(controller: SettingsController) {
+        _controller = ObservedObject(wrappedValue: controller)
+        _model = ObservedObject(wrappedValue: controller.model)
+    }
 
     var body: some View {
         SettingsGroup(title: "Claude Code",
@@ -718,11 +725,29 @@ private struct ConnectionsPane: View {
                 Button(controller.model.lastExtensionEvent == nil ? "Set up…" : "Reinstall…") { controller.setUpExtension() }
             }
         }
+        SettingsGroup(title: "GitHub Actions",
+              footer: "Shows your workflow runs live in the notch and pings when they pass or fail. Signs in with the GitHub CLI; Cove stores no token.") {
+            ToggleRow(title: "Watch my CI runs", detail: ciDetail, isOn: controller.binding(\.ciMonitor))
+        }
         SettingsGroup(title: "Terminal",
               footer: "cove-run <command> pings you when a long command finishes. cove-notify \"text\" posts anything to the notch.") {
             statusRow(title: "cove-run and cove-notify", connected: controller.cliInstalled, connectTitle: "Install") {
                 controller.installCLI()
             }
+        }
+    }
+
+    private var ciDetail: String {
+        switch model.ciStatus {
+        case nil: return "Repos you pushed to in the last two days, or the ciRepos list in config.json"
+        case .starting?: return "Signing in…"
+        case .noCLI?: return "Install the GitHub CLI first: brew install gh, then gh auth login"
+        case .signedOut?: return "Run gh auth login in Terminal, then turn this off and on"
+        case .watching(let login, let repos)?:
+            let names = repos.map { $0.split(separator: "/").last.map(String.init) ?? $0 }
+            return repos.isEmpty ? "Signed in as \(login). No recent pushes to watch yet"
+                : "Signed in as \(login), watching \(names.prefix(4).joined(separator: ", "))\(repos.count > 4 ? " and \(repos.count - 4) more" : "")"
+        case .error(let message)?: return message
         }
     }
 
