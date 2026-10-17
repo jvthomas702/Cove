@@ -32,8 +32,16 @@ struct ExpandedView: View {
 
     private var header: some View {
         HStack(spacing: 0) {
-            TabSwitcher(model: model)
-                .frame(maxWidth: .infinity, alignment: .trailing)
+            HStack(spacing: 6) {
+                if model.config.quickTimers {
+                    IconButton(systemImage: "timer", size: 12, hit: 28) { model.toggleTimerPicker() }
+                        .foregroundStyle(Theme.accent)
+                        .help("Quick timer").accessibilityLabel("Quick timer")
+                        .accessibilityIdentifier("timer.open")
+                }
+                TabSwitcher(model: model)
+            }
+            .frame(maxWidth: .infinity, alignment: .trailing)
             Color.clear.frame(width: model.notchSize.width)
             HStack(spacing: 6) {
                 IconButton(systemImage: "sparkles", size: 12, hit: 28) { model.openAIConnections() }
@@ -198,45 +206,6 @@ struct MediaCard: View {
             }
         }
         .frame(height: 78)
-    }
-}
-
-struct FocusCard: View {
-    @ObservedObject var model: IslandModel
-
-    var body: some View {
-        HStack(spacing: 8) {
-            if let end = model.focusEnd {
-                TimelineView(.periodic(from: .now, by: 1)) { context in
-                    let remaining = max(0, end.timeIntervalSince(context.date))
-                    ProgressRing(progress: remaining / max(model.focusTotal, 1), color: Palette.amber, size: 22, lineWidth: 2.5)
-                }
-                VStack(alignment: .leading, spacing: 0) {
-                    Text("Focus")
-                        .font(Theme.Font.caption)
-                        .foregroundStyle(Theme.inkSecondary)
-                    Text(timerInterval: Date()...max(end, Date()), countsDown: true)
-                        .font(.system(size: 15, weight: .semibold, design: .rounded).monospacedDigit())
-                }
-                Spacer(minLength: 0)
-                ChipButton(title: "End", systemImage: "stop.fill", tint: Palette.red) { model.stopFocus() }
-            } else {
-                Image(systemName: "timer")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(Palette.amber)
-                Text("Focus").font(Theme.Font.headline).lineLimit(1).fixedSize()
-                Spacer(minLength: 2)
-                HStack(spacing: 4) {
-                    ForEach(model.config.focusMinutes.prefix(3), id: \.self) { minutes in
-                        ChipButton(title: "\(minutes)m") { model.startFocus(minutes: minutes) }
-                    }
-                }
-                .layoutPriority(1)
-            }
-        }
-        .padding(.horizontal, Theme.Space.m)
-        .frame(height: 42)
-        .card()
     }
 }
 

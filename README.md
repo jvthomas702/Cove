@@ -28,6 +28,8 @@ Native Swift and SwiftUI, no dependencies, MIT licensed. Every commit is built, 
 | **Charging** | Plug in and a green battery fills to your current level beside the notch with the percentage, then folds away, like the iPhone. Follows Reduce Motion; turn it off in Settings → Features. |
 | **AirDrop drop zone** | Drag a file onto the notch and it opens with two targets: **AirDrop** sends it to a nearby iPhone or Mac, **Keep** puts it on the shelf. |
 | **And** | Notifications from other apps, Now Playing with album-art colors, a focus timer, a file shelf, battery alerts, and the volume and brightness meter. |
+| **Quick timers** | Click the timer button in the island for 5, 10 or 25 minutes, or type "3", "90s", "1h 15m" or "12:30". The countdown and a thin ring sit beside the notch; pause or cancel from Home. At zero Nori celebrates with a chime. Timers survive a restart. |
+| **And** | Notifications from other apps, Now Playing with album-art colors, a file shelf, battery alerts, and the volume and brightness meter. |
 
 ## Install
 
@@ -120,6 +122,10 @@ Turn on **Settings → Connections → Watch my CI runs** to see your workflow r
 ### Dropping files on the notch
 
 Drag any file onto the notch, open or closed. It opens with two targets: drop on **AirDrop** to pick a nearby device in the AirDrop window, or on **Keep** to put the file on the shelf. Dropping anywhere else on the island keeps it. Turn the targets off in Settings → Features → Screenshots → **AirDrop drop zone** to go back to dropping straight onto the shelf.
+
+### Quick timers
+
+Click the **timer** button at the left of the island's header. Home's second tile turns into the timer: tap **5 min**, **10 min** or **25 min**, or type a length and press Return. Plain numbers are minutes (`3`), and `90s`, `1h 15m`, `1.5h` and `1:15:00` work too. A clock time such as `12:30`, `9:05pm` or `7pm` counts down to the next time it comes round. While it runs, the time left (`12:34`) and a thin blue ring show beside the notch, and Home has **Pause** and **Cancel**. At zero a banner drops down with Nori celebrating and the Glass chime (if sounds are on). One timer runs at a time; starting another replaces it. The end time is saved, so a timer keeps going across a restart, and one that ran out while Cove was closed rings when it opens. Choosing **Focus** as the Home widget keeps the timer tile on Home. Turn the feature off with **Settings → General → Quick timers**.
 
 ### Screenshots
 

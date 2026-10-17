@@ -16,7 +16,9 @@ struct HomePane: View {
     var body: some View {
         HStack(spacing: 10) {
             MatteMusicTile(model: model).frame(maxWidth: .infinity)
-            if showsGame {
+            if model.showsTimerTile {
+                QuickTimerTile(model: model).frame(maxWidth: .infinity)
+            } else if showsGame {
                 MatteSportsTile(model: model).frame(maxWidth: .infinity)
             } else {
                 MatteContextTile(model: model).frame(maxWidth: .infinity)
@@ -164,9 +166,11 @@ private struct MatteContextTile: View {
                 Button("Schedule") { model.navigate(to: .schedule) }.buttonStyle(PillButtonStyle())
             case .focus:
                 Text("Focus").font(Theme.Font.headline)
-                if let end = model.focusEnd {
-                    Text(timerInterval: Date()...max(end, Date()), countsDown: true)
-                        .font(.system(size: 28, weight: .medium).monospacedDigit())
+                if let timer = model.timer {
+                    TimelineView(.periodic(from: .now, by: 1)) { context in
+                        Text(QuickTimer.clock(timer.remaining(at: context.date)))
+                            .font(.system(size: 28, weight: .medium).monospacedDigit())
+                    }
                     Button("End session") { model.stopFocus() }.buttonStyle(PillButtonStyle(tint: Palette.red))
                 } else {
                     Text("A little room to concentrate").font(Theme.Font.caption).foregroundStyle(Theme.inkSecondary)
@@ -278,6 +282,123 @@ struct CIActionButtons: View {
     private func detail(_ state: CIActionState) -> String {
         if case .failed(let message) = state { return message }
         return state.label
+    }
+}
+
+/// Quick timers: 5 / 10 / 25 minute chips and a field for "3", "90s", "1h 15m" or "12:30";
+/// while one runs, its countdown with Pause and Cancel.
+private struct QuickTimerTile: View {
+    @ObservedObject var model: IslandModel
+    @State private var draft = ""
+    @State private var invalid = false
+    @FocusState private var typing: Bool
+
+    private static let presets = [5, 10, 25]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if let timer = model.timer { running(timer) } else { picker }
+        }
+        .modifier(MatteTile())
+        .accessibilityIdentifier("home.timerTile")
+        .onChange(of: typing) { _, active in if active { model.openByClick() } }
+    }
+
+    private var picker: some View {
+        Group {
+            HStack(spacing: 5) {
+                Image(systemName: "timer").foregroundStyle(Theme.accent)
+                Text(model.config.homeWidget == .focus ? "Focus" : "Timer").font(Theme.Font.headline)
+                Spacer(minLength: 0)
+                if model.timerPickerOpen {
+                    IconButton(systemImage: "xmark", size: 8, hit: 20) { model.timerPickerOpen = false }
+                        .foregroundStyle(Theme.accent)
+                        .accessibilityLabel("Close timer").accessibilityIdentifier("timer.close")
+                }
+            }
+            HStack(spacing: 5) {
+                ForEach(Self.presets, id: \.self) { minutes in
+                    ChipButton(title: "\(minutes) min", tint: Theme.accent) {
+                        model.startTimer(seconds: TimeInterval(minutes * 60),
+                                         label: model.config.homeWidget == .focus ? "Focus" : "Timer")
+                    }
+                    .accessibilityIdentifier("timer.preset.\(minutes)")
+                }
+            }
+            HStack(spacing: 6) {
+                TextField("90s, 1h 15m, 12:30", text: $draft)
+                    .textFieldStyle(.plain).font(Theme.Font.body)
+                    .padding(.horizontal, 9).frame(height: 24)
+                    .background(Capsule().fill(Theme.surfaceRaised))
+                    .overlay { if invalid { Capsule().strokeBorder(Palette.red.opacity(0.7), lineWidth: 1) } }
+                    .focused($typing)
+                    .onSubmit(start)
+                    .onChange(of: draft) { _, _ in invalid = false }
+                    .accessibilityIdentifier("timer.field")
+                Button("Start", action: start)
+                    .buttonStyle(PillButtonStyle(prominent: true))
+                    .disabled(draft.trimmingCharacters(in: .whitespaces).isEmpty)
+                    .accessibilityIdentifier("timer.start")
+            }
+            Text(hint)
+                .font(.system(size: 9.5)).foregroundStyle(invalid ? Palette.red : Theme.inkTertiary).lineLimit(1)
+        }
+    }
+
+    private var hint: String {
+        if invalid { return "Try 3, 90s, 1h 15m or 12:30" }
+        if let seconds = QuickTimer.parse(draft) { return QuickTimer.name(seconds) }
+        return "Minutes, or a time to count down to"
+    }
+
+    private func running(_ timer: QuickTimer) -> some View {
+        Group {
+            HStack(spacing: 5) {
+                Text(timer.label).font(Theme.Font.headline)
+                Spacer(minLength: 0)
+                if let end = timer.endDate {
+                    Text("Ends \(end.formatted(date: .omitted, time: .shortened))")
+                        .font(Theme.Font.caption).foregroundStyle(Theme.inkSecondary).lineLimit(1)
+                } else {
+                    Text("Paused").font(Theme.Font.caption).foregroundStyle(Theme.inkSecondary)
+                }
+            }
+            TimelineView(.periodic(from: .now, by: 1)) { context in
+                HStack(spacing: 10) {
+                    ProgressRing(progress: timer.fractionLeft(at: context.date),
+                                 color: timer.isPaused ? Theme.inkSecondary : Theme.accent, size: 30, lineWidth: 2)
+                    Text(QuickTimer.clock(timer.remaining(at: context.date)))
+                        .font(.system(size: 26, weight: .medium, design: .rounded).monospacedDigit())
+                        .foregroundStyle(timer.isPaused ? Theme.inkSecondary : Theme.ink)
+                        .accessibilityIdentifier("timer.remaining")
+                }
+            }
+            Spacer(minLength: 0)
+            HStack(spacing: 6) {
+                if timer.isPaused {
+                    Button { model.resumeTimer() } label: { Label("Resume", systemImage: "play.fill") }
+                        .buttonStyle(PillButtonStyle())
+                        .accessibilityIdentifier("timer.resume")
+                } else {
+                    Button { model.pauseTimer() } label: { Label("Pause", systemImage: "pause.fill") }
+                        .buttonStyle(PillButtonStyle())
+                        .accessibilityIdentifier("timer.pause")
+                }
+                Button { model.cancelTimer() } label: { Label("Cancel", systemImage: "xmark") }
+                    .buttonStyle(PillButtonStyle())
+                    .accessibilityIdentifier("timer.cancel")
+            }
+            .labelStyle(.titleAndIcon)
+        }
+    }
+
+    private func start() {
+        if model.startTimer(text: draft) {
+            draft = ""
+            typing = false
+        } else {
+            invalid = true
+        }
     }
 }
 
