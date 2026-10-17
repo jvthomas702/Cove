@@ -24,6 +24,7 @@ final class IslandModel: ObservableObject {
         case scoreAndMusic(SportsGame, NowPlaying)   // a live score and what's playing, side by side
         case ai(Activity, count: Int)
         case privacy              // nothing else to show, but a camera or microphone is on
+        case charging(percent: Int)   // the brief moment after plugging in
     }
 
     // Geometry
@@ -86,6 +87,10 @@ final class IslandModel: ObservableObject {
     @Published private(set) var battery: BatteryState?
     /// Whether another app is using a camera or microphone (drives the privacy dot).
     @Published private(set) var mediaUse = MediaUse()
+    /// Set for a couple of seconds after the adapter is plugged in, while the charging animation plays.
+    @Published private(set) var chargingMoment: BatteryState?
+    private var chargingTimer: Timer?
+    static let chargingMomentSeconds: TimeInterval = 2.5
     /// Connected AirPods and other Bluetooth accessories that report a battery; nil until first read.
     @Published private(set) var bluetooth: [BluetoothBattery]?
     @Published private(set) var focusEnd: Date?
@@ -225,6 +230,7 @@ final class IslandModel: ObservableObject {
         case .ai?: return 92
         case .hud?: return 64
         case .privacy?: return 28   // just the dot
+        case .charging?: return 64
         case .napping? where nextEventToday != nil:
             return 60   // napping Nori plus the next class time
         case .napping?, .attention?, .running?, .progress?, .finished?:
@@ -252,6 +258,7 @@ final class IslandModel: ObservableObject {
 
     var compactItem: CompactItem? {
         if let hud { return .hud(hud) }
+        if let moment = chargingMoment { return .charging(percent: moment.percent) }
         if let a = activities.first(where: { $0.state == .attention }) { return .attention(a.agent) }
         let workingAI = aiActivities.filter(\.isLive)
         if config.aiWorkInNotch, let work = workingAI.first { return .ai(work, count: workingAI.count) }
@@ -295,7 +302,7 @@ final class IslandModel: ObservableObject {
         let next: Presentation
         if !approvals.isEmpty { next = .approval }
         else if expanded { next = .expanded }
-        else if hud != nil { next = .compact }
+        else if hud != nil || chargingMoment != nil { next = .compact }
         else if banner != nil { next = .banner }
         else if compactItem != nil { next = .compact }
         else { next = .idle }
@@ -1103,14 +1110,33 @@ final class IslandModel: ObservableObject {
     func setBattery(_ state: BatteryState?) {
         let old = battery
         battery = state
+        let pluggedIn = BatteryState.justPluggedIn(from: old, to: state)
+        if pluggedIn, config.chargingAnimation, let state { playChargingMoment(state) }
         guard config.batteryAlerts, let state, let old else { return }
-        if state.pluggedIn && !old.pluggedIn {
+        if pluggedIn {
+            // The charging animation already says it; don't stack a banner on top.
+            guard !config.chargingAnimation else { return }
             show(Banner(title: "Charging", body: "\(state.percent)%", style: .info, icon: .symbol("bolt.fill", Palette.green)))
         } else if !state.pluggedIn {
             for threshold in [10, 20] where state.percent <= threshold && old.percent > threshold {
                 show(Banner(title: "Battery low", body: "\(state.percent)% remaining", style: .attention,
                             icon: .symbol("battery.25", Palette.red), sticky: threshold == 10))
                 break
+            }
+        }
+    }
+
+    /// The iPhone-style "plugged in" moment: a green battery fills to the current level beside the notch, then folds away.
+    private func playChargingMoment(_ state: BatteryState) {
+        chargingMoment = state
+        recompute()
+        chargingTimer?.invalidate()
+        chargingTimer = Timer.scheduledTimer(withTimeInterval: Self.chargingMomentSeconds, repeats: false) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                self.chargingTimer = nil
+                self.chargingMoment = nil
+                self.recompute()
             }
         }
     }

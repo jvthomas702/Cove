@@ -533,6 +533,8 @@ private struct FeaturesPane: View {
             ToggleRow(title: "Show notifications from other apps", detail: "Needs Full Disk Access",
                       isOn: controller.binding(\.mirrorNotifications))
             ToggleRow(title: "Battery alerts", detail: "Charging, 20% and 10%", isOn: controller.binding(\.batteryAlerts))
+            ToggleRow(title: "Charging animation", detail: "A green battery fills up in the island when you plug in, in place of the Charging banner",
+                      isOn: controller.binding(\.chargingAnimation))
             ToggleRow(title: "AirPods and Bluetooth battery", detail: "Levels when they connect, and alerts at 20% and 10%",
                       isOn: controller.binding(\.bluetoothBattery))
             ToggleRow(title: "Camera and mic indicator", detail: "A green dot beside the notch while a camera is on, orange while a microphone is",

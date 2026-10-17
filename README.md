@@ -23,6 +23,7 @@ Native Swift and SwiftUI, no dependencies, MIT licensed. Every commit is built, 
 | **Long commands** | `cove-run python train.py` shows a live timer and pings you with how long it took. Scripts can push progress rings. |
 | **External displays** | Docked with the lid closed? The island moves to your main display, or set **Show on → Active display** to have it follow the pointer from screen to screen. Displays without a notch get a floating black pill instead of a fake notch. |
 | **Camera and mic dot** | A green dot beside the notch while any app has a camera on, orange while one is using a microphone, like the iPhone. No permissions needed; turn it off in Settings → Features. |
+| **Charging** | Plug in and a green battery fills to your current level beside the notch with the percentage, then folds away, like the iPhone. Follows Reduce Motion; turn it off in Settings → Features. |
 | **And** | Notifications from other apps, Now Playing with album-art colors, a focus timer, a file shelf, battery alerts, and the volume and brightness meter. |
 
 ## Install

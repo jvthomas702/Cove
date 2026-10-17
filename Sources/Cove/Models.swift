@@ -291,6 +291,13 @@ struct BatteryState: Equatable {
     var pluggedIn: Bool
     var charging: Bool
 
+    /// True only when the adapter goes from unplugged to plugged in. The first reading
+    /// (at launch, when `old` is nil) never counts, so opening Cove on power stays quiet.
+    static func justPluggedIn(from old: BatteryState?, to new: BatteryState?) -> Bool {
+        guard let old, let new else { return false }
+        return new.pluggedIn && !old.pluggedIn
+    }
+
     var symbol: String {
         if pluggedIn { return "battery.100.bolt" }
         switch percent {
