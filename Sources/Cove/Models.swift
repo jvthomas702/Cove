@@ -217,8 +217,6 @@ struct Banner: Identifiable, Equatable {
     var duration: TimeInterval? = nil
     /// Clicking opens the shelf tab.
     var showsShelf: Bool = false
-    /// Clicking opens the signed in-app updater in Settings → About.
-    var showsUpdates: Bool = false
     /// Whether it's kept in the "Earlier" list after it disappears.
     var logged: Bool = true
     /// Overrides the small label above the title ("Finished", "Needs you", an app name…).

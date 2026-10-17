@@ -373,8 +373,6 @@ private struct GeneralPane: View {
         SettingsGroup(title: "Startup") {
             ToggleRow(title: "Open Cove when you log in",
                       isOn: Binding(get: { controller.launchAtLogin }, set: { controller.setLaunchAtLogin($0) }))
-            ToggleRow(title: "Tell me when a new version is out", detail: "Checks GitHub once a day",
-                      isOn: controller.binding(\.checkForUpdates))
         }
         SettingsGroup(title: "The island") {
             Picker("Home widget", selection: controller.binding(\.homeWidget)) {
@@ -413,14 +411,6 @@ private struct FeaturesPane: View {
     @ObservedObject var controller: SettingsController
 
     var body: some View {
-        SettingsGroup(title: "AI activity",
-                      footer: "Open the AI tab to inspect your connected agents. App tracking reads visible window titles and generation controls locally; it needs Accessibility. Keep ChatGPT's chat window open. Browser reply previews can be turned off in the extension.") {
-            ToggleRow(title: "Follow the ChatGPT desktop app", isOn: controller.binding(\.desktopAIActivity))
-            Text(controller.model.desktopAITrackingStatus).font(.caption).foregroundStyle(.secondary)
-            if controller.model.config.desktopAIActivity && !Permission.accessibility.isGranted {
-                Button("Allow Accessibility…") { controller.request(.accessibility) }
-            }
-        }
         SettingsGroup(title: "Sports",
                       footer: "Choose a game in the Sports tab to pin its score and latest play to the Home widget. Selected live games refresh about every 10 seconds; other followed scores refresh each minute. ESPN coverage and delays vary.") {
             ToggleRow(title: "Enable sports", detail: "NBA, NFL and college football", isOn: controller.binding(\.sportsEnabled))
