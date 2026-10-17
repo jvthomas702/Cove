@@ -80,6 +80,10 @@ struct CoveConfig: Codable {
     var hud: String = "replace"
     var hudSeconds: Double = 1.4
 
+    // MARK: Updates
+    /// Check GitHub once a day and show a banner when a newer release is out.
+    var checkForUpdates: Bool = true
+
     init() {}
 
     init(from decoder: Decoder) throws {
@@ -121,6 +125,7 @@ struct CoveConfig: Codable {
         buddyAlwaysVisible = value(.buddyAlwaysVisible, d.buddyAlwaysVisible)
         hud = value(.hud, d.hud)
         hudSeconds = value(.hudSeconds, d.hudSeconds)
+        checkForUpdates = value(.checkForUpdates, d.checkForUpdates)
     }
 
     static var directory: URL {

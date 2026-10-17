@@ -28,6 +28,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var observers: [NSObjectProtocol] = []
     private var settingsController: SettingsController!
     private var settingsWindow: SettingsWindowController?
+    private var updates: UpdateChecker?
 
     /// Extra routes used by CI to drive the UI for screenshots. Only on with the `--debug-api` launch argument.
     private let debugAPI = CommandLine.arguments.contains("--debug-api")
@@ -70,6 +71,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if config.screenshotsToShelf { startScreenshots() }
         startHUD(mode: config.hud)
         BrowserExtension.syncFromBundle()
+        if config.checkForUpdates { startUpdates() }
 
         observers.append(NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main
@@ -181,6 +183,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         if new.screenshotsToShelf != old.screenshotsToShelf {
             if new.screenshotsToShelf { startScreenshots() } else { screenshots?.stop(); screenshots = nil }
+        }
+        if new.checkForUpdates != old.checkForUpdates {
+            if new.checkForUpdates { startUpdates() } else { updates?.stop(); updates = nil }
         }
         if new.hud != old.hud {
             stopHUD()
@@ -296,6 +301,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// Calendar links pasted in Settings (D2L, Canvas, Google's secret iCal address). Always running;
     /// with no links it does nothing.
+    private func startUpdates() {
+        // CI drives the UI for screenshots; an update banner would land in them.
+        guard !debugAPI, updates == nil else { return }
+        let checker = UpdateChecker(currentVersion: version)
+        checker.onNewRelease = { [weak self] release in
+            self?.model.show(Banner(title: "Cove \(release.version) is out", body: "Click to download it",
+                                    style: .info, icon: .symbol("arrow.down.circle.fill", Palette.blue),
+                                    sticky: true, openURL: release.url, source: "Update"))
+        }
+        checker.start()
+        updates = checker
+    }
+
     private func startFeeds(_ config: CoveConfig) {
         feeds?.stop()
         let monitor = ICSFeedMonitor(config: config)

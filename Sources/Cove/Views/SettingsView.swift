@@ -363,6 +363,8 @@ private struct GeneralPane: View {
         SettingsGroup(title: "Startup") {
             ToggleRow(title: "Open Cove when you log in",
                       isOn: Binding(get: { controller.launchAtLogin }, set: { controller.setLaunchAtLogin($0) }))
+            ToggleRow(title: "Tell me when a new version is out", detail: "Checks GitHub once a day",
+                      isOn: controller.binding(\.checkForUpdates))
         }
         SettingsGroup(title: "The island") {
             ToggleRow(title: "Open when the pointer rests on the notch",
