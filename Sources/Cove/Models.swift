@@ -137,6 +137,8 @@ struct Activity: Identifiable, Equatable {
     var ownerApp: String? = nil
     var phase: String? = nil
     var openURL: URL? = nil
+    /// The CLI session behind this activity, when its done banner can take a reply.
+    var resume: ResumeTarget? = nil
 
     var originLabel: String {
         if id.hasPrefix("web:") { return "Browser tab" }

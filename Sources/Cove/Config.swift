@@ -50,6 +50,8 @@ struct CoveConfig: Codable {
     var highlightKeywords: [String] = ["interview", "offer", "deadline", "congratulations", "accepted", "action required"]
     /// Show what Claude Code is doing right now (editing a file, running a command…).
     var showToolActivity: Bool = true
+    /// A "Reply…" field on Claude Code and Codex done banners that continues the same session in Terminal.
+    var bannerReplies: Bool = true
     /// Media apps Cove watches for Now Playing, in priority order.
     var mediaApps: [String] = ["com.spotify.client", "com.apple.Music"]
     /// Charging and low-battery banners.
@@ -192,6 +194,7 @@ struct CoveConfig: Codable {
         ignoreApps = value(.ignoreApps, d.ignoreApps)
         highlightKeywords = value(.highlightKeywords, d.highlightKeywords)
         showToolActivity = value(.showToolActivity, d.showToolActivity)
+        bannerReplies = value(.bannerReplies, d.bannerReplies)
         mediaApps = value(.mediaApps, d.mediaApps)
         batteryAlerts = value(.batteryAlerts, d.batteryAlerts)
         focusMinutes = value(.focusMinutes, d.focusMinutes)
