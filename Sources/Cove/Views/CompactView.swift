@@ -18,7 +18,7 @@ struct CompactView: View {
         }
         .frame(height: model.notchSize.height)
         .contentShape(Rectangle())
-        .onTapGesture { model.setExpanded(true) }
+        .onTapGesture { model.openByClick() }
         .animation(Theme.snappy, value: model.compactItem)
     }
 
@@ -62,7 +62,8 @@ struct CompactView: View {
             compactTeam(game.away)
         case .ai(let activity, let count)?:
             HStack(spacing: 6) {
-                AgentGlyph(agent: activity.agent, animating: activity.isLive)
+                if model.config.buddy { Buddy(mood: activity.buddyMood, size: 26, animating: activity.isLive) }
+                else { AgentGlyph(agent: activity.agent, animating: activity.isLive) }
                 Text(activity.agent.displayName).font(Theme.Font.headline).lineLimit(1)
                 if count > 1 { Text("+\(count - 1)").font(Theme.Font.number).foregroundStyle(Theme.inkSecondary) }
             }

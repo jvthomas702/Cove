@@ -6,7 +6,7 @@ import Combine
 @MainActor
 final class IslandModel: ObservableObject {
     enum Presentation: Equatable { case idle, compact, banner, expanded, approval }
-    enum Tab: String, CaseIterable { case home, schedule, sports, shelf }
+    enum Tab: String, CaseIterable { case home, ai, schedule, sports, shelf }
 
     /// What the two "wings" beside the notch show in compact mode, in priority order.
     enum CompactItem: Equatable {
@@ -33,6 +33,7 @@ final class IslandModel: ObservableObject {
     /// The island's current size; the window follows this.
     @Published private(set) var currentSize = CGSize(width: 190, height: 32)
     @Published var hasHardwareNotch = true
+    @Published var availableIslandWidth: CGFloat = 1200 { didSet { recompute() } }
 
     // State
     @Published var config: CoveConfig {
@@ -46,6 +47,9 @@ final class IslandModel: ObservableObject {
     var openSettings: ((SettingsPane) -> Void)?
     var applyConfig: ((CoveConfig) -> Void)?
     let sports: SportsMonitor
+    let agentLauncher = AgentLauncher()
+    let codexChats = CodexChats()
+    @Published var composeNewTask = false
     private let shelfStore: ShelfStore
     private let shelfEditor = ShelfEditorController()
     @Published private(set) var canUndoShelf = false
@@ -53,12 +57,14 @@ final class IslandModel: ObservableObject {
     /// When the browser extension last reported in (shown in Settings → Connections).
     @Published private(set) var lastExtensionEvent: Date?
     @Published var selectedAIActivityID: String?
+    @Published var aiActivityFilter: AIActivityFilter = .all
     @Published var desktopAIStatus = "Checking ChatGPT app…"
     @Published private(set) var presentation: Presentation = .idle
     @Published private(set) var expanded = false
     @Published private(set) var isPinnedOpen = false
     @Published var tab: Tab = .home { didSet { recompute() } }
     @Published private(set) var activities: [Activity] = []
+    @Published private(set) var aiSteps: [String: [AIActivityStep]] = [:]
     @Published private(set) var banner: Banner?
     @Published private(set) var history: [Banner] = []
     @Published private(set) var nowPlaying: NowPlaying?
@@ -92,6 +98,7 @@ final class IslandModel: ObservableObject {
     private var suppressHoverUntilExit = false
     private var artworkKey: String?
     private var lastAgentSignal: Date?
+    private var reportedNotificationAccessDenied = false
     private var hudTimer: Timer?
     private var clockTimer: Timer?
     private var lastAlertCheck = Date()
@@ -121,6 +128,27 @@ final class IslandModel: ObservableObject {
         self.sports.onAlert = { [weak self] alert in
             self?.show(Banner(title: alert.title, body: alert.body, style: .info, icon: .symbol("sportscourt.fill", Palette.blue), source: "Sports"))
         }
+        if config.homeWidget == .ai {
+            tab = .ai
+            self.config.homeWidget = .sports
+        }
+        codexChats.onState = { [weak self] chat, status in
+            guard let self else { return }
+            let id = "codex:\(chat.id)"
+            if status.needsYou {
+                self.agentAttention(id: id, agent: .codex, title: chat.title, message: status.phase + ". Open this chat in Codex.")
+            } else if status.type == "active" {
+                self.agentStarted(id: id, agent: .codex, title: chat.title, detail: "Codex is working", ownerApp: "com.openai.codex")
+            } else if self.activity(id)?.isLive == true {
+                self.agentFinished(id: id, agent: .codex, title: chat.title, summary: "Turn ended", failed: status.type == "systemError", notify: false)
+            }
+        }
+        codexChats.onDisconnect = { [weak self] in
+            guard let self else { return }
+            for a in self.activities where a.id.hasPrefix("codex:") && a.state == .attention {
+                self.agentUpdate(id: a.id, agent: .codex, title: a.title, detail: "Connection unavailable — check Codex", phase: "Status unavailable")
+            }
+        }
         loadShelf()
         pruneTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.prune() }
@@ -142,15 +170,23 @@ final class IslandModel: ObservableObject {
         case .compact: return CGSize(width: n.width + compactWing * 2, height: n.height)
         case .banner: return CGSize(width: max(n.width + 250, 440), height: n.height + 72)
         case .expanded:
-            if tab == .sports { return CGSize(width: max(n.width + 450, 660), height: n.height + 342) }
-            if tab == .shelf { return CGSize(width: max(n.width + 310, 500), height: n.height + (shelf.count <= 4 ? 172 : 252)) }
-            if tab == .home && !showsActivityPane { return CGSize(width: max(n.width + 310, 500), height: n.height + 252) }
-            return CGSize(width: max(n.width + 450, 660), height: n.height + 252)
+            let width = min(1000, availableIslandWidth)
+            if tab == .home { return CGSize(width: width, height: n.height + 174) }
+            if tab == .ai { return CGSize(width: width, height: n.height + 430) }
+            if tab == .sports { return CGSize(width: width, height: n.height + 342) }
+            if tab == .shelf { return CGSize(width: width, height: n.height + (shelf.count <= 4 ? 172 : 252)) }
+            return CGSize(width: width, height: n.height + 252)
         case .approval:
             // Grows with the preview (a one-line command vs. an 8-line diff).
             let lines = CGFloat(max(approvals.first?.preview.lines.count ?? 1, 1))
             return CGSize(width: max(n.width + 420, 620), height: n.height + min(134 + lines * 17, 280))
         }
+    }
+
+    func chooseIslandTheme(_ theme: IslandTheme) {
+        var next = config
+        next.islandTheme = theme
+        applyConfig?(next)
     }
 
     /// Width of each wing in compact mode. Wider for things that need words (a class name, a level bar).
@@ -246,10 +282,10 @@ final class IslandModel: ObservableObject {
                 }
             }
             hoverWork = work
-            DispatchQueue.main.asyncAfter(deadline: .now() + config.hoverDelay, execute: work)
+            DispatchQueue.main.asyncAfter(deadline: .now() + max(config.hoverDelay, 0.20), execute: work)
         } else if changed {
             suppressHoverUntilExit = false
-            scheduleCollapse(after: 0.3)
+            scheduleCollapse(after: 0.65)
         }
     }
 
@@ -272,7 +308,7 @@ final class IslandModel: ObservableObject {
         menuTrackingDepth = tracking ? menuTrackingDepth + 1 : max(0, menuTrackingDepth - 1)
         hoverWork?.cancel()
         hoverWork = nil
-        if menuTrackingDepth == 0, !isHovering { scheduleCollapse(after: 0.3) }
+        if menuTrackingDepth == 0, !isHovering { scheduleCollapse(after: 0.65) }
     }
 
     func setExpanded(_ value: Bool) {
@@ -299,10 +335,26 @@ final class IslandModel: ObservableObject {
 
     func toggleExpanded() { setExpanded(!expanded) }
 
+    func openByClick() {
+        isPinnedOpen = true
+        hoverWork?.cancel(); hoverWork = nil
+        setExpanded(true)
+    }
+
+    func navigate(to destination: Tab) {
+        openByClick()
+        tab = destination
+    }
+
+    func openAIConnections() {
+        openByClick()
+        openSettings?(.connections)
+    }
+
     func togglePinnedOpen() {
         isPinnedOpen.toggle()
         if isPinnedOpen { hoverWork?.cancel(); hoverWork = nil; setExpanded(true) }
-        else if !isHovering { scheduleCollapse(after: 0.3) }
+        else if !isHovering { scheduleCollapse(after: 0.65) }
     }
 
     func toggleFavorite(_ teamID: String, league: SportsLeague) {
@@ -446,6 +498,7 @@ final class IslandModel: ObservableObject {
     func activity(_ id: String) -> Activity? { activities.first { $0.id == id } }
 
     private func put(_ a: Activity) {
+        recordAIStep(a)
         if let i = activities.firstIndex(where: { $0.id == a.id }) {
             activities[i] = a
         } else {
@@ -454,8 +507,28 @@ final class IslandModel: ObservableObject {
         recompute()
     }
 
+    private func recordAIStep(_ a: Activity) {
+        guard a.agent.isAI else { return }
+        var steps = aiSteps[a.id] ?? []
+        if let previous = activity(a.id), previous.startedAt != a.startedAt { steps = [] }
+        let phase = a.phase ?? (a.isLive ? "Working" : "Finished")
+        let detail = String(a.detail.prefix(2000))
+        if let last = steps.last, last.phase == phase, last.state == a.state {
+            steps[steps.count - 1].detail = detail
+            steps[steps.count - 1].date = a.updatedAt
+        } else {
+            steps.append(AIActivityStep(phase: phase, detail: detail, state: a.state, date: a.updatedAt))
+        }
+        aiSteps[a.id] = Array(steps.suffix(24))
+        if aiSteps.count > 24 {
+            let oldest = aiSteps.filter { $0.key != a.id }.min { ($0.value.last?.date ?? .distantPast) < ($1.value.last?.date ?? .distantPast) }
+            if let oldest { aiSteps.removeValue(forKey: oldest.key) }
+        }
+    }
+
     func agentStarted(id: String, agent: AgentKind, title: String, detail: String, ownerApp: String?) {
         let now = Date()
+        dropBanners(forActivity: id)
         var a = activity(id) ?? Activity(id: id, agent: agent, title: title, detail: detail, state: .running, startedAt: now, updatedAt: now)
         if !a.isLive { a.startedAt = now }
         a.title = title
@@ -470,7 +543,7 @@ final class IslandModel: ObservableObject {
         put(a)
     }
 
-    func agentUpdate(id: String, agent: AgentKind, title: String, detail: String, progress: Double? = nil) {
+    func agentUpdate(id: String, agent: AgentKind, title: String, detail: String, progress: Double? = nil, phase: String? = nil) {
         let now = Date()
         var a = activity(id) ?? Activity(id: id, agent: agent, title: title, detail: detail, state: .running, startedAt: now, updatedAt: now)
         if a.state == .attention { dropBanners(forActivity: id); a.phase = "Working" }
@@ -478,6 +551,7 @@ final class IslandModel: ObservableObject {
         a.state = .running
         a.title = title
         a.detail = detail
+        if let phase { a.phase = phase.oneLine(max: 60) }
         if let progress { a.progress = min(max(progress, 0), 1) }
         a.updatedAt = now
         put(a)
@@ -485,7 +559,10 @@ final class IslandModel: ObservableObject {
 
     func agentAttention(id: String, agent: AgentKind, title: String, message: String) {
         let now = Date()
+        let alreadyWaiting = activity(id)?.state == .attention
         var a = activity(id) ?? Activity(id: id, agent: agent, title: title, detail: message, state: .attention, startedAt: now, updatedAt: now)
+        a.finishedAt = nil
+        a.seen = false
         a.state = .attention
         a.phase = "Needs you"
         a.title = title
@@ -493,6 +570,7 @@ final class IslandModel: ObservableObject {
         a.updatedAt = now
         put(a)
         lastAgentSignal = now
+        guard !alreadyWaiting else { return }
         dropBanners(forActivity: id)
         show(Banner(
             title: "\(agent.displayName) needs you · \(title)",
@@ -534,8 +612,14 @@ final class IslandModel: ObservableObject {
         ))
     }
 
+    func updateFinishedSummary(id: String, summary: String) {
+        guard let index = activities.firstIndex(where: { $0.id == id }), activities[index].state == .done else { return }
+        activities[index].detail = summary
+    }
+
     func removeActivity(_ id: String) {
         activities.removeAll { $0.id == id }
+        aiSteps.removeValue(forKey: id)
         dropBanners(forActivity: id)
         recompute()
     }
@@ -606,6 +690,8 @@ final class IslandModel: ObservableObject {
             }
         }
         if activities.count > 12 { activities = Array(activities.prefix(12)) }
+        let retained = Set(activities.map(\.id))
+        aiSteps = aiSteps.filter { retained.contains($0.key) }
         recompute()
     }
 
@@ -613,6 +699,9 @@ final class IslandModel: ObservableObject {
 
     func ingest(_ e: CoveEvent) {
         let kind = (e.kind ?? "info").lowercased()
+        // Desktop runtime state supersedes early hooks and duplicate completion notifiers.
+        if e.source?.lowercased() == "codex", let id = e.id, id.hasPrefix("codex:"),
+           codexChats.ignoresHook(String(id.dropFirst(6)), kind: kind) { return }
         let sourceName = (e.source ?? "custom").lowercased()
         if ["chatgpt", "gemini", "claude-web"].contains(sourceName), e.id?.hasPrefix("desktop:") != true { lastExtensionEvent = Date() }
         let agent = AgentKind(rawValue: sourceName == "claude-web" ? "claude" : sourceName) ?? .custom
@@ -624,7 +713,7 @@ final class IslandModel: ObservableObject {
                 let owner = e.app ?? ((agent.isWeb || e.source?.lowercased() == "claude-web") ? Self.runningBrowser() : nil)
                 agentStarted(id: id, agent: agent, title: e.title, detail: body, ownerApp: owner)
             }
-            agentUpdate(id: id, agent: agent, title: e.title, detail: body, progress: e.progress)
+            agentUpdate(id: id, agent: agent, title: e.title, detail: body, progress: e.progress, phase: e.phase)
             updateAIContext(id: id, phase: e.phase, url: e.url)
         case "done", "success", "finished", "complete":
             if let id = e.id, activity(id) != nil || agent.isAI {
@@ -667,10 +756,44 @@ final class IslandModel: ObservableObject {
         }
     }
 
+    var filteredAIActivities: [Activity] { aiActivities.filter(aiActivityFilter.includes) }
+
+    var selectedAIActivity: Activity? {
+        let visible = filteredAIActivities
+        return visible.first { $0.id == selectedAIActivityID } ?? visible.first
+    }
+
+    func selectAIActivity(_ activity: Activity) {
+        if !aiActivityFilter.includes(activity) { aiActivityFilter = .all }
+        selectedAIActivityID = activity.id
+    }
+
+    var aiStatusState: ActivityState? {
+        let work = aiActivities
+        for state in [ActivityState.attention, .running, .failed, .done] {
+            if work.contains(where: { $0.state == state }) { return state }
+        }
+        return nil
+    }
+
+    var aiStatusTitle: String {
+        let waiting = aiActivities.filter { $0.state == .attention }.count
+        if waiting > 0 { return "\(waiting) \(waiting == 1 ? "needs" : "need") you" }
+        let running = aiActivities.filter { $0.state == .running }.count
+        if running > 0 { return "\(running) working" }
+        if aiActivities.contains(where: { $0.state == .failed }) { return "Task failed" }
+        return aiActivities.isEmpty ? "Ready when you are" : "All caught up"
+    }
+
+    var desktopAITrackingStatus: String {
+        config.desktopAIActivity ? desktopAIStatus : "Tracking is off"
+    }
+
     private func updateAIContext(id: String, phase: String?, url: String?) {
         guard let index = activities.firstIndex(where: { $0.id == id }) else { return }
         if let phase { activities[index].phase = phase.oneLine(max: 60) }
         if let url = Self.chatURL(url) { activities[index].openURL = url }
+        recordAIStep(activities[index])
         recompute()
     }
 
@@ -699,12 +822,14 @@ final class IslandModel: ObservableObject {
     }
 
     func notificationAccessDenied() {
+        guard !reportedNotificationAccessDenied else { return }
+        reportedNotificationAccessDenied = true
         show(Banner(
-            title: "Allow Full Disk Access to mirror notifications",
-            body: "Click to open Settings, add Cove, then relaunch it.",
-            style: .attention,
-            icon: .symbol("lock.shield.fill", Palette.amber),
-            sticky: true,
+            title: "Notification mirroring is optional",
+            body: "Allow Full Disk Access in Settings if you want macOS notifications in Cove.",
+            style: .info,
+            icon: .symbol("lock.shield.fill", Palette.blue),
+            sticky: false,
             openURL: URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles")
         ))
     }
@@ -946,13 +1071,16 @@ final class IslandModel: ObservableObject {
     func requestApproval(_ request: ApprovalRequest, reply: @escaping @MainActor (ApprovalDecision) -> Void) {
         approvals.append(request)
         approvalReplies[request.id] = reply
-        // Reflect it on the session's live activity without a separate banner.
-        if var a = activity(request.sessionID) {
-            a.state = .attention
-            a.detail = "Wants to \(request.action)"
-            a.updatedAt = Date()
-            put(a)
-        }
+        // A reconnect may deliver the permission before a start hook.
+        let now = Date()
+        var a = activity(request.sessionID) ?? Activity(id: request.sessionID, agent: .claude, title: request.project, detail: "", state: .running, startedAt: now, updatedAt: now)
+        dropBanners(forActivity: request.sessionID)
+        a.state = .attention
+        a.phase = "Waiting for approval"
+        a.finishedAt = nil
+        a.detail = "Wants to \(request.action)"
+        a.updatedAt = now
+        put(a)
         lastAgentSignal = Date()
         if config.sounds, let sound = NSSound(named: NSSound.Name(config.attentionSound)) {
             sound.stop()
@@ -989,8 +1117,13 @@ final class IslandModel: ObservableObject {
 
     /// The hook gave up (Claude Code timed out or was interrupted).
     func cancelApproval(_ id: UUID) {
+        let request = approvals.first { $0.id == id }
         approvals.removeAll { $0.id == id }
         approvalReplies.removeValue(forKey: id)
+        if let request, let a = activity(request.sessionID), a.state == .attention,
+           !approvals.contains(where: { $0.sessionID == request.sessionID }) {
+            agentUpdate(id: a.id, agent: a.agent, title: a.title, detail: "Approval closed; waiting for agent status", phase: "Status unavailable")
+        }
         recompute()
     }
 

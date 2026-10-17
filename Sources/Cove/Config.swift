@@ -1,5 +1,10 @@
 import Foundation
 
+enum IslandTheme: String, Codable, CaseIterable {
+    case darkMatte
+    var title: String { "Black" }
+}
+
 /// User settings, stored as JSON at ~/.config/cove/config.json.
 /// Every key is optional in the file; anything missing falls back to the default below.
 struct CoveConfig: Codable {
@@ -13,7 +18,8 @@ struct CoveConfig: Codable {
     var bannerSeconds: Double = 4.5
     /// Expand the island when the pointer rests on it.
     var hoverToExpand: Bool = true
-    var hoverDelay: Double = 0.12
+    var hoverDelay: Double = 0.25
+    var islandTheme: IslandTheme = .darkMatte
     /// Mirror macOS notifications into the island (needs Full Disk Access).
     var mirrorNotifications: Bool = true
     /// Bundle IDs whose notifications should never be mirrored.
@@ -112,6 +118,8 @@ struct CoveConfig: Codable {
         bannerSeconds = value(.bannerSeconds, d.bannerSeconds)
         hoverToExpand = value(.hoverToExpand, d.hoverToExpand)
         hoverDelay = value(.hoverDelay, d.hoverDelay)
+        // Older white-theme values fall back to the consistent black appearance.
+        islandTheme = value(.islandTheme, d.islandTheme)
         mirrorNotifications = value(.mirrorNotifications, d.mirrorNotifications)
         ignoreApps = value(.ignoreApps, d.ignoreApps)
         highlightKeywords = value(.highlightKeywords, d.highlightKeywords)

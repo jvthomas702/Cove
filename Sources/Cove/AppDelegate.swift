@@ -37,6 +37,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var version: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev" }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        NSApp.appearance = NSAppearance(named: .darkAqua)
         guard !anotherCopyIsRunning() else {
             NSApp.terminate(nil)
             return
@@ -75,6 +76,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         desktopAI.onStatus = { [weak self] status in
             if self?.model.desktopAIStatus != status { self?.model.desktopAIStatus = status }
         }
+        model.codexChats.start()
         desktopAI.start(enabled: config.desktopAIActivity)
         if config.screenshotsToShelf { startScreenshots() }
         startHUD(mode: config.hud)
@@ -113,6 +115,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         calendar?.stop()
         feeds?.stop()
         model.sports.stop()
+        model.codexChats.stop()
         desktopAI.stop()
         screenshots?.stop()
         volume.stop()

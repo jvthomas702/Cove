@@ -48,7 +48,7 @@ struct FollowedScoresStrip: View {
                                 Text("–").foregroundStyle(Theme.inkTertiary)
                                 Text(game.home.score).monospacedDigit()
                                 TeamLogo(team: game.home, size: 16)
-                                if game.isLive { Circle().fill(Palette.green).frame(width: 4, height: 4) }
+                                if game.isLive { Circle().fill(Theme.accent).frame(width: 4, height: 4) }
                             }.font(.system(size: 10, weight: .semibold))
                                 .padding(6).background(RoundedRectangle(cornerRadius: 8).fill(game.id == model.config.sportsGameID && game.league == model.config.sportsLeague ? Theme.surfaceRaised : Theme.surface))
                         }.buttonStyle(.plain).help("\(game.matchup) · \(game.status)")

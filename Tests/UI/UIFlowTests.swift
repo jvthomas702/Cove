@@ -37,29 +37,27 @@ final class UIFlowTests: XCTestCase {
     }
 
     func testWidgetMenuAndQuietScreenshotPreserveChoice() {
-        let chooser = window.popUpButtons["home.widget"]
-        XCTAssertTrue(chooser.waitForExistence(timeout: 8))
-        chooser.click()
-        app.menuItems["AI work"].click()
+        window.buttons["tab.ai"].click()
         XCTAssertTrue(text("Writing reply").waitForExistence(timeout: 5))
         window.buttons["Quiet screenshot"].click()
+        XCTAssertTrue(window.scrollViews["ai.detail"].exists)
         XCTAssertTrue(text("Writing reply").exists)
-        chooser.click()
-        app.menuItems["Sports · play-by-play"].click()
+        window.buttons["tab.home"].click()
         XCTAssertTrue(window.buttons["Play-by-play →"].waitForExistence(timeout: 5))
     }
 
     func testRealNotchPopupRemainsOpenOutsideIsland() {
         window.buttons["Show notch"].click()
         let notch = app.dialogs["Cove Test Notch"]
-        let chooser = notch.popUpButtons["home.widget"]
-        XCTAssertTrue(chooser.waitForExistence(timeout: 5))
-        chooser.click()
-        // Exercise the former 0.3-second collapse while a native popup extends outside the island.
-        Thread.sleep(forTimeInterval: 0.6)
-        XCTAssertTrue(chooser.exists)
-        app.menuItems["AI work"].click()
-        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@ OR value CONTAINS %@", "Writing reply", "Writing reply")).firstMatch.waitForExistence(timeout: 5))
+        let devices = notch.descendants(matching: .any).matching(identifier: "device.settings").firstMatch
+        XCTAssertTrue(devices.waitForExistence(timeout: 5))
+        devices.click()
+        Thread.sleep(forTimeInterval: 0.8)
+        XCTAssertTrue(devices.exists)
+        app.typeKey(XCUIKeyboardKey.escape, modifierFlags: [])
+        notch.buttons["tab.ai"].click()
+        XCTAssertTrue(notch.scrollViews["ai.detail"].waitForExistence(timeout: 5))
+        XCTAssertTrue(notch.buttons["notch.pin"].exists)
     }
 
     func testCollegeFootballRankedFilter() {
@@ -125,7 +123,7 @@ final class UIFlowTests: XCTestCase {
         let item = window.descendants(matching: .any).matching(identifier: "shelf.item.Cove UI Screenshot.png").firstMatch
         XCTAssertTrue(item.waitForExistence(timeout: 5))
         window.buttons["tab.home"].click()
-        XCTAssertTrue(window.popUpButtons["home.widget"].waitForExistence(timeout: 5))
+        XCTAssertTrue(window.buttons["home.openGamecast"].waitForExistence(timeout: 5))
         window.buttons["tab.shelf"].click()
         XCTAssertTrue(item.waitForExistence(timeout: 5))
         window.buttons["Delete source"].click()
@@ -163,9 +161,9 @@ final class UIFlowTests: XCTestCase {
         window.buttons["tab.sports"].click()
         XCTAssertTrue(window.scrollViews["sports.followedScores"].waitForExistence(timeout: 8))
         window.buttons["tab.home"].click()
+        XCTAssertTrue(window.buttons["home.openGamecast"].waitForExistence(timeout: 5))
         window.descendants(matching: .any).matching(identifier: "ui.fixtures").firstMatch.click(); app.menuItems["Add AI task"].click()
-        let chooser = window.popUpButtons["home.widget"]
-        chooser.click(); app.menuItems["AI work"].click()
+        window.buttons["tab.ai"].click()
         XCTAssertTrue(window.scrollViews["ai.overview"].waitForExistence(timeout: 5))
         let task = window.buttons["ai.task.web:claude:ui:tab:2"]
         XCTAssertTrue(task.waitForExistence(timeout: 5)); task.click()
@@ -211,7 +209,7 @@ final class UIFlowTests: XCTestCase {
     }
 
     func testAllTabsRemainUsable() {
-        for tab in ["schedule", "sports", "shelf", "home"] {
+        for tab in ["ai", "schedule", "sports", "shelf", "home"] {
             window.buttons["tab.\(tab)"].click()
             XCTAssertTrue(window.buttons["tab.\(tab)"].isHittable)
         }
@@ -220,4 +218,154 @@ final class UIFlowTests: XCTestCase {
         attachment.name = "Home UI"; attachment.lifetime = .keepAlways
         add(attachment)
     }
+
+    func testBlackDashboardAndGamecastInBothSystemAppearances() {
+        for theme in ["dark", "light-system"] {
+            app.terminate()
+            app.launchArguments = theme == "light-system" ? ["--light-system"] : []
+            app.launch()
+            XCTAssertTrue(window.waitForExistence(timeout: 10))
+            var previousEdge: CGFloat = 0
+            for tile in ["music", "sports", "activity", "connections"] {
+                let element = window.descendants(matching: .any).matching(identifier: "home.\(tile)Tile").firstMatch
+                XCTAssertTrue(element.waitForExistence(timeout: 8))
+                XCTAssertGreaterThan(element.frame.width, 100)
+                XCTAssertGreaterThanOrEqual(element.frame.minX, previousEdge)
+                previousEdge = element.frame.maxX
+            }
+            let appearance = window.descendants(matching: .any).matching(identifier: "island.settings").firstMatch
+            XCTAssertTrue(appearance.exists)
+            window.buttons["Show notch"].click()
+            let notch = app.dialogs["Cove Test Notch"]
+            let pin = notch.buttons["notch.pin"]
+            XCTAssertTrue(pin.waitForExistence(timeout: 5)); pin.click()
+            let dashboard = XCTAttachment(screenshot: notch.screenshot())
+            dashboard.name = "\(theme.capitalized) Matte Dashboard"; dashboard.lifetime = .keepAlways; add(dashboard)
+            notch.buttons["notch.close"].click()
+            window.buttons["Hide notch"].click()
+            window.buttons["home.openGamecast"].click()
+            XCTAssertTrue(window.scrollViews["sports.plays"].waitForExistence(timeout: 8))
+            window.radioButtons["Stats"].click()
+            XCTAssertTrue(window.scrollViews["sports.stats"].waitForExistence(timeout: 5))
+            let attachment = XCTAttachment(screenshot: window.screenshot())
+            attachment.name = "\(theme.capitalized) Matte Gamecast"; attachment.lifetime = .keepAlways; add(attachment)
+        }
+    }
+
+    func testBlackAICompanionInBothSystemAppearances() {
+        for theme in ["dark", "light-system"] {
+            app.terminate()
+            app.launchArguments = theme == "light-system" ? ["--light-system"] : []
+            app.launch()
+            XCTAssertTrue(window.waitForExistence(timeout: 10))
+            window.buttons["home.activity.web:chatgpt:ui:tab:1"].click()
+            let companion = window.descendants(matching: .any).matching(identifier: "ai.companion").firstMatch
+            XCTAssertTrue(companion.waitForExistence(timeout: 8))
+            XCTAssertTrue(window.scrollViews["ai.detail"].exists)
+            window.descendants(matching: .any).matching(identifier: "ui.fixtures").firstMatch.click()
+            app.menuItems["Add AI task"].click()
+            let second = window.buttons["ai.task.web:claude:ui:tab:2"]
+            XCTAssertTrue(second.waitForExistence(timeout: 5)); second.click()
+            XCTAssertTrue(window.buttons["Open Claude"].waitForExistence(timeout: 5))
+            XCTAssertTrue(text("A second simulated response").exists)
+            XCTAssertTrue(window.scrollViews["ai.steps"].exists)
+            let screenshot = XCTAttachment(screenshot: window.screenshot())
+            screenshot.name = "\(theme.capitalized) Matte AI workspace"; screenshot.lifetime = .keepAlways; add(screenshot)
+        }
+    }
+    func testAIConnectionsAreAvailableFromEveryTab() {
+        for tab in ["home", "schedule", "sports", "shelf", "ai"] {
+            window.buttons["tab.\(tab)"].click()
+            XCTAssertTrue(window.buttons["ai.connect"].isHittable)
+        }
+        window.buttons["ai.connect"].click()
+        let settings = app.windows["Cove Settings"]
+        XCTAssertTrue(settings.waitForExistence(timeout: 8))
+        for title in ["AI connections", "Claude Code", "Codex", "ChatGPT desktop"] {
+            let label = settings.staticTexts.matching(NSPredicate(format: "label CONTAINS %@ OR value CONTAINS %@", title, title)).firstMatch
+            XCTAssertTrue(label.waitForExistence(timeout: 5))
+        }
+        XCTAssertTrue(settings.staticTexts["Tracking is off"].exists)
+        XCTAssertFalse(settings.buttons["Allow Accessibility…"].exists)
+        let screenshot = XCTAttachment(screenshot: settings.screenshot())
+        screenshot.name = "AI connections"; screenshot.lifetime = .keepAlways; add(screenshot)
+    }
+
+    func testAIFiltersKeepDetailsInSyncAndRecoverFromEmptyResults() {
+        window.buttons["home.viewAI"].click()
+        window.buttons["ai.filter.done"].click()
+        XCTAssertTrue(text("No finished tasks yet").waitForExistence(timeout: 5))
+        XCTAssertFalse(window.buttons["Open ChatGPT"].exists)
+        window.buttons["ai.emptyAction"].click()
+        XCTAssertTrue(window.buttons["Open ChatGPT"].waitForExistence(timeout: 5))
+        window.descendants(matching: .any).matching(identifier: "ui.fixtures").firstMatch.click()
+        app.menuItems["Finish AI task"].click()
+        window.buttons["ai.filter.live"].click()
+        XCTAssertTrue(text("Nothing working right now").waitForExistence(timeout: 5))
+        XCTAssertFalse(window.buttons["Open ChatGPT"].exists)
+        window.buttons["ai.filter.done"].click()
+        XCTAssertTrue(text("Finished simulated reply").waitForExistence(timeout: 5))
+        XCTAssertTrue(window.buttons["Open ChatGPT"].exists)
+    }
+
+    func testEmptyAIWorkspaceOpensConnectionsInLightSystemAppearance() {
+        app.terminate()
+        app.launchArguments = ["--no-ai", "--light-system"]
+        app.launch()
+        XCTAssertTrue(window.waitForExistence(timeout: 10))
+        window.buttons["tab.ai"].click()
+        XCTAssertTrue(text("Ready for your next task").waitForExistence(timeout: 5))
+        XCTAssertTrue(text("Tracking is off").exists)
+        window.buttons["ai.emptyAction"].click()
+        let settings = app.windows["Cove Settings"]
+        XCTAssertTrue(settings.waitForExistence(timeout: 5))
+        let screenshot = XCTAttachment(screenshot: settings.screenshot())
+        screenshot.name = "Black settings in light macOS appearance"; screenshot.lifetime = .keepAlways; add(screenshot)
+    }
+
+    func testAgentPromptSurvivesTabSwitchAndStartsOnlyWhenSubmitted() {
+        window.buttons["tab.ai"].click()
+        window.radioGroups["agent.destination"].radioButtons["New task"].click()
+        let prompt = window.descendants(matching: .any).matching(identifier: "agent.prompt").firstMatch
+        XCTAssertTrue(prompt.waitForExistence(timeout: 5)); prompt.click()
+        prompt.typeText("Explain this project without changes")
+        window.buttons["tab.home"].click(); window.buttons["tab.ai"].click()
+        XCTAssertEqual(window.descendants(matching: .any).matching(identifier: "agent.prompt").firstMatch.value as? String, "Explain this project without changes")
+        window.buttons["agent.start"].click()
+        XCTAssertTrue(text("Opened Codex in Terminal").waitForExistence(timeout: 5))
+        XCTAssertEqual(window.descendants(matching: .any).matching(identifier: "agent.prompt").firstMatch.value as? String, "")
+    }
+
+    func testExistingChatComposerTargetsAnotherChatAndKeepsDraftAcrossTabs() {
+        window.buttons["tab.ai"].click()
+        let picker = window.popUpButtons["chat.choice"]
+        XCTAssertTrue(picker.waitForExistence(timeout: 5)); picker.click()
+        app.menuItems["Other project"].click()
+        let prompt = window.descendants(matching: .any).matching(identifier: "chat.prompt").firstMatch
+        prompt.click(); prompt.typeText("Review the changes")
+        window.buttons["tab.home"].click(); window.buttons["tab.ai"].click()
+        XCTAssertEqual(prompt.value as? String, "Review the changes")
+        XCTAssertEqual(picker.value as? String, "Other project")
+        window.buttons["chat.send"].click()
+        XCTAssertTrue(text("Sent to Other project").waitForExistence(timeout: 5))
+        XCTAssertEqual(prompt.value as? String, "")
+    }
+
+    func testRealNotchAcceptsAgentTypingAndStaysOpen() {
+        window.buttons["Show notch"].click()
+        let notch = app.dialogs["Cove Test Notch"]
+        notch.buttons["tab.ai"].click()
+        notch.radioGroups["agent.destination"].radioButtons["New task"].click()
+        let prompt = notch.descendants(matching: .any).matching(identifier: "agent.prompt").firstMatch
+        XCTAssertTrue(prompt.waitForExistence(timeout: 5)); prompt.click(); prompt.typeText("Review this code")
+        XCTAssertEqual(prompt.value as? String, "Review this code")
+        prompt.typeKey("a", modifierFlags: .command)
+        prompt.typeText("Replace this draft")
+        XCTAssertEqual(prompt.value as? String, "Replace this draft")
+        window.buttons["Offline"].click()
+        Thread.sleep(forTimeInterval: 0.8)
+        XCTAssertTrue(prompt.exists)
+        XCTAssertEqual(prompt.value as? String, "Replace this draft")
+    }
+
 }

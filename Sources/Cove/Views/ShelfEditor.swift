@@ -78,6 +78,8 @@ enum ShelfImageRenderer {
         onClose = { [weak model] in model?.setMenuTracking(false) }
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 780, height: 540), styleMask: [.titled, .closable, .resizable], backing: .buffered, defer: false)
         window.title = "Cove Image Preview"
+        window.appearance = NSAppearance(named: .darkAqua)
+        window.backgroundColor = .black
         window.isReleasedWhenClosed = false; window.delegate = self
         let host = NSHostingView(rootView: ShelfEditorView(url: url, image: image, model: model))
         host.sizingOptions = []

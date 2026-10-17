@@ -45,12 +45,16 @@ final class UIFeed: URLProtocol {
 struct UIHostView: View {
     @ObservedObject var model: IslandModel
     var showNotch: () -> Void
+    var hideNotch: () -> Void
     var body: some View {
         VStack(spacing: 0) {
             HStack {
                 Menu("Fixtures") {
                     Button("Add AI task") {
                         model.ingest(CoveEvent(id: "web:claude:ui:tab:2", title: "Second AI task", body: "A second simulated response", kind: "running", source: "claude", phase: "Reasoning", url: "https://claude.ai/chat/ui"))
+                    }
+                    Button("Finish AI task") {
+                        model.ingest(CoveEvent(id: "web:chatgpt:ui:tab:1", title: "Example reply", body: "Finished simulated reply", kind: "done", source: "chatgpt", silent: true))
                     }
                     Button("Follow slate") {
                         var config = model.config; config.sportsWatchedGames = model.sports.allGames.map(\.key)
@@ -60,6 +64,7 @@ struct UIHostView: View {
                 }.accessibilityIdentifier("ui.fixtures")
                 Spacer()
                 Button("Show notch", action: showNotch)
+                Button("Hide notch", action: hideNotch)
                 Button("Quiet screenshot") {
                     let shot = FileManager.default.temporaryDirectory.appendingPathComponent("Cove UI Screenshot.png")
                     if let logo = Bundle.main.url(forResource: "nba-1", withExtension: "png", subdirectory: "TeamLogos"),
@@ -72,10 +77,10 @@ struct UIHostView: View {
                 }
                 Button("Offline") { UIFeed.offline.toggle(); model.sports.refresh() }
             }.controlSize(.small).font(.system(size: 10.5)).padding(8)
-            ExpandedView(model: model).frame(width: model.size(for: .expanded).width, height: model.size(for: .expanded).height).background(Color.black)
+            ExpandedView(model: model).frame(width: model.size(for: .expanded).width, height: model.size(for: .expanded).height).background(Theme.background)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .environment(\.colorScheme, .dark)
+        .environment(\.colorScheme, model.config.islandTheme.colorScheme)
     }
 }
 
@@ -83,7 +88,7 @@ struct UIHostView: View {
     var window: NSWindow!
     var model: IslandModel!
     var notch: NotchWindowController!
-    var resizeSubscription: AnyCancellable?
+    var settings: SettingsWindowController?
     func applicationDidFinishLaunching(_ notification: Notification) {
         setbuf(stdout, nil)
         let fixturePath = CommandLine.arguments.dropFirst().first { $0.hasPrefix("/") && FileManager.default.fileExists(atPath: $0) }
@@ -93,23 +98,43 @@ struct UIHostView: View {
         var config = CoveConfig()
         config.calendar = false; config.sounds = false; config.desktopAIActivity = false
         config.homeWidget = .sports; config.sportsLeague = .nba; config.sportsGameID = "401810946"
+        NSApp.appearance = NSAppearance(named: CommandLine.arguments.contains("--light-system") ? .aqua : .darkAqua)
         let shelfDefaults = UserDefaults(suiteName: "app.cove.ui-test.shelf")!
         if !CommandLine.arguments.contains("--preserve-shelf") {
             ShelfStore(defaults: shelfDefaults, root: FileManager.default.temporaryDirectory.appendingPathComponent("cove-ui-shelf")).clear()
         }
         model = IslandModel(config: config, sports: SportsMonitor(session: URLSession(configuration: sessionConfig)), shelfStore: ShelfStore(defaults: shelfDefaults, root: FileManager.default.temporaryDirectory.appendingPathComponent("cove-ui-shelf")))
+        model.agentLauncher.folder = UIFeed.root
+        model.agentLauncher.resolveExecutable = { _ in URL(fileURLWithPath: "/usr/bin/true") }
+        model.agentLauncher.openCommand = { url, completion in
+            try? FileManager.default.removeItem(at: url.deletingLastPathComponent())
+            completion(nil)
+        }
         model.applyConfig = { [weak self] config in
             guard let self else { return }
             self.model.config = config; self.model.sports.update(config: config)
             print("CONFIG widget=\(config.homeWidget.rawValue) league=\(config.sportsLeague.rawValue) game=\(config.sportsGameID ?? "none")")
         }
-        model.ingest(CoveEvent(id: "web:chatgpt:ui:tab:1", title: "A long example title for checking truncation and controls", body: "This simulated reply checks the widget layout without reading any of your chats.", kind: "running", source: "chatgpt", phase: "Writing reply"))
+        if !CommandLine.arguments.contains("--no-ai") {
+            model.ingest(CoveEvent(id: "web:chatgpt:ui:tab:1", title: "A long example title for checking truncation and controls", body: "This simulated reply checks the widget layout without reading any of your chats.", kind: "running", source: "chatgpt", phase: "Writing reply"))
+        }
+        model.codexChats.configureForTesting(chats: [
+            CodexChat(id: "11111111-1111-4111-8111-111111111111", title: "Cove updates", folder: "/tmp/Cove"),
+            CodexChat(id: "22222222-2222-4222-8222-222222222222", title: "Other project", folder: "/tmp/Other")
+        ]) { _, _, _, completion in completion(.success([:])) }
+        model.openSettings = { [weak self] pane in
+            guard let self else { return }
+            if self.settings == nil { self.settings = SettingsWindowController(controller: SettingsController(model: self.model)) }
+            self.settings?.show(pane: pane)
+        }
         model.sports.start(config: config)
         model.setExpanded(true)
         notch = NotchWindowController(model: model)
         notch.panel.title = "Cove Test Notch"
         notch.panel.orderOut(nil)
-        window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 660, height: 320), styleMask: [.titled, .closable], backing: .buffered, defer: false)
+        let initialSize = model.size(for: .expanded)
+        // Keep the fixture toolbar at a stable origin while the real island changes height.
+        window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: initialSize.width, height: 550), styleMask: [.titled, .closable], backing: .buffered, defer: false)
         window.title = "Cove UI Test"
         window.isReleasedWhenClosed = false
         let host = NSHostingView(rootView: UIHostView(model: model, showNotch: { [weak self] in
@@ -118,16 +143,9 @@ struct UIHostView: View {
             self.model.tab = .home
             self.model.setExpanded(true)
             self.notch.panel.orderFrontRegardless()
-        }))
+        }, hideNotch: { [weak self] in self?.notch.panel.orderOut(nil) }))
         host.sizingOptions = []
         window.contentView = host
-        resizeSubscription = model.$currentSize.dropFirst().sink { [weak self] _ in
-            DispatchQueue.main.async {
-                guard let self else { return }
-                let size = self.model.size(for: .expanded)
-                self.window.setContentSize(NSSize(width: size.width, height: size.height + 36))
-            }
-        }
         window.center(); window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
     }

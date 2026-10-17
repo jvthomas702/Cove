@@ -84,6 +84,18 @@ enum ActivityState: Equatable {
     case running, attention, done, failed
 }
 
+enum AIActivityFilter: String, CaseIterable {
+    case all = "All", live = "Live", finished = "Done"
+
+    func includes(_ activity: Activity) -> Bool {
+        switch self {
+        case .all: return true
+        case .live: return activity.isLive
+        case .finished: return !activity.isLive
+        }
+    }
+}
+
 struct Activity: Identifiable, Equatable {
     let id: String
     var agent: AgentKind
@@ -108,6 +120,24 @@ struct Activity: Identifiable, Equatable {
     }
 
     var isLive: Bool { state == .running || state == .attention }
+
+    var buddyMood: BuddyMood {
+        switch state {
+        case .running: return .working
+        case .attention: return .alert
+        case .done: return .happy
+        case .failed: return .sad
+        }
+    }
+}
+
+/// An observed phase of one session. Repeated reply chunks update the current phase.
+struct AIActivityStep: Identifiable, Equatable {
+    let id = UUID()
+    var phase: String
+    var detail: String
+    var state: ActivityState
+    var date: Date
 }
 
 // MARK: - Banners (transient notifications)
