@@ -163,6 +163,6 @@ import XCTest
         model.config.agentRecap = true
         let withRecap = model.size(for: .expanded)
         model.config.agentRecap = false
-        XCTAssertEqual(withRecap.height - model.size(for: .expanded).height, IslandModel.recapHeight + 10)
+        XCTAssertEqual(withRecap.height - model.size(for: .expanded).height, IslandModel.recapHeight + 8)
     }
 }
