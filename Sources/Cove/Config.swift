@@ -99,6 +99,10 @@ struct CoveConfig: Codable {
     /// "owner/repo" to watch every run on. Empty: your own runs on repos you pushed to recently.
     var ciRepos: [String] = []
 
+    // MARK: Bluetooth
+    /// AirPods and other Bluetooth accessories: battery when they connect, and when they run low.
+    var bluetoothBattery: Bool = false
+
     init() {}
 
     init(from decoder: Decoder) throws {
@@ -145,6 +149,7 @@ struct CoveConfig: Codable {
         checkForUpdates = value(.checkForUpdates, d.checkForUpdates)
         ciMonitor = value(.ciMonitor, d.ciMonitor)
         ciRepos = value(.ciRepos, d.ciRepos)
+        bluetoothBattery = value(.bluetoothBattery, d.bluetoothBattery)
     }
 
     static var directory: URL {
