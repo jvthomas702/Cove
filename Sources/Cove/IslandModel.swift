@@ -44,6 +44,8 @@ final class IslandModel: ObservableObject {
     var openSettings: ((SettingsPane) -> Void)?
     /// When the browser extension last reported in (shown in Settings → Connections).
     @Published private(set) var lastExtensionEvent: Date?
+    /// GitHub Actions sign-in and what's being watched (Settings → Connections).
+    @Published var ciStatus: GitHubActionsMonitor.Status?
     @Published private(set) var presentation: Presentation = .idle
     @Published private(set) var expanded = false
     @Published var tab: Tab = .home
@@ -62,6 +64,8 @@ final class IslandModel: ObservableObject {
     @Published private(set) var focusEnd: Date?
     @Published private(set) var focusTotal: TimeInterval = 0
     @Published private(set) var shelf: [URL] = []
+    /// Recently copied text, newest first (memory only; see ClipboardMonitor).
+    @Published private(set) var clips: [String] = []
     /// Whether Cove can read the folder screenshots are saved to.
     @Published var screenshotAccess: ScreenshotWatcher.AccessState = .unknown
     private var lastScreenshotAt: Date?
@@ -112,20 +116,20 @@ final class IslandModel: ObservableObject {
         switch p {
         case .idle: return n
         case .compact: return CGSize(width: n.width + compactWing * 2, height: n.height)
-        case .banner: return CGSize(width: max(n.width + 250, 440), height: n.height + 72)
-        case .expanded: return CGSize(width: max(n.width + 450, 660), height: n.height + 252)
+        case .banner: return CGSize(width: max(n.width + 200, 390), height: n.height + 62)
+        case .expanded: return CGSize(width: max(n.width + 380, 570), height: n.height + 214)
         case .approval:
             // Grows with the preview (a one-line command vs. an 8-line diff).
             let lines = CGFloat(max(approvals.first?.preview.lines.count ?? 1, 1))
-            return CGSize(width: max(n.width + 420, 620), height: n.height + min(134 + lines * 17, 280))
+            return CGSize(width: max(n.width + 350, 540), height: n.height + min(134 + lines * 16, 264))
         }
     }
 
     /// Width of each wing in compact mode. Wider for things that need words (a class name, a level bar).
     var compactWing: CGFloat {
         switch compactItem {
-        case .event?, .ongoing?: return 128
-        case .hud?: return 74
+        case .event?, .ongoing?: return 112
+        case .hud?: return 68
         case .napping? where nextEventToday != nil:
             return 66   // napping Pip plus the next class time
         case .napping?, .attention?, .running?, .progress?, .finished?:
@@ -440,7 +444,9 @@ final class IslandModel: ObservableObject {
 
     func open(_ a: Activity) {
         markSeen(a.id)
-        if let owner = a.ownerApp, activateApp(owner) {
+        if let url = a.url {
+            NSWorkspace.shared.open(url)
+        } else if let owner = a.ownerApp, activateApp(owner) {
             // jumped back to the terminal / editor that started it
         } else if let terminal = Self.terminalApps.first(where: { !NSRunningApplication.runningApplications(withBundleIdentifier: $0).isEmpty }) {
             activateApp(terminal)
@@ -501,6 +507,31 @@ final class IslandModel: ObservableObject {
         }
         if activities.count > 12 { activities = Array(activities.prefix(12)) }
         recompute()
+    }
+
+    // MARK: - GitHub Actions
+
+    /// A CI run started or changed state (see GitHubActionsMonitor).
+    func ciRun(_ run: CIRun) {
+        let id = "ci:\(run.id)"
+        let title = "\(run.repoName) · \(run.workflow)"
+        let where_ = [run.branch, run.commit].filter { !$0.isEmpty }.joined(separator: " · ")
+        switch run.state {
+        case .running:
+            if activity(id) == nil { agentStarted(id: id, agent: .ci, title: title, detail: where_, ownerApp: nil) }
+            agentUpdate(id: id, agent: .ci, title: title, detail: where_)
+        case .passed:
+            agentFinished(id: id, agent: .ci, title: title, summary: nil)
+        case .failed:
+            agentFinished(id: id, agent: .ci, title: title, summary: run.branch.isEmpty ? nil : "Failed on \(run.branch)", failed: true)
+        case .cancelled:
+            removeActivity(id)
+            return
+        }
+        if var a = activity(id), a.url != run.url {
+            a.url = run.url
+            put(a)
+        }
     }
 
     // MARK: - Generic events (POST /event, cove-notify, cove-run)
@@ -869,6 +900,22 @@ final class IslandModel: ObservableObject {
         recompute()
     }
 
+    /// A global shortcut (see HotKeys). Approval keys do nothing unless a prompt is waiting.
+    func handleShortcut(_ action: HotKeys.Action) {
+        guard let request = approvals.first else {
+            if action == .toggle { setExpanded(!expanded) }
+            return
+        }
+        switch action {
+        case .toggle: setExpanded(!expanded)
+        case .allow: resolveApproval(request.id, .allow)
+        case .deny: resolveApproval(request.id, .deny)
+        case .alwaysAllow where request.canAlwaysAllow: resolveApproval(request.id, .allowAlways)
+        case .alwaysAllow: break
+        case .terminal: answerInTerminal(request.id)
+        }
+    }
+
     /// Answer in the terminal instead: hand the prompt back and jump to Claude's window.
     func answerInTerminal(_ id: UUID) {
         let sessionID = approvals.first(where: { $0.id == id })?.sessionID
@@ -978,6 +1025,30 @@ final class IslandModel: ObservableObject {
     func clearShelf() {
         shelf.removeAll()
         saveShelf()
+    }
+
+    // MARK: - Clipboard history
+
+    func addClip(_ text: String) {
+        clips.removeAll { $0 == text }
+        clips.insert(text, at: 0)
+        if clips.count > 12 { clips.removeLast(clips.count - 12) }
+    }
+
+    /// Puts a clip back on the clipboard (it moves to the front when the monitor sees it).
+    func copyClip(_ text: String) {
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(text, forType: .string)
+        Haptics.tap()
+    }
+
+    func removeClip(_ text: String) {
+        clips.removeAll { $0 == text }
+    }
+
+    func clearClips() {
+        clips.removeAll()
     }
 
     private func saveShelf() {
