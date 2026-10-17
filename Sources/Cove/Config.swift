@@ -69,9 +69,9 @@ struct CoveConfig: Codable {
     var eventStartAlert: Bool = true
 
     // MARK: Avatar
-    /// Pip, the little avatar that reacts when agents and commands work, finish, fail or need you.
+    /// Nori, the little avatar that reacts when agents and commands work, finish, fail or need you.
     var buddy: Bool = true
-    /// Keep Pip napping beside the notch even when nothing is happening.
+    /// Keep Nori napping beside the notch even when nothing is happening.
     var buddyAlwaysVisible: Bool = true
 
     // MARK: Screenshots
@@ -96,12 +96,41 @@ struct CoveConfig: Codable {
     var sportsAutoFollow: Bool = true
     var sportsStartAlerts: Bool = false
     var sportsScoreAlerts: Bool = false
+    // MARK: Clipboard
+    /// Keep the last few copied texts on the shelf (in memory only, never saved to disk).
+    var clipboardHistory: Bool = false
 
     // MARK: Volume / brightness HUD
     /// "replace": Cove handles the volume/brightness keys and hides the system pop-up (needs Accessibility).
     /// "passive": show Cove's HUD next to the system one. "off": no HUD.
     var hud: String = "replace"
     var hudSeconds: Double = 1.4
+
+    // MARK: Keyboard
+    /// ⌃⌥Space opens the island; ⌃⌥Y / N / A / T answer Claude's permission prompts.
+    var shortcuts: Bool = true
+
+    // MARK: Updates
+    /// Check GitHub once a day and show a banner when a newer release is out.
+    var checkForUpdates: Bool = true
+
+    // MARK: GitHub Actions
+    /// Live activity while your GitHub Actions runs work, and a banner when they pass or fail.
+    /// Signs in through the GitHub CLI (`gh auth login`).
+    var ciMonitor: Bool = false
+    /// "owner/repo" to watch every run on. Empty: your own runs on repos you pushed to recently.
+    var ciRepos: [String] = []
+
+    // MARK: Claude in the cloud
+    /// Show pull requests from Claude cloud sessions (claude.ai/code, Claude projects) as they open,
+    /// run CI and merge. Uses the GitHub CLI's sign-in (`gh auth login`).
+    var cloudSessions: Bool = true
+    /// Repos to watch ("owner/name"). Empty: the ones you pushed to in the last two days.
+    var cloudRepos: [String] = []
+
+    // MARK: Bluetooth
+    /// AirPods and other Bluetooth accessories: battery when they connect, and when they run low.
+    var bluetoothBattery: Bool = false
 
     init() {}
 
@@ -154,11 +183,19 @@ struct CoveConfig: Codable {
         sportsAutoFollow = value(.sportsAutoFollow, d.sportsAutoFollow)
         sportsStartAlerts = value(.sportsStartAlerts, d.sportsStartAlerts)
         sportsScoreAlerts = value(.sportsScoreAlerts, d.sportsScoreAlerts)
+        clipboardHistory = value(.clipboardHistory, d.clipboardHistory)
         eventStartAlert = value(.eventStartAlert, d.eventStartAlert)
         buddy = value(.buddy, d.buddy)
         buddyAlwaysVisible = value(.buddyAlwaysVisible, d.buddyAlwaysVisible)
         hud = value(.hud, d.hud)
         hudSeconds = value(.hudSeconds, d.hudSeconds)
+        shortcuts = value(.shortcuts, d.shortcuts)
+        checkForUpdates = value(.checkForUpdates, d.checkForUpdates)
+        ciMonitor = value(.ciMonitor, d.ciMonitor)
+        ciRepos = value(.ciRepos, d.ciRepos)
+        cloudSessions = value(.cloudSessions, d.cloudSessions)
+        cloudRepos = value(.cloudRepos, d.cloudRepos)
+        bluetoothBattery = value(.bluetoothBattery, d.bluetoothBattery)
     }
 
     static var directory: URL {

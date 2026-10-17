@@ -1,15 +1,10 @@
-# Cove 1.3.1
+# Cove 1.4.0
 
-- Optional notification-mirroring setup stays quiet and dismisses itself, instead of ringing and pinning a Needs you alert.
+- Combines the black sports and chat workspace with the latest updates from main.
+- Nori, the black companion with glowing eyes, has springier expressions and motion. List avatars stay still and Reduce Motion is respected.
+- Adds keyboard shortcuts, optional clipboard history, Bluetooth battery display, GitHub Actions activity, Claude token usage, and Claude cloud pull-request activity.
+- Keeps full sports Gamecast, favorites, offline logos, screenshot editing and persistent shelf undo.
+- Keeps existing local Codex chat prompts, exact chat targeting, retained drafts and accurate approval/input attention alerts.
+- New-release notices open Settings → About for signed in-app updates instead of asking you to download another copy.
 
-- Standard text shortcuts, including Command-A, Copy, Cut, Paste and Undo, work inside the floating notch composer.
-- Temporary chat-catalog file errors clear after a successful refresh and retain your destination and draft.
-
-- Send prompts to existing local Codex chats from the AI tab. Choose Existing chat, select the destination, type, and Send. A working chat receives a follow-up; an idle open chat starts its next turn. Open chat brings the selected conversation forward if it needs to reconnect.
-- Existing chat and New task keep separate drafts. Switching tabs preserves your text and destination. An unavailable destination never silently changes to another chat.
-- Failed or unconfirmed delivery keeps your draft and does not retry automatically.
-- Needs-you alerts use the desktop's actual approval and question waiting states, with a short delay to filter transient automatic approvals. Repeated waiting events ring once; resuming or finishing clears stale attention banners.
-- Claude idle reminders, sign-in notices and completion notices no longer trigger needs-you alerts. Permission cards arriving after reconnect create the missing activity, and closed cards clear their waiting state.
-- Preserve the black interface, agent permissions, and signed in-app updates.
-
-Existing chat messaging supports local Codex chats. ChatGPT conversations, remote chats, and existing Claude Code sessions are not included in this picker. New task still launches Codex or Claude Code in Terminal.
+Existing chat messaging supports local Codex chats. Claude cloud activity appears when a cloud session opens a GitHub pull request; it is a status view, not a cloud chat composer. Optional clipboard, CI and Bluetooth features can be enabled in Settings.

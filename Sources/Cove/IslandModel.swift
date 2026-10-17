@@ -12,7 +12,7 @@ final class IslandModel: ObservableObject {
     enum CompactItem: Equatable {
         case hud(HUDState)
         case attention(AgentKind)
-        case napping              // Pip resting beside the notch when nothing is going on
+        case napping              // Nori resting beside the notch when nothing is going on
         case event(CalEvent)      // starting soon
         case ongoing(CalEvent)    // happening now
         case running(count: Int, agent: AgentKind)
@@ -59,6 +59,8 @@ final class IslandModel: ObservableObject {
     @Published var selectedAIActivityID: String?
     @Published var aiActivityFilter: AIActivityFilter = .all
     @Published var desktopAIStatus = "Checking ChatGPT app…"
+    /// GitHub Actions sign-in and what's being watched (Settings → Connections).
+    @Published var ciStatus: GitHubActionsMonitor.Status?
     @Published private(set) var presentation: Presentation = .idle
     @Published private(set) var expanded = false
     @Published private(set) var isPinnedOpen = false
@@ -74,9 +76,13 @@ final class IslandModel: ObservableObject {
     /// A file drag is hovering over the island.
     @Published private(set) var isDropTargeted = false
     @Published private(set) var battery: BatteryState?
+    /// Connected AirPods and other Bluetooth accessories that report a battery; nil until first read.
+    @Published private(set) var bluetooth: [BluetoothBattery]?
     @Published private(set) var focusEnd: Date?
     @Published private(set) var focusTotal: TimeInterval = 0
     @Published private(set) var shelf: [URL] = []
+    /// Recently copied text, newest first (memory only; see ClipboardMonitor).
+    @Published private(set) var clips: [String] = []
     /// Whether Cove can read the folder screenshots are saved to.
     @Published var screenshotAccess: ScreenshotWatcher.AccessState = .unknown
     private var lastScreenshotAt: Date?
@@ -84,6 +90,8 @@ final class IslandModel: ObservableObject {
     @Published private(set) var hud: HUDState?
     @Published private(set) var approvals: [ApprovalRequest] = []
     @Published var serverStatus = "Starting…"
+    /// What the cloud-session watcher is doing, for Settings.
+    @Published var cloudStatus = ""
 
     /// Set by the app delegate: (command, bundleID) → sends play/pause/next to Music or Spotify.
     var mediaControl: ((String, String) -> Void)?
@@ -179,7 +187,7 @@ final class IslandModel: ObservableObject {
         case .approval:
             // Grows with the preview (a one-line command vs. an 8-line diff).
             let lines = CGFloat(max(approvals.first?.preview.lines.count ?? 1, 1))
-            return CGSize(width: max(n.width + 420, 620), height: n.height + min(134 + lines * 17, 280))
+            return CGSize(width: max(n.width + 350, 540), height: n.height + min(134 + lines * 16, 264))
         }
     }
 
@@ -197,17 +205,17 @@ final class IslandModel: ObservableObject {
         case .ai?: return 112
         case .hud?: return 74
         case .napping? where nextEventToday != nil:
-            return 66   // napping Pip plus the next class time
+            return 66   // napping Nori plus the next class time
         case .napping?, .attention?, .running?, .progress?, .finished?:
-            return config.buddy ? 56 : Self.wing   // room for a Pip you can actually see
+            return config.buddy ? 56 : Self.wing   // room for a Nori you can actually see
         default: return Self.wing
         }
     }
 
-    /// Pip's size beside the notch: as tall as the notch allows.
+    /// Nori's size beside the notch: as tall as the notch allows.
     var compactBuddySize: CGFloat { min(max(notchSize.height - 3, 24), 34) }
 
-    /// Today's next class or meeting within 12 hours, shown next to napping Pip.
+    /// Today's next class or meeting within 12 hours, shown next to napping Nori.
     var nextEventToday: CalEvent? {
         guard config.calendar, let next = schedule.upcomingEvent(),
               next.start.timeIntervalSinceNow < 12 * 3600 else { return nil }
@@ -460,7 +468,9 @@ final class IslandModel: ObservableObject {
     }
 
     func tapBanner(_ b: Banner) {
-        if b.showsShelf {
+        if b.showsUpdates {
+            openSettings?(.about)
+        } else if b.showsShelf {
             tab = .shelf
             setExpanded(true)
         } else if let id = b.activityID, let a = activity(id) {
@@ -617,6 +627,12 @@ final class IslandModel: ObservableObject {
         activities[index].detail = summary
     }
 
+    func setUsage(id: String, _ usage: TokenUsage) {
+        guard var a = activity(id), a.tokens != usage else { return }
+        a.tokens = usage
+        put(a)
+    }
+
     func removeActivity(_ id: String) {
         activities.removeAll { $0.id == id }
         aiSteps.removeValue(forKey: id)
@@ -693,6 +709,86 @@ final class IslandModel: ObservableObject {
         let retained = Set(activities.map(\.id))
         aiSteps = aiSteps.filter { retained.contains($0.key) }
         recompute()
+    }
+
+    // MARK: - GitHub Actions
+
+    /// A CI run started or changed state (see GitHubActionsMonitor).
+    func ciRun(_ run: CIRun) {
+        let id = "ci:\(run.id)"
+        let title = "\(run.repoName) · \(run.workflow)"
+        let where_ = [run.branch, run.commit].filter { !$0.isEmpty }.joined(separator: " · ")
+        switch run.state {
+        case .running:
+            if activity(id) == nil { agentStarted(id: id, agent: .ci, title: title, detail: where_, ownerApp: nil) }
+            agentUpdate(id: id, agent: .ci, title: title, detail: where_)
+        case .passed:
+            agentFinished(id: id, agent: .ci, title: title, summary: nil)
+        case .failed:
+            agentFinished(id: id, agent: .ci, title: title, summary: run.branch.isEmpty ? nil : "Failed on \(run.branch)", failed: true)
+        case .cancelled:
+            removeActivity(id)
+            return
+        }
+        if var a = activity(id), a.openURL != run.url {
+            a.openURL = run.url
+            put(a)
+        }
+    }
+
+    // MARK: - Claude in the cloud
+
+    /// A pull request from a Claude cloud session changed phase. Shown as a Claude activity that opens
+    /// the session (or project thread) when clicked; `announce` adds a banner.
+    func cloudUpdate(_ pr: CloudPR, phase: CloudPR.Phase, announce: Bool) {
+        let id = pr.id
+        guard phase != .closed else { removeActivity(id); return }
+        let now = Date()
+        let title = "\(pr.repoName) #\(pr.number)"
+        var a = activity(id) ?? Activity(id: id, agent: .claude, title: title, detail: "", state: .running,
+                                         startedAt: pr.createdAt, updatedAt: now)
+        a.title = title
+        a.detail = "\(phase.label) · \(pr.title)"
+        a.phase = phase.label
+        a.openURL = pr.link
+        a.updatedAt = now
+        a.progress = nil
+        switch phase {
+        case .draft, .ciRunning:
+            a.state = .running
+            a.finishedAt = nil
+        case .ciFailed:
+            a.state = .failed
+            a.finishedAt = now
+        case .draftPassed, .ready, .merged, .closed:
+            a.state = .done
+            a.finishedAt = now
+        }
+        a.seen = a.isLive || !announce || expanded
+        put(a)
+        guard announce else { return }
+        lastAgentSignal = now
+
+        let heading: String
+        let style: BannerStyle
+        let mood: BuddyMood
+        switch phase {
+        case .draft, .ciRunning:
+            // Only a brand-new PR is announced while work is still going; new pushes update quietly.
+            heading = "Claude opened a PR"; style = .info; mood = .working
+        case .ciFailed: heading = "CI failed"; style = .failure; mood = .sad
+        case .draftPassed: heading = "CI passed"; style = .success; mood = .happy
+        case .ready: heading = "Ready for review"; style = .success; mood = .happy
+        case .merged, .closed: heading = "Merged"; style = .success; mood = .happy
+        }
+        show(Banner(
+            title: "\(heading) · \(title)",
+            body: pr.title,
+            style: style,
+            icon: config.buddy ? .buddy(mood, .claude) : .symbol(AgentKind.claude.symbol, AgentKind.claude.tint),
+            activityID: id,
+            source: "Claude in the cloud"
+        ))
     }
 
     // MARK: - Generic events (POST /event, cove-notify, cove-run)
@@ -886,6 +982,26 @@ final class IslandModel: ObservableObject {
             for threshold in [10, 20] where state.percent <= threshold && old.percent > threshold {
                 show(Banner(title: "Battery low", body: "\(state.percent)% remaining", style: .attention,
                             icon: .symbol("battery.25", Palette.red), sticky: threshold == 10))
+                break
+            }
+        }
+    }
+
+    /// New Bluetooth readings: a banner when headphones connect, and when anything runs low.
+    func setBluetooth(_ devices: [BluetoothBattery]) {
+        let old = bluetooth
+        bluetooth = devices
+        guard let old else { return } // first reading: just learn what's connected
+        for device in devices {
+            let icon = BannerIcon.symbol(device.symbol, Theme.ink)
+            guard let before = old.first(where: { $0.name == device.name }) else {
+                show(Banner(title: "\(device.name) connected", body: device.summary, style: .info, icon: icon, duration: 3))
+                continue
+            }
+            guard let now = device.lowest, let was = before.lowest else { continue }
+            for threshold in [10, 20] where now <= threshold && was > threshold {
+                show(Banner(title: "\(device.name) battery low", body: device.summary, style: .attention,
+                            icon: .symbol(device.symbol, Palette.red), sticky: threshold == 10))
                 break
             }
         }
@@ -1108,6 +1224,22 @@ final class IslandModel: ObservableObject {
         recompute()
     }
 
+    /// A global shortcut (see HotKeys). Approval keys do nothing unless a prompt is waiting.
+    func handleShortcut(_ action: HotKeys.Action) {
+        guard let request = approvals.first else {
+            if action == .toggle { setExpanded(!expanded) }
+            return
+        }
+        switch action {
+        case .toggle: setExpanded(!expanded)
+        case .allow: resolveApproval(request.id, .allow)
+        case .deny: resolveApproval(request.id, .deny)
+        case .alwaysAllow where request.canAlwaysAllow: resolveApproval(request.id, .allowAlways)
+        case .alwaysAllow: break
+        case .terminal: answerInTerminal(request.id)
+        }
+    }
+
     /// Answer in the terminal instead: hand the prompt back and jump to Claude's window.
     func answerInTerminal(_ id: UUID) {
         let sessionID = approvals.first(where: { $0.id == id })?.sessionID
@@ -1234,6 +1366,27 @@ final class IslandModel: ObservableObject {
     func saveAnnotatedShelfImage(_ data: Data, name: String) throws -> URL {
         let url = try shelfStore.saveEditedImage(data, name: name)
         shelf = shelfStore.urls; recompute(); return url
+    }
+
+    // MARK: - Clipboard history
+
+    func addClip(_ text: String) {
+        clips.removeAll { $0 == text }
+        clips.insert(text, at: 0)
+        if clips.count > 12 { clips.removeLast(clips.count - 12) }
+    }
+
+    func copyClip(_ text: String) {
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(text, forType: .string)
+        Haptics.tap()
+    }
+
+    func removeClip(_ text: String) { clips.removeAll { $0 == text } }
+
+    func clearClips() {
+        clips.removeAll()
     }
 
     private func loadShelf() {

@@ -33,6 +33,8 @@ enum AgentKind: String {
     case claude, codex, command, custom
     /// Chat tabs in the browser (reported by the Cove browser extension).
     case chatgpt, gemini
+    /// GitHub Actions runs on your repos.
+    case ci
 
     var displayName: String {
         switch self {
@@ -42,6 +44,7 @@ enum AgentKind: String {
         case .custom: return "Task"
         case .chatgpt: return "ChatGPT"
         case .gemini: return "Gemini"
+        case .ci: return "CI"
         }
     }
 
@@ -53,6 +56,7 @@ enum AgentKind: String {
         case .custom: return "bell.fill"
         case .chatgpt: return "bubble.left.and.bubble.right.fill"
         case .gemini: return "sparkles"
+        case .ci: return "arrow.triangle.branch"
         }
     }
 
@@ -64,6 +68,7 @@ enum AgentKind: String {
         case .custom: return .white
         case .chatgpt: return Color(hex: 0x10A37F)
         case .gemini: return Color(hex: 0x8AB4F8)
+        case .ci: return Color(hex: 0xBF5AF2)
         }
     }
 
@@ -71,6 +76,7 @@ enum AgentKind: String {
         switch self {
         case .claude, .codex, .chatgpt, .gemini: return "\(displayName) is done"
         case .command: return "Command finished"
+        case .ci: return "CI passed"
         case .custom: return "Done"
         }
     }
@@ -78,6 +84,24 @@ enum AgentKind: String {
     /// Chats that live in a browser tab.
     var isWeb: Bool { self == .chatgpt || self == .gemini }
     var isAI: Bool { [.claude, .codex, .chatgpt, .gemini].contains(self) }
+}
+
+/// Tokens a Claude Code session has used, summed over its transcript.
+struct TokenUsage: Equatable {
+    /// Prompt tokens, including cache reads and writes.
+    var input: Int
+    var output: Int
+
+    var total: Int { input + output }
+
+    /// "840 tokens", "42k tokens", "1.3M tokens".
+    var short: String {
+        switch total {
+        case ..<1_000: return "\(total) tokens"
+        case ..<1_000_000: return "\(Int((Double(total) / 1_000).rounded()))k tokens"
+        default: return String(format: "%.1fM tokens", Double(total) / 1_000_000)
+        }
+    }
 }
 
 enum ActivityState: Equatable {
@@ -116,8 +140,12 @@ struct Activity: Identifiable, Equatable {
     var originLabel: String {
         if id.hasPrefix("web:") { return "Browser tab" }
         if id.hasPrefix("desktop:") { return "Desktop app" }
+        if id.hasPrefix("cloud:") { return "Claude cloud" }
+        if id.hasPrefix("ci:") { return "GitHub Actions" }
         return "Agent"
     }
+    /// Tokens used so far (Claude Code sessions, read from the transcript).
+    var tokens: TokenUsage? = nil
 
     var isLive: Bool { state == .running || state == .attention }
 
@@ -160,11 +188,11 @@ enum BannerIcon: Equatable {
     case app(String)
     /// A file thumbnail (screenshots).
     case file(URL)
-    /// Pip, the avatar, in a mood — optionally wearing a small badge for the agent it's reporting on.
+    /// Nori, the avatar, in a mood — optionally wearing a small badge for the agent it's reporting on.
     case buddy(BuddyMood, AgentKind?)
 }
 
-/// Pip's moods. Each maps to an expression and a little animation.
+/// Nori's moods. Each maps to an expression and a little animation.
 enum BuddyMood: Equatable {
     case working   // focused, eyes reading, antenna pulsing blue
     case happy     // hops with sparkles — something finished
@@ -189,6 +217,8 @@ struct Banner: Identifiable, Equatable {
     var duration: TimeInterval? = nil
     /// Clicking opens the shelf tab.
     var showsShelf: Bool = false
+    /// Clicking opens the signed in-app updater in Settings → About.
+    var showsUpdates: Bool = false
     /// Whether it's kept in the "Earlier" list after it disappears.
     var logged: Bool = true
     /// Overrides the small label above the title ("Finished", "Needs you", an app name…).

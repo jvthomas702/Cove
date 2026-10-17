@@ -151,11 +151,11 @@ struct MediaCard: View {
                 let tint = model.accent ?? np.appTint
                 VStack(spacing: Theme.Space.s) {
                     HStack(spacing: 10) {
-                        ArtworkView(model: model, size: 44, matchID: "art")
+                        ArtworkView(model: model, size: 36, matchID: "art")
                         VStack(alignment: .leading, spacing: 1) {
                             Text(np.title)
                                 .help("\(np.title) — \(np.artist)")
-                                .font(.system(size: 12.5, weight: .semibold, design: .rounded))
+                                .font(.system(size: 11.5, weight: .semibold, design: .rounded))
                                 .lineLimit(1)
                             Text(np.artist)
                                 .font(Theme.Font.caption)
@@ -174,7 +174,7 @@ struct MediaCard: View {
                     }
                     PlaybackBar(nowPlaying: np, tint: tint)
                 }
-                .padding(10)
+                .padding(8)
                 .background(
                     RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
                         .fill(LinearGradient(colors: [tint.opacity(0.22), tint.opacity(0.05)],
@@ -187,8 +187,8 @@ struct MediaCard: View {
                     Image(systemName: "music.note")
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundStyle(Theme.inkTertiary)
-                        .frame(width: 44, height: 44)
-                        .background(RoundedRectangle(cornerRadius: 11, style: .continuous).fill(Theme.surface))
+                        .frame(width: 36, height: 36)
+                        .background(RoundedRectangle(cornerRadius: 9, style: .continuous).fill(Theme.surface))
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Nothing playing").font(Theme.Font.headline)
                         Text("Play something in Music or Spotify")
@@ -197,12 +197,12 @@ struct MediaCard: View {
                     }
                     Spacer(minLength: 0)
                 }
-                .padding(10)
+                .padding(8)
                 .frame(maxHeight: .infinity)
                 .card()
             }
         }
-        .frame(height: 92)
+        .frame(height: 78)
     }
 }
 
@@ -214,14 +214,14 @@ struct FocusCard: View {
             if let end = model.focusEnd {
                 TimelineView(.periodic(from: .now, by: 1)) { context in
                     let remaining = max(0, end.timeIntervalSince(context.date))
-                    ProgressRing(progress: remaining / max(model.focusTotal, 1), color: Palette.amber, size: 26, lineWidth: 3)
+                    ProgressRing(progress: remaining / max(model.focusTotal, 1), color: Palette.amber, size: 22, lineWidth: 2.5)
                 }
                 VStack(alignment: .leading, spacing: 0) {
                     Text("Focus")
                         .font(Theme.Font.caption)
                         .foregroundStyle(Theme.inkSecondary)
                     Text(timerInterval: Date()...max(end, Date()), countsDown: true)
-                        .font(.system(size: 17, weight: .semibold, design: .rounded).monospacedDigit())
+                        .font(.system(size: 15, weight: .semibold, design: .rounded).monospacedDigit())
                 }
                 Spacer(minLength: 0)
                 ChipButton(title: "End", systemImage: "stop.fill", tint: Palette.red) { model.stopFocus() }
@@ -240,7 +240,7 @@ struct FocusCard: View {
             }
         }
         .padding(.horizontal, Theme.Space.m)
-        .frame(height: 48)
+        .frame(height: 42)
         .card()
     }
 }
@@ -266,7 +266,7 @@ struct UpNextCard: View {
         return HStack(spacing: 10) {
             Capsule()
                 .fill(next?.color ?? Theme.surfaceRaised)
-                .frame(width: 4, height: 30)
+                .frame(width: 4, height: 26)
             VStack(alignment: .leading, spacing: 1) {
                 if let next {
                     Text(next.title)
@@ -304,7 +304,7 @@ struct UpNextCard: View {
             }
         }
         .padding(.horizontal, Theme.Space.m)
-        .frame(height: 52)
+        .frame(height: 46)
         .card()
         .contentShape(Rectangle())
         .onTapGesture { model.tab = .schedule }
@@ -322,7 +322,7 @@ private struct NowCard: View {
             let done = min(max(context.date.timeIntervalSince(event.start) / total, 0), 1)
             let left = max(Int((event.end.timeIntervalSince(context.date) / 60).rounded(.up)), 0)
             HStack(spacing: 10) {
-                Capsule().fill(event.color).frame(width: 4, height: 34)
+                Capsule().fill(event.color).frame(width: 4, height: 30)
                 VStack(alignment: .leading, spacing: 3) {
                     HStack(spacing: 6) {
                         Text("Now")
@@ -353,7 +353,7 @@ private struct NowCard: View {
                 }
             }
             .padding(.horizontal, Theme.Space.m)
-            .frame(height: 52)
+            .frame(height: 46)
             .card(Palette.green.opacity(0.07))
         }
     }
@@ -628,6 +628,13 @@ struct ActivityRow: View {
                             .transition(.scale.combined(with: .opacity))
                     }
                     Spacer(minLength: 4)
+                    if let tokens = activity.tokens {
+                        Text(tokens.short)
+                            .font(.system(size: 10.5, weight: .medium, design: .rounded).monospacedDigit())
+                            .foregroundStyle(Theme.inkTertiary)
+                            .contentTransition(.numericText())
+                            .help("\(tokens.input.formatted()) in, \(tokens.output.formatted()) out")
+                    }
                     timeLabel
                         .font(.system(size: 10.5, weight: .medium, design: .rounded).monospacedDigit())
                         .foregroundStyle(Theme.inkTertiary)
@@ -778,7 +785,58 @@ struct ShelfPane: View {
                     }.padding(.vertical, 6).padding(.horizontal, 2)
                 }.frame(maxHeight: .infinity).accessibilityIdentifier("shelf.items")
             }
+            if !model.clips.isEmpty { ClipStrip(model: model) }
         }
+    }
+}
+
+/// Recently copied text: click a clip to copy it again, or drag it into any app.
+private struct ClipStrip: View {
+    @ObservedObject var model: IslandModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                SectionTitle(title: "Copied", count: model.clips.count)
+                Spacer()
+                ChipButton(title: "Clear", systemImage: "trash") { model.clearClips() }
+            }
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    ForEach(model.clips, id: \.self) { clip in
+                        ClipChip(text: clip, model: model)
+                    }
+                }
+            }
+        }
+    }
+}
+
+private struct ClipChip: View {
+    let text: String
+    @ObservedObject var model: IslandModel
+    @State private var hovering = false
+
+    var body: some View {
+        Text(text.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: "\n", with: " "))
+            .font(Theme.Font.caption)
+            .foregroundStyle(Theme.inkSecondary)
+            .lineLimit(1)
+            .truncationMode(.tail)
+            .frame(maxWidth: 140, alignment: .leading)
+            .padding(.horizontal, 10)
+            .frame(height: 26)
+            .background(Capsule().fill(hovering ? Theme.surfaceRaised : Theme.surface))
+            .contentShape(Capsule())
+            .onHover { hovering = $0 }
+            .onTapGesture { model.copyClip(text) }
+            .onDrag { NSItemProvider(object: text as NSString) }
+            .help("Click to copy")
+            .contextMenu {
+                Button("Copy") { model.copyClip(text) }
+                Button("Remove") { model.removeClip(text) }
+            }
+            .animation(Theme.snappy, value: hovering)
     }
 }
 

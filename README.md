@@ -2,7 +2,7 @@
 
 **A Dynamic Island for the MacBook notch, built for people who run AI agents, long jobs, and a full class schedule.**
 
-Cove turns the space around the notch into a live surface. It tells you the moment Claude Code, Codex, ChatGPT or Claude finishes, lets you approve Claude Code's permission prompts without switching windows, counts down to your next class, catches every screenshot on a shelf you can drag from, and replaces the volume and brightness pop-ups. Pip, a small white companion with expressive eyes and floating hands, reacts to all of it.
+Cove turns the space around the notch into a live surface. It tells you the moment Claude Code, Codex, ChatGPT or Claude finishes, lets you approve Claude Code's permission prompts without switching windows, counts down to your next class, catches every screenshot on a shelf you can drag from, and replaces the volume and brightness pop-ups. Nori, a small animated buddy, reacts to all of it.
 
 Native Swift and SwiftUI, no dependencies, MIT licensed. Every commit is built, tested and run on a real Mac in CI, including screenshots of the live UI.
 
@@ -12,7 +12,7 @@ Native Swift and SwiftUI, no dependencies, MIT licensed. Every commit is built, 
 
 | | |
 |---|---|
-| **Pip** | Naps beside the notch, works along with your agents, hops with confetti when something finishes, waves an amber "!" when something needs you, and droops when something fails. |
+| **Nori** | A small black buddy with glowing eyes that blends into the island and lights its rim in the status color. Naps beside the notch, reads along with your agents, hops with confetti when something finishes, waves an amber "!" when something needs you, and droops when something fails. |
 | **Approve from the notch** | When Claude Code asks permission, the island drops down with exactly what it wants to do (the command, or a red and green diff) and **Allow**, **Always allow**, **Deny** and **Answer in terminal**. |
 | **Agent pings** | Claude Code and Codex sessions show as live activities with what they're doing right now, then a banner with the final message. Click to jump back to the terminal. |
 | **AI work** | Follow ChatGPT desktop activity, ChatGPT/Claude/Gemini browser replies, Claude Code and Codex. Live status, elapsed time and browser reply previews appear in the AI tab. |
@@ -84,6 +84,12 @@ Timed sessions show as classes; assignments and "Availability Ends" items from D
 
 Calendars already in the Mac's Calendar app (Google added under System Settings → Internet Accounts, iCloud, Exchange) are read too, if you allow calendar access.
 
+### Claude in the cloud
+
+Sessions on claude.ai/code, in Claude projects and in routines run on Anthropic's machines, so Cove's hooks never hear from them. What does reach your Mac is GitHub: those sessions open pull requests that link back to the session. Cove watches for them and shows each one as a Claude activity: when it opens, while CI runs, when CI fails or passes, when it's ready for review and when it merges. Clicking it opens the session or project thread.
+
+It signs in with the GitHub CLI (`brew install gh`, then `gh auth login`) and watches the repos you pushed to in the last two days, or the ones you list as `cloudRepos` in `~/.config/cove/config.json`. Turn it off in Settings → Connections. Cloud work that never opens a pull request (a question, a document) doesn't show up.
+
 ### Screenshots
 
 New screenshots go to the shelf as soon as macOS saves them. macOS's floating thumbnail holds each screenshot for about 5 seconds first; turn on **Instant screenshots** in Settings → Features to skip it. Cove watches whatever folder your screenshots go to (⌘⇧5 → Options), and can move them off the Desktop into Pictures › Screenshots.
@@ -121,10 +127,11 @@ Sources/Cove/
 ├── AppDelegate.swift            lifecycle, menu bar, routing, applying settings
 ├── IslandModel.swift            all island state: activities, banners, approvals, calendar, shelf
 ├── NotchWindow.swift            borderless panel above the menu bar, sized to the island
-├── Views/                       island shape and states, Pip, settings window, design tokens
+├── Views/                       island shape and states, Nori, settings window, design tokens
 └── Services/
     ├── EventServer.swift        HTTP server on 127.0.0.1 (Network.framework)
     ├── AgentBridge.swift        Claude Code hooks, permission prompts, Codex
+    ├── CloudSessions.swift      pull requests from Claude cloud sessions, via GitHub
     ├── Integrations.swift       permissions, hooks, CLI tools, browser extension setup
     ├── CalendarMonitor.swift    EventKit classes and reminders
     ├── ICSFeeds.swift           calendar links (D2L, Canvas, Google iCal): download and parse

@@ -203,15 +203,16 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     init(controller: SettingsController) {
         self.controller = controller
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 620, height: 560),
+            contentRect: NSRect(x: 0, y: 0, width: 560, height: 480),
             styleMask: [.titled, .closable, .miniaturizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
         window.title = "Cove Settings"
+        window.titlebarAppearsTransparent = true
+        // Black like the island, whatever the system appearance.
         window.appearance = NSAppearance(named: .darkAqua)
         window.backgroundColor = .black
-        window.titlebarAppearsTransparent = true
         window.isReleasedWhenClosed = false
         window.contentView = NSHostingView(rootView: SettingsView(controller: controller))
         window.center()
@@ -296,7 +297,7 @@ struct SettingsView: View {
                     case .about: AboutPane(controller: controller)
                     }
                 }
-                .padding(24)
+                .padding(18)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             .background(Theme.background)
@@ -372,6 +373,8 @@ private struct GeneralPane: View {
         SettingsGroup(title: "Startup") {
             ToggleRow(title: "Open Cove when you log in",
                       isOn: Binding(get: { controller.launchAtLogin }, set: { controller.setLaunchAtLogin($0) }))
+            ToggleRow(title: "Tell me when a new version is out", detail: "Checks GitHub once a day",
+                      isOn: controller.binding(\.checkForUpdates))
         }
         SettingsGroup(title: "The island") {
             Picker("Home widget", selection: controller.binding(\.homeWidget)) {
@@ -385,14 +388,17 @@ private struct GeneralPane: View {
                       isOn: controller.binding(\.sounds))
             ToggleRow(title: "Show what Claude is doing", detail: "\"Editing eval.py\", \"$ pytest\" and so on",
                       isOn: controller.binding(\.showToolActivity))
+            ToggleRow(title: "Keyboard shortcuts",
+                      detail: "⌃⌥Space opens the island. On a permission prompt: ⌃⌥Y allow, ⌃⌥N deny, ⌃⌥A always allow, ⌃⌥T terminal",
+                      isOn: controller.binding(\.shortcuts))
         }
-        SettingsGroup(title: "Pip") {
+        SettingsGroup(title: "Nori") {
             HStack(spacing: 14) {
                 Buddy(mood: controller.model.config.buddy ? .happy : .sleepy, size: 44)
                 VStack(alignment: .leading, spacing: 10) {
-                    ToggleRow(title: "Show Pip", detail: "Reacts when agents and commands work, finish, fail or need you",
+                    ToggleRow(title: "Show Nori", detail: "Reacts when agents and commands work, finish, fail or need you",
                               isOn: controller.binding(\.buddy))
-                    ToggleRow(title: "Keep Pip beside the notch when nothing is happening",
+                    ToggleRow(title: "Keep Nori beside the notch when nothing is happening",
                               isOn: controller.binding(\.buddyAlwaysVisible))
                         .disabled(!controller.model.config.buddy)
                 }
@@ -481,6 +487,9 @@ private struct FeaturesPane: View {
                           isOn: controller.binding(\.screenshotsMoveOffDesktop))
             }
             .disabled(!controller.model.config.screenshotsToShelf)
+            ToggleRow(title: "Keep recent copied text on the shelf",
+                      detail: "The last 12 clips, kept in memory only. Skips passwords from password managers",
+                      isOn: controller.binding(\.clipboardHistory))
         }
         SettingsGroup(title: "Volume and brightness") {
             Picker("Show changes", selection: controller.binding(\.hud)) {
@@ -494,6 +503,8 @@ private struct FeaturesPane: View {
             ToggleRow(title: "Show notifications from other apps", detail: "Needs Full Disk Access",
                       isOn: controller.binding(\.mirrorNotifications))
             ToggleRow(title: "Battery alerts", detail: "Charging, 20% and 10%", isOn: controller.binding(\.batteryAlerts))
+            ToggleRow(title: "AirPods and Bluetooth battery", detail: "Levels when they connect, and alerts at 20% and 10%",
+                      isOn: controller.binding(\.bluetoothBattery))
             VStack(alignment: .leading, spacing: 4) {
                 Text("Highlight notifications that mention")
                 TextField("interview, offer, deadline", text: Binding(
@@ -707,6 +718,13 @@ private struct PermissionsPane: View {
 
 private struct ConnectionsPane: View {
     @ObservedObject var controller: SettingsController
+    /// Observed directly so the GitHub Actions status line updates live.
+    @ObservedObject private var model: IslandModel
+
+    init(controller: SettingsController) {
+        _controller = ObservedObject(wrappedValue: controller)
+        _model = ObservedObject(wrappedValue: controller.model)
+    }
 
     var body: some View {
         Text("AI connections").font(.title2.weight(.semibold))
@@ -750,11 +768,35 @@ private struct ConnectionsPane: View {
                 Button(controller.model.lastExtensionEvent == nil ? "Set up…" : "Reinstall…") { controller.setUpExtension() }
             }
         }
+        SettingsGroup(title: "GitHub Actions",
+              footer: "Shows your workflow runs live in the notch and pings when they pass or fail. Signs in with the GitHub CLI; Cove stores no token.") {
+            ToggleRow(title: "Watch my CI runs", detail: ciDetail, isOn: controller.binding(\.ciMonitor))
+        }
+        SettingsGroup(title: "Claude in the cloud",
+              footer: "Sessions on claude.ai/code and in Claude projects run on Anthropic's machines, so they can't reach Cove's hooks. Cove finds the pull requests they open on GitHub and shows them opening, running CI and merging. Click one to open its session.") {
+            ToggleRow(title: "Show Claude's cloud pull requests",
+                      detail: model.cloudStatus.isEmpty ? "Repos you pushed to in the last two days, or the cloudRepos list in config.json" : model.cloudStatus,
+                      isOn: controller.binding(\.cloudSessions))
+        }
         SettingsGroup(title: "Terminal",
               footer: "cove-run <command> pings you when a long command finishes. cove-notify \"text\" posts anything to the notch.") {
             statusRow(title: "cove-run and cove-notify", connected: controller.cliInstalled, connectTitle: "Install") {
                 controller.installCLI()
             }
+        }
+    }
+
+    private var ciDetail: String {
+        switch model.ciStatus {
+        case nil: return "Repos you pushed to in the last two days, or the ciRepos list in config.json"
+        case .starting?: return "Signing in…"
+        case .noCLI?: return "Install the GitHub CLI first: brew install gh, then gh auth login"
+        case .signedOut?: return "Run gh auth login in Terminal, then turn this off and on"
+        case .watching(let login, let repos)?:
+            let names = repos.map { $0.split(separator: "/").last.map(String.init) ?? $0 }
+            return repos.isEmpty ? "Signed in as \(login). No recent pushes to watch yet"
+                : "Signed in as \(login), watching \(names.prefix(4).joined(separator: ", "))\(repos.count > 4 ? " and \(repos.count - 4) more" : "")"
+        case .error(let message)?: return message
         }
     }
 

@@ -14,6 +14,16 @@ final class AgentBridge {
     // Hook events used: UserPromptSubmit (start), PreToolUse (live detail), Notification (needs you),
     // Stop (done), SessionEnd (cleanup). See scripts/install-hooks.sh.
 
+    private var usageReadAt: [String: Date] = [:]
+
+    private func readUsage(_ transcript: String, id: String) {
+        let island = model
+        DispatchQueue.global(qos: .utility).async {
+            guard let usage = TranscriptReader.usage(path: transcript) else { return }
+            Task { @MainActor in island.setUsage(id: id, usage) }
+        }
+    }
+
     func handleClaude(_ data: Data) {
         guard let obj = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else { return }
         let event = obj["hook_event_name"] as? String ?? ""
@@ -39,6 +49,12 @@ final class AgentBridge {
             let detail = model.config.showToolActivity ? Self.describe(tool: tool, input: input) : "Working…"
             model.agentUpdate(id: id, agent: .claude, title: project, detail: detail,
                               phase: model.config.showToolActivity ? tool : "Working")
+            // Refresh session usage without changing its attention or completion state.
+            if let transcript = obj["transcript_path"] as? String,
+               usageReadAt[id].map({ Date().timeIntervalSince($0) > 20 }) ?? true {
+                usageReadAt[id] = Date()
+                readUsage(transcript, id: id)
+            }
 
         case "Notification":
             let message = obj["message"] as? String ?? "Claude needs your attention"
@@ -57,9 +73,11 @@ final class AgentBridge {
             let island = self.model
             DispatchQueue.global(qos: .utility).async {
                 let summary = transcript.flatMap { TranscriptReader.lastAssistantText(path: $0) }?.oneLine(max: 160)
+                let usage = transcript.flatMap { TranscriptReader.usage(path: $0) }
                 Task { @MainActor in
-                    guard self.claudeRevisions[id] == revision, let summary else { return }
-                    island.updateFinishedSummary(id: id, summary: summary)
+                    guard self.claudeRevisions[id] == revision else { return }
+                    if let summary { island.updateFinishedSummary(id: id, summary: summary) }
+                    if let usage { island.setUsage(id: id, usage) }
                 }
             }
 
@@ -257,6 +275,34 @@ enum SystemState {
 
 /// Pulls the last thing Claude said out of the session transcript (JSONL) for the "done" banner.
 enum TranscriptReader {
+    /// Tokens used across the session. A response can span several transcript lines that repeat
+    /// the same message id, so each id counts once (its last line).
+    static func usage(path: String) -> TokenUsage? {
+        guard let data = FileManager.default.contents(atPath: path),
+              let text = String(data: data, encoding: .utf8) else { return nil }
+        var byMessage: [String: TokenUsage] = [:]
+        var anonymous = TokenUsage(input: 0, output: 0)
+        for line in text.split(separator: "\n") where line.contains("\"usage\"") {
+            guard let obj = (try? JSONSerialization.jsonObject(with: Data(line.utf8))) as? [String: Any],
+                  (obj["type"] as? String) == "assistant",
+                  let message = obj["message"] as? [String: Any],
+                  let usage = message["usage"] as? [String: Any] else { continue }
+            func n(_ key: String) -> Int { usage[key] as? Int ?? 0 }
+            let entry = TokenUsage(
+                input: n("input_tokens") + n("cache_creation_input_tokens") + n("cache_read_input_tokens"),
+                output: n("output_tokens")
+            )
+            if let id = message["id"] as? String {
+                byMessage[id] = entry
+            } else {
+                anonymous.input += entry.input
+                anonymous.output += entry.output
+            }
+        }
+        let total = byMessage.values.reduce(anonymous) { TokenUsage(input: $0.input + $1.input, output: $0.output + $1.output) }
+        return total.total > 0 ? total : nil
+    }
+
     static func lastAssistantText(path: String) -> String? {
         guard let handle = FileHandle(forReadingAtPath: path) else { return nil }
         defer { try? handle.close() }

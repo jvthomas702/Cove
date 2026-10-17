@@ -43,6 +43,11 @@ struct AIWorkWidget: View {
                             Spacer(minLength: 0)
                             Text(activity.originLabel).font(.system(size: 9)).foregroundStyle(Theme.inkTertiary)
                         }
+                        if let tokens = activity.tokens {
+                            Text(tokens.short).font(Theme.Font.number).foregroundStyle(Theme.inkTertiary)
+                                .help("\(tokens.input.formatted()) in, \(tokens.output.formatted()) out")
+                                .accessibilityIdentifier("ai.tokens")
+                        }
                         Divider().overlay(Theme.hairline)
                         ScrollView {
                             Text(activity.detail.isEmpty ? "Waiting for the next activity update" : activity.detail)
@@ -104,7 +109,7 @@ struct AIWorkWidget: View {
     }
 }
 
-/// Agent pills choose the session shown beside Pip; row avatars remain still.
+/// Agent pills choose the session shown beside Nori; row avatars remain still.
 struct AIWorkOverview: View {
     @ObservedObject var model: IslandModel
     @Namespace private var filterPill
