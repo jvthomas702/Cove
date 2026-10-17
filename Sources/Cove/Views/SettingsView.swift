@@ -420,6 +420,8 @@ private struct FeaturesPane: View {
             if controller.model.config.desktopAIActivity && !Permission.accessibility.isGranted {
                 Button("Allow Accessibility…") { controller.request(.accessibility) }
             }
+            ToggleRow(title: "Today's agent recap", detail: "Finished Claude Code and Codex runs in the AI tab: how long they ran and files changed",
+                      isOn: controller.binding(\.agentRecap))
         }
         SettingsGroup(title: "Sports",
                       footer: "Choose a game in the Sports tab to pin its score and latest play to the Home widget. Selected live games refresh about every 10 seconds; other followed scores refresh each minute. ESPN coverage and delays vary.") {

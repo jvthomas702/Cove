@@ -16,6 +16,7 @@ Native Swift and SwiftUI, no dependencies, MIT licensed. Every commit is built, 
 | **Approve from the notch** | When Claude Code asks permission, the island drops down with exactly what it wants to do (the command, or a red and green diff) and **Allow**, **Always allow**, **Deny** and **Answer in terminal**. |
 | **Agent pings** | Claude Code and Codex sessions show as live activities with what they're doing right now, then a banner with the final message. Click to jump back to the terminal. |
 | **AI work** | Follow ChatGPT desktop activity, ChatGPT/Claude/Gemini browser replies, Claude Code and Codex. Live status, elapsed time and browser reply previews appear in the AI tab. |
+| **Today's agent recap** | The AI tab keeps a compact list of today's finished Claude Code and Codex runs: project, how long it ran, files changed and whether it finished or failed. Click a row to jump back to its terminal. |
 | **Classes and due dates** | "CPE 3000 Lecture, 50 min left" beside the notch, a heads-up before each class with a Join button for Zoom, Meet or Teams, and a Due soon list from your D2L or Canvas calendar and Reminders. |
 | **Sports** | Choose an NBA, NFL or college football game to pin its score beside the notch and follow its latest plays. College football defaults to games featuring a Top 25 team. |
 | **Screenshot shelf** | Every screenshot lands on the shelf the moment it's saved, with a thumbnail you can drag straight out of the notch into a doc, Slack or a chat. |
@@ -199,3 +200,7 @@ Packaged Cove embeds Sparkle, with daily checks and automatic installation enabl
 ### Live Codex activity
 
 Codex's legacy completion notifier does not report ongoing work. For start, tool progress, approval waits and completion, use the [live lifecycle connection](docs/CODEX-LIVE.md). Preview it with `python3 scripts/connect-codex-live.py`, then install with `--install` and review/trust the new definitions through Codex `/hooks`. It sends only coarse activity metadata to local Cove and preserves existing hooks. This connection works with the installed Cove 1.1 without replacing the app or requiring Accessibility.
+
+### Today's agent recap
+
+The **AI** tab shows a **Today** list under the selected task once a Claude Code or Codex run finishes: the project (or chat) name, the agent, how long it ran, how many files it changed, when it finished, and a green check or red cross. Files changed counts distinct files touched by Claude Code's Edit, Write and MultiEdit tools, as seen by Cove's PreToolUse hook (so an edit you then deny still counts); Codex doesn't report tool use, so its rows have no file count. Click a row to jump back to the terminal or app it ran in, just like its banner. The list survives restarts and starts over at midnight; it's saved as `AgentRecap.json` in Cove's Application Support folder. Turn it off in **Settings → Features → Today's agent recap**.

@@ -70,6 +70,10 @@ final class IslandModel: ObservableObject {
     @Published private(set) var aiSteps: [String: [AIActivityStep]] = [:]
     @Published private(set) var banner: Banner?
     @Published private(set) var history: [Banner] = []
+    /// Today's finished Claude Code and Codex runs (AI tab → Today), kept across restarts for the day.
+    @Published private(set) var recap: AgentRecap
+    private let recapStore: AgentRecapStore
+    private var fileChanges = FileChangeTracker()
     @Published private(set) var nowPlaying: NowPlaying?
     /// Album art for the current track and the color pulled from it (tints the music UI).
     @Published private(set) var artwork: NSImage?
@@ -118,8 +122,11 @@ final class IslandModel: ObservableObject {
         "net.kovidgoyal.kitty", "org.alacritty", "com.microsoft.VSCode", "com.todesktop.230313mzl4w4u92",
     ]
 
-    init(config: CoveConfig, sports: SportsMonitor? = nil, shelfStore: ShelfStore? = nil) {
+    init(config: CoveConfig, sports: SportsMonitor? = nil, shelfStore: ShelfStore? = nil, recapStore: AgentRecapStore? = nil) {
         self.shelfStore = shelfStore ?? ShelfStore()
+        let recapStore = recapStore ?? AgentRecapStore()
+        self.recapStore = recapStore
+        self.recap = recapStore.load()
         self.config = config
         self.sports = sports ?? SportsMonitor()
         // Relay changes from the nested monitor after its published values have changed.
@@ -183,7 +190,7 @@ final class IslandModel: ObservableObject {
             // Narrow and short, like the iPhone island opened: just wide enough for the tabs and buttons.
             let width = min(max(n.width + 440, 620), availableIslandWidth)
             if tab == .home { return CGSize(width: width, height: n.height + 150) }
-            if tab == .ai { return CGSize(width: width, height: n.height + 330) }
+            if tab == .ai { return CGSize(width: width, height: n.height + 330 + (showsRecap ? Self.recapHeight + 10 : 0)) }
             if tab == .sports { return CGSize(width: width, height: n.height + 280) }
             if tab == .shelf { return CGSize(width: width, height: n.height + (shelf.count <= 4 ? 150 : 220)) }
             return CGSize(width: width, height: n.height + 220)
@@ -555,7 +562,7 @@ final class IslandModel: ObservableObject {
         let now = Date()
         dropBanners(forActivity: id)
         var a = activity(id) ?? Activity(id: id, agent: agent, title: title, detail: detail, state: .running, startedAt: now, updatedAt: now)
-        if !a.isLive { a.startedAt = now }
+        if !a.isLive { a.startedAt = now; fileChanges.reset(id) }
         a.title = title
         a.detail = detail
         a.state = .running
@@ -624,6 +631,7 @@ final class IslandModel: ObservableObject {
         a.seen = expanded
         a.detail = summaryText ?? took.map { "Finished in \(formatDuration($0))" } ?? "Finished"
         put(a)
+        recordRun(a, took: took)
         lastAgentSignal = now
         guard notify else { return }
         show(Banner(
@@ -635,6 +643,54 @@ final class IslandModel: ObservableObject {
                 : .symbol(failed ? "xmark.circle.fill" : agent.symbol, failed ? Palette.red : agent.tint),
             activityID: id
         ))
+    }
+
+    // MARK: - Today's recap
+
+    static let recapHeight: CGFloat = 92
+
+    var showsRecap: Bool { config.agentRecap && !recap.runs.isEmpty }
+
+    /// Claude Code / Codex tool use that edits a file (counted toward "files changed").
+    func noteToolUse(id: String, tool: String, input: [String: Any]) {
+        fileChanges.note(activityID: id, tool: tool, input: input)
+    }
+
+    private func recordRun(_ a: Activity, took: TimeInterval?) {
+        let files = fileChanges.take(a.id)
+        guard config.agentRecap, a.agent == .claude || a.agent == .codex, !a.id.hasPrefix("cloud:") else { return }
+        let finished = a.finishedAt ?? Date()
+        let run = RecapRun(
+            id: "\(a.id)@\(Int(a.startedAt.timeIntervalSince1970))", activityID: a.id, agent: a.agent.rawValue,
+            title: a.title, startedAt: a.startedAt, finishedAt: finished, duration: took,
+            filesChanged: a.agent == .claude ? files : nil, failed: a.state == .failed,
+            ownerApp: a.ownerApp, openURL: a.openURL
+        )
+        // A failure reported right after "done" replaces that run instead of adding another; keep its numbers.
+        var merged = run
+        if let previous = recap.runs.first(where: { $0.id == run.id }) {
+            merged.duration = run.duration ?? previous.duration
+            merged.filesChanged = run.filesChanged ?? previous.filesChanged
+        }
+        recap.record(merged)
+        recapStore.save(recap)
+        recompute()
+    }
+
+    /// Jumps back to where a finished run happened, like clicking its banner.
+    func openRecap(_ run: RecapRun) {
+        if let a = activity(run.activityID) { open(a); return }
+        var a = Activity(id: run.activityID, agent: run.kind, title: run.title, detail: "", state: run.failed ? .failed : .done,
+                         startedAt: run.startedAt, updatedAt: run.finishedAt)
+        a.ownerApp = run.ownerApp
+        a.openURL = run.openURL
+        open(a)
+    }
+
+    private func rollRecap(now: Date) {
+        guard recap.roll(to: now) else { return }
+        recapStore.save(recap)
+        recompute()
     }
 
     func updateFinishedSummary(id: String, summary: String) {
@@ -1106,6 +1162,7 @@ final class IslandModel: ObservableObject {
         let now = Date()
         let since = lastAlertCheck
         lastAlertCheck = now
+        rollRecap(now: now)
         guard config.calendar else { return }
 
         if config.eventStartAlert {

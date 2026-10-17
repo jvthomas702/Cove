@@ -133,6 +133,9 @@ struct AIWorkspacePane: View {
                     AIWorkOverview(model: model).frame(width: 200)
                 }
             }
+            if model.showsRecap {
+                AgentRecapList(model: model).frame(height: IslandModel.recapHeight)
+            }
             AgentComposer(model: model)
         }
     }

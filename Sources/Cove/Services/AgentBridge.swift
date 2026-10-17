@@ -46,6 +46,7 @@ final class AgentBridge {
         case "PreToolUse":
             let tool = obj["tool_name"] as? String ?? "tool"
             let input = obj["tool_input"] as? [String: Any] ?? [:]
+            model.noteToolUse(id: id, tool: tool, input: input)
             let detail = model.config.showToolActivity ? Self.describe(tool: tool, input: input) : "Working…"
             model.agentUpdate(id: id, agent: .claude, title: project, detail: detail,
                               phase: model.config.showToolActivity ? tool : "Working")
@@ -55,6 +56,10 @@ final class AgentBridge {
                 usageReadAt[id] = Date()
                 readUsage(transcript, id: id)
             }
+
+        case "PostToolUse":
+            // Not installed by default; if present it confirms the same edits (each file counts once).
+            model.noteToolUse(id: id, tool: obj["tool_name"] as? String ?? "", input: obj["tool_input"] as? [String: Any] ?? [:])
 
         case "Notification":
             let message = obj["message"] as? String ?? "Claude needs your attention"
