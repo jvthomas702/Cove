@@ -11,6 +11,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var nowPlaying: NowPlayingMonitor?
     private var mirror: NotificationMirror?
     private let battery = BatteryMonitor()
+    private var mediaUse: MediaUseMonitor?
     private let desktopAI = DesktopAIActivityMonitor()
     private var bluetooth: BluetoothBatteryMonitor?
     private var calendar: CalendarMonitor?
@@ -94,6 +95,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if config.ciMonitor { startActions(config) }
         if config.cloudSessions { startCloud(repos: config.cloudRepos) }
         if config.bluetoothBattery { startBluetooth() }
+        if config.privacyIndicator { startMediaUse() }
 
         observers.append(NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main
@@ -135,6 +137,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         actions?.stop()
         clipboard?.stop()
         bluetooth?.stop()
+        mediaUse?.stop()
         updates?.stop()
         hotKeys.stop()
         volume.stop()
@@ -258,6 +261,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         if new.bluetoothBattery != old.bluetoothBattery {
             if new.bluetoothBattery { startBluetooth() } else { bluetooth?.stop(); bluetooth = nil }
+        }
+        if new.privacyIndicator != old.privacyIndicator {
+            if new.privacyIndicator { startMediaUse() } else { stopMediaUse() }
         }
         if new.hud != old.hud {
             stopHUD()
@@ -453,6 +459,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         monitor.onChange = { [weak self] devices in self?.model.setBluetooth(devices) }
         monitor.start()
         bluetooth = monitor
+    }
+
+    private func startMediaUse() {
+        guard mediaUse == nil else { return }
+        let monitor = MediaUseMonitor()
+        monitor.onChange = { [weak self] use in self?.model.setMediaUse(use) }
+        monitor.start()
+        mediaUse = monitor
+    }
+
+    private func stopMediaUse() {
+        mediaUse?.stop()
+        mediaUse = nil
+        model.setMediaUse(MediaUse())
     }
 
     private func startScreenshots() {

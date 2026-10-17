@@ -23,6 +23,7 @@ final class IslandModel: ObservableObject {
         case sports(SportsGame)
         case scoreAndMusic(SportsGame, NowPlaying)   // a live score and what's playing, side by side
         case ai(Activity, count: Int)
+        case privacy              // nothing else to show, but a camera or microphone is on
     }
 
     // Geometry
@@ -77,6 +78,8 @@ final class IslandModel: ObservableObject {
     /// A file drag is hovering over the island.
     @Published private(set) var isDropTargeted = false
     @Published private(set) var battery: BatteryState?
+    /// Whether another app is using a camera or microphone (drives the privacy dot).
+    @Published private(set) var mediaUse = MediaUse()
     /// Connected AirPods and other Bluetooth accessories that report a battery; nil until first read.
     @Published private(set) var bluetooth: [BluetoothBattery]?
     @Published private(set) var focusEnd: Date?
@@ -208,6 +211,7 @@ final class IslandModel: ObservableObject {
         case .scoreAndMusic?: return 116
         case .ai?: return 92
         case .hud?: return 64
+        case .privacy?: return 28   // just the dot
         case .napping? where nextEventToday != nil:
             return 60   // napping Nori plus the next class time
         case .napping?, .attention?, .running?, .progress?, .finished?:
@@ -261,7 +265,17 @@ final class IslandModel: ObservableObject {
         if let end = focusEnd { return .focus(end: end) }
         if let np = nowPlaying, np.isPlaying { return .music(np) }
         if config.buddy && config.buddyAlwaysVisible { return .napping }
+        if privacyDot != nil { return .privacy }
         return nil
+    }
+
+    /// The green (camera) or orange (microphone) dot shown in the trailing wing, whatever else is there.
+    var privacyDot: PrivacyDot? { config.privacyIndicator ? mediaUse.dot : nil }
+
+    func setMediaUse(_ use: MediaUse) {
+        guard use != mediaUse else { return }
+        mediaUse = use
+        recompute()
     }
 
     private func recompute() {
