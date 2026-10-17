@@ -22,9 +22,9 @@ struct AgentComposer: View {
                 Spacer()
                 if !model.composeNewTask {
                     Button("Open chat") { model.openByClick(); chats.openSelected() }
-                        .buttonStyle(.plain).disabled(chats.selectedChat == nil).accessibilityIdentifier("chat.open")
+                        .buttonStyle(PillButtonStyle()).disabled(chats.selectedChat == nil).accessibilityIdentifier("chat.open")
                     Button { chats.refresh() } label: { Image(systemName: "arrow.clockwise") }
-                        .buttonStyle(.plain).help("Refresh chats").accessibilityIdentifier("chat.refresh")
+                        .buttonStyle(PillButtonStyle(tint: Theme.inkSecondary)).help("Refresh chats").accessibilityIdentifier("chat.refresh")
                 }
             }.font(Theme.Font.caption)
             if model.composeNewTask { newTaskComposer } else { chatComposer }
@@ -54,12 +54,8 @@ struct AgentComposer: View {
                     .textFieldStyle(.plain).font(Theme.Font.body).lineLimit(1...2)
                     .focused($focused).accessibilityIdentifier("agent.prompt")
                     .onSubmit { start() }
-                Button(action: start) {
-                    Label("Start", systemImage: "arrow.up")
-                        .font(Theme.Font.caption).padding(.horizontal, 12).frame(height: 30)
-                        .foregroundStyle(launcher.canLaunch ? Theme.background : Theme.inkTertiary)
-                        .background(Capsule().fill(launcher.canLaunch ? Theme.accent : Theme.surfaceRaised))
-                }.buttonStyle(PressableStyle()).disabled(!launcher.canLaunch)
+                Button(action: start) { Label("Start", systemImage: "arrow.up") }
+                    .buttonStyle(PillButtonStyle(prominent: true)).disabled(!launcher.canLaunch)
                     .accessibilityIdentifier("agent.start")
             }
             Text(launcher.status).font(.system(size: 10)).foregroundStyle(Theme.inkSecondary).lineLimit(1)
@@ -79,12 +75,8 @@ struct AgentComposer: View {
                     .textFieldStyle(.plain).font(Theme.Font.body).lineLimit(1...2)
                     .focused($focused).accessibilityIdentifier("chat.prompt")
                     .onSubmit { send() }
-                Button(action: send) {
-                    Label(chats.sending ? "Sending…" : "Send", systemImage: "arrow.up")
-                        .font(Theme.Font.caption).padding(.horizontal, 12).frame(height: 30)
-                        .foregroundStyle(chats.canSend ? Theme.background : Theme.inkTertiary)
-                        .background(Capsule().fill(chats.canSend ? Theme.accent : Theme.surfaceRaised))
-                }.buttonStyle(PressableStyle()).disabled(!chats.canSend).accessibilityIdentifier("chat.send")
+                Button(action: send) { Label(chats.sending ? "Sending…" : "Send", systemImage: "arrow.up") }
+                    .buttonStyle(PillButtonStyle(prominent: true)).disabled(!chats.canSend).accessibilityIdentifier("chat.send")
             }
             Text(chats.status).font(.system(size: 10)).foregroundStyle(Theme.inkSecondary).lineLimit(1)
                 .help(chats.status).accessibilityIdentifier("chat.status")

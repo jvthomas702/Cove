@@ -334,24 +334,51 @@ struct ChipButton: View {
     var systemImage: String? = nil
     var tint: Color = Theme.ink
     var action: () -> Void
-    @State private var hovering = false
 
     var body: some View {
         Button(action: action) {
             HStack(spacing: 4) {
                 if let systemImage { Image(systemName: systemImage).font(.system(size: 10, weight: .bold)) }
-                Text(title).lineLimit(1)
+                Text(title)
             }
-            .font(.system(size: 11, weight: .semibold, design: .rounded))
-            .foregroundStyle(tint)
             .fixedSize()
-            .padding(.horizontal, 7)
-            .padding(.vertical, 5)
-            .background(Capsule().fill(hovering ? Color.white.opacity(0.17) : Theme.surfaceRaised))
-            .contentShape(Capsule())
         }
-        .buttonStyle(PressableStyle())
-        .onHover { hovering = $0 }
+        .buttonStyle(PillButtonStyle(tint: tint))
+    }
+}
+
+/// The island's one text-button look: a small tinted capsule, like iOS's tinted buttons.
+/// `prominent` fills it with the tint for the main action (Send, Start).
+struct PillButtonStyle: ButtonStyle {
+    var tint: Color = Theme.accent
+    var prominent = false
+
+    func makeBody(configuration: Configuration) -> some View {
+        PillButtonBody(configuration: configuration, tint: tint, prominent: prominent)
+    }
+}
+
+private struct PillButtonBody: View {
+    let configuration: ButtonStyleConfiguration
+    let tint: Color
+    let prominent: Bool
+    @Environment(\.isEnabled) private var enabled
+    @State private var hovered = false
+
+    var body: some View {
+        configuration.label
+            .font(.system(size: 11, weight: .semibold, design: .rounded))
+            .lineLimit(1)
+            .foregroundStyle(prominent && enabled ? Theme.background : tint)
+            .padding(.horizontal, 10)
+            .frame(height: 24)
+            .background(Capsule().fill(prominent && enabled ? tint : tint.opacity(hovered ? 0.22 : 0.13)))
+            .contentShape(Capsule())
+            .opacity(enabled ? (configuration.isPressed ? 0.8 : 1) : 0.45)
+            .scaleEffect(configuration.isPressed && !Theme.reduceMotion ? 0.96 : 1)
+            .onHover { hovered = $0 }
+            .animation(.easeOut(duration: Theme.reduceMotion ? 0.05 : 0.12), value: configuration.isPressed)
+            .animation(.easeOut(duration: 0.12), value: hovered)
     }
 }
 
@@ -368,7 +395,7 @@ struct IconButton: View {
             Image(systemName: systemImage)
                 .font(.system(size: size, weight: .semibold))
                 .frame(width: hit ?? size + 16, height: hit ?? size + 16)
-                .background(Circle().fill(Color.white.opacity(hovering ? 0.12 : 0)))
+                .background(Circle().fill(Color.white.opacity(hovering ? 0.16 : 0.07)))
                 .contentShape(Circle())
         }
         .buttonStyle(PressableStyle())

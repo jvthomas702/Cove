@@ -49,6 +49,8 @@ struct UIHostView: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
+                // First, so it sits left of the narrow island and the real notch never covers it.
+                Button("Offline") { UIFeed.offline.toggle(); model.sports.refresh() }
                 Menu("Fixtures") {
                     Button("Add AI task") {
                         model.ingest(CoveEvent(id: "web:claude:ui:tab:2", title: "Second AI task", body: "A second simulated response", kind: "running", source: "claude", phase: "Reasoning", url: "https://claude.ai/chat/ui"))
@@ -75,7 +77,6 @@ struct UIHostView: View {
                 Button("Delete source") {
                     try? FileManager.default.removeItem(at: FileManager.default.temporaryDirectory.appendingPathComponent("Cove UI Screenshot.png"))
                 }
-                Button("Offline") { UIFeed.offline.toggle(); model.sports.refresh() }
             }.controlSize(.small).font(.system(size: 10.5)).padding(8)
             ExpandedView(model: model).frame(width: model.size(for: .expanded).width, height: model.size(for: .expanded).height).background(Theme.background)
         }
@@ -133,8 +134,9 @@ struct UIHostView: View {
         notch.panel.title = "Cove Test Notch"
         notch.panel.orderOut(nil)
         let initialSize = model.size(for: .expanded)
-        // Keep the fixture toolbar at a stable origin while the real island changes height.
-        window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: initialSize.width, height: 550), styleMask: [.titled, .closable], backing: .buffered, defer: false)
+        // Keep the fixture toolbar at a stable origin while the real island changes height,
+        // and wide enough for every fixture button now that the island itself is narrow.
+        window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: max(initialSize.width, 760), height: 550), styleMask: [.titled, .closable], backing: .buffered, defer: false)
         window.title = "Cove UI Test"
         window.isReleasedWhenClosed = false
         let host = NSHostingView(rootView: UIHostView(model: model, showNotch: { [weak self] in

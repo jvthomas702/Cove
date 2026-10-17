@@ -64,7 +64,7 @@ struct SportsPane: View {
             }
             if !sports.enabled {
                 SportsEmpty(title: "Sports is turned off", detail: "Enable it in Settings → Features.")
-                Button("Open settings") { model.openSettings?(.features) }.buttonStyle(.plain)
+                Button("Open settings") { model.openSettings?(.features) }.buttonStyle(PillButtonStyle())
             } else {
                 if showingGames || model.config.sportsGameID == nil {
                     gameList.frame(height: 90)
@@ -156,11 +156,11 @@ struct SportsWidget: View {
                 SectionTitle(title: "Following", count: nil)
                 Spacer()
                 Button("Choose game") { model.tab = .sports }
-                    .font(Theme.Font.caption).foregroundStyle(Theme.accent).buttonStyle(.plain)
+                    .buttonStyle(PillButtonStyle())
             }
             if !sports.enabled {
                 SportsEmpty(title: "Sports is turned off", detail: "Enable sports in Settings → Features.")
-                Button("Open settings") { model.openSettings?(.features) }.buttonStyle(.plain)
+                Button("Open settings") { model.openSettings?(.features) }.buttonStyle(PillButtonStyle())
             } else if let game = sports.selectedGame {
                 SportsScoreHeader(game: game)
                 FollowedScoresStrip(model: model)
@@ -180,8 +180,8 @@ struct SportsWidget: View {
                         .font(Theme.Font.caption).foregroundStyle(Theme.inkSecondary)
                 }
                 HStack {
-                    Button("Play-by-play →") { model.tab = .sports }
-                        .buttonStyle(.plain).font(Theme.Font.caption).foregroundStyle(Theme.accent)
+                    Button("Play-by-play") { model.tab = .sports }
+                        .buttonStyle(PillButtonStyle())
                     Spacer()
                     Text(game.isLive ? "ESPN · 10s updates" : "ESPN").font(.system(size: 9)).foregroundStyle(Theme.inkTertiary)
                 }

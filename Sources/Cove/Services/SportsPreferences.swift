@@ -48,6 +48,11 @@ extension SportsGame {
 }
 
 enum SportsFollowRules {
+    /// Keys of games followed one at a time that have now ended, so they can be dropped.
+    static func finishedWatchedGames(_ games: [SportsGame], config: CoveConfig) -> Set<String> {
+        Set(games.filter(\.isFinal).map(\.key)).intersection(config.sportsWatchedGames)
+    }
+
     static func automaticGame(_ games: [SportsGame], current: SportsGame?, config: CoveConfig) -> SportsGame? {
         guard config.sportsAutoFollow, !config.sportsFavoriteTeams.isEmpty else { return nil }
         // Respect a manually chosen game while it is active, and keep stable selection between polls.

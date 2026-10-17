@@ -29,6 +29,11 @@ import XCTest
         config.sportsAutoFollow = false
         XCTAssertNil(SportsFollowRules.automaticGame([live], current: nil, config: config))
     }
+    func testFinishedWatchedGamesAreDropped() {
+        var config = CoveConfig(); config.sportsWatchedGames = ["nba:1", "nba:2", "nba:3"]
+        let games = [game("1", state: "post"), game("2", state: "in"), game("4", state: "post")]
+        XCTAssertEqual(SportsFollowRules.finishedWatchedGames(games, config: config), ["nba:1"])
+    }
     func testGameKeysDoNotCollideAcrossLeagues() {
         XCTAssertNotEqual(game("123").key, game("123", league: .nfl).key)
         var config = CoveConfig(); config.sportsFavoriteTeams = ["nba:14"]

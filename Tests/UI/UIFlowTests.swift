@@ -43,7 +43,7 @@ final class UIFlowTests: XCTestCase {
         XCTAssertTrue(window.scrollViews["ai.detail"].exists)
         XCTAssertTrue(text("Writing reply").exists)
         window.buttons["tab.home"].click()
-        XCTAssertTrue(window.buttons["Play-by-play →"].waitForExistence(timeout: 5))
+        XCTAssertTrue(window.descendants(matching: .any).matching(identifier: "home.musicTile").firstMatch.waitForExistence(timeout: 5))
     }
 
     func testRealNotchPopupRemainsOpenOutsideIsland() {
@@ -123,7 +123,8 @@ final class UIFlowTests: XCTestCase {
         let item = window.descendants(matching: .any).matching(identifier: "shelf.item.Cove UI Screenshot.png").firstMatch
         XCTAssertTrue(item.waitForExistence(timeout: 5))
         window.buttons["tab.home"].click()
-        XCTAssertTrue(window.buttons["home.openGamecast"].waitForExistence(timeout: 5))
+        // The fixture game is final, so Home shows music and activity rather than the score.
+        XCTAssertTrue(window.descendants(matching: .any).matching(identifier: "home.musicTile").firstMatch.waitForExistence(timeout: 5))
         window.buttons["tab.shelf"].click()
         XCTAssertTrue(item.waitForExistence(timeout: 5))
         window.buttons["Delete source"].click()
@@ -161,7 +162,8 @@ final class UIFlowTests: XCTestCase {
         window.buttons["tab.sports"].click()
         XCTAssertTrue(window.scrollViews["sports.followedScores"].waitForExistence(timeout: 8))
         window.buttons["tab.home"].click()
-        XCTAssertTrue(window.buttons["home.openGamecast"].waitForExistence(timeout: 5))
+        // The fixture game is final, so Home shows music and activity rather than the score.
+        XCTAssertTrue(window.descendants(matching: .any).matching(identifier: "home.musicTile").firstMatch.waitForExistence(timeout: 5))
         window.descendants(matching: .any).matching(identifier: "ui.fixtures").firstMatch.click(); app.menuItems["Add AI task"].click()
         window.buttons["tab.ai"].click()
         XCTAssertTrue(window.scrollViews["ai.overview"].waitForExistence(timeout: 5))
@@ -226,7 +228,7 @@ final class UIFlowTests: XCTestCase {
             app.launch()
             XCTAssertTrue(window.waitForExistence(timeout: 10))
             var previousEdge: CGFloat = 0
-            for tile in ["music", "sports", "activity", "connections"] {
+            for tile in ["music", "activity"] {   // the fixture game is final, so it leaves Home
                 let element = window.descendants(matching: .any).matching(identifier: "home.\(tile)Tile").firstMatch
                 XCTAssertTrue(element.waitForExistence(timeout: 8))
                 XCTAssertGreaterThan(element.frame.width, 100)
@@ -243,7 +245,7 @@ final class UIFlowTests: XCTestCase {
             dashboard.name = "\(theme.capitalized) Matte Dashboard"; dashboard.lifetime = .keepAlways; add(dashboard)
             notch.buttons["notch.close"].click()
             window.buttons["Hide notch"].click()
-            window.buttons["home.openGamecast"].click()
+            window.buttons["tab.sports"].click()
             XCTAssertTrue(window.scrollViews["sports.plays"].waitForExistence(timeout: 8))
             window.radioButtons["Stats"].click()
             XCTAssertTrue(window.scrollViews["sports.stats"].waitForExistence(timeout: 5))
@@ -258,7 +260,7 @@ final class UIFlowTests: XCTestCase {
             app.launchArguments = theme == "light-system" ? ["--light-system"] : []
             app.launch()
             XCTAssertTrue(window.waitForExistence(timeout: 10))
-            window.buttons["home.activity.web:chatgpt:ui:tab:1"].click()
+            window.buttons["tab.ai"].click()
             let companion = window.descendants(matching: .any).matching(identifier: "ai.companion").firstMatch
             XCTAssertTrue(companion.waitForExistence(timeout: 8))
             XCTAssertTrue(window.scrollViews["ai.detail"].exists)
@@ -292,7 +294,7 @@ final class UIFlowTests: XCTestCase {
     }
 
     func testAIFiltersKeepDetailsInSyncAndRecoverFromEmptyResults() {
-        window.buttons["home.viewAI"].click()
+        window.buttons["tab.ai"].click()
         window.buttons["ai.filter.done"].click()
         XCTAssertTrue(text("No finished tasks yet").waitForExistence(timeout: 5))
         XCTAssertFalse(window.buttons["Open ChatGPT"].exists)

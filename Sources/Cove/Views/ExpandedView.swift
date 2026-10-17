@@ -36,12 +36,10 @@ struct ExpandedView: View {
                 .frame(maxWidth: .infinity, alignment: .trailing)
             Color.clear.frame(width: model.notchSize.width)
             HStack(spacing: 6) {
-                Button("Connect AI") { model.openAIConnections() }
-                    .font(Theme.Font.caption).foregroundStyle(Theme.accent)
-                    .padding(.horizontal, 9).frame(height: 30)
-                    .background(RoundedRectangle(cornerRadius: 8).fill(Theme.accent.opacity(0.10)))
-                    .buttonStyle(PressableStyle())
-                    .contentShape(Rectangle()).accessibilityIdentifier("ai.connect")
+                IconButton(systemImage: "sparkles", size: 12, hit: 28) { model.openAIConnections() }
+                    .foregroundStyle(Theme.accent)
+                    .help("Connect AI").accessibilityLabel("Connect AI")
+                    .accessibilityIdentifier("ai.connect")
                 DeviceSettingsMenu()
                 IconButton(systemImage: "gearshape", size: 12, hit: 28) { model.openSettings?(.general) }
                     .help("Cove settings").accessibilityLabel("Cove settings")
@@ -73,12 +71,10 @@ private struct TabSwitcher: View {
                 Button {
                     model.navigate(to: tab)
                 } label: {
-                    HStack(spacing: 4) {
-                        Image(systemName: symbol(for: tab)).font(.system(size: 10))
-                        Text(label(for: tab)).font(.system(size: 12, weight: .medium))
-                    }
+                    // Icons only, so the tabs fit beside the notch on a narrow island.
+                    Image(systemName: symbol(for: tab)).font(.system(size: 11))
                         .foregroundStyle(model.tab == tab ? Theme.accent : Theme.inkSecondary)
-                        .padding(.horizontal, 7).frame(height: 30)
+                        .frame(width: 28, height: 26)
                         .background {
                             if model.tab == tab {
                                 Capsule().fill(Theme.surfaceRaised).matchedGeometryEffect(id: "pill", in: pill)
@@ -134,7 +130,7 @@ struct AIWorkspacePane: View {
                 AIWorkWidget(model: model)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 if !model.aiActivities.isEmpty {
-                    AIWorkOverview(model: model).frame(width: 250)
+                    AIWorkOverview(model: model).frame(width: 200)
                 }
             }
             AgentComposer(model: model)

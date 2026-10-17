@@ -82,6 +82,8 @@ struct CompactView: View {
             ArtworkView(model: model, size: 20, matchID: "art")
         case .sports(let game)?:
             compactTeam(game.away)
+        case .scoreAndMusic(let game, _)?:
+            compactScore(game)
         case .ai(let activity, let count)?:
             HStack(spacing: 6) {
                 if model.config.buddy { Buddy(mood: activity.buddyMood, size: 26, animating: activity.isLive) }
@@ -179,6 +181,11 @@ struct CompactView: View {
                 .minimumScaleFactor(0.7)
         case .music(let np)?:
             EqualizerBars(playing: np.isPlaying, color: model.accent ?? np.appTint)
+        case .scoreAndMusic(_, let np)?:
+            HStack(spacing: 6) {
+                EqualizerBars(playing: np.isPlaying, color: model.accent ?? np.appTint)
+                ArtworkView(model: model, size: 20, matchID: "art")
+            }
         case .sports(let game)?:
             HStack(spacing: 5) {
                 if game.isLive { Circle().fill(Palette.green).frame(width: 5, height: 5) }
@@ -195,6 +202,20 @@ struct CompactView: View {
         case nil:
             EmptyView()
         }
+    }
+
+    /// Both scores in one wing, so the other wing is free for music.
+    private func compactScore(_ game: SportsGame) -> some View {
+        HStack(spacing: 4) {
+            if game.isLive { Circle().fill(Palette.green).frame(width: 5, height: 5) }
+            Text(game.away.abbreviation).foregroundStyle(game.away.tint)
+            Text("\(game.away.score)–\(game.home.score)").foregroundStyle(Theme.ink)
+            Text(game.home.abbreviation).foregroundStyle(game.home.tint)
+        }
+        .font(Theme.Font.headline.monospacedDigit())
+        .lineLimit(1)
+        .minimumScaleFactor(0.8)
+        .help("\(game.matchup) · \(game.status)")
     }
 
     private func compactTeam(_ team: SportsTeam) -> some View {
