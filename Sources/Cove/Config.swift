@@ -32,6 +32,8 @@ struct CoveConfig: Codable {
     var mediaApps: [String] = ["com.spotify.client", "com.apple.Music"]
     /// Charging and low-battery banners.
     var batteryAlerts: Bool = true
+    /// A brief green battery filling up in the island when the power adapter is plugged in.
+    var chargingAnimation: Bool = true
     /// Focus timer presets, in minutes.
     var focusMinutes: [Int] = [25, 50, 90]
 
@@ -155,6 +157,7 @@ struct CoveConfig: Codable {
         showToolActivity = value(.showToolActivity, d.showToolActivity)
         mediaApps = value(.mediaApps, d.mediaApps)
         batteryAlerts = value(.batteryAlerts, d.batteryAlerts)
+        chargingAnimation = value(.chargingAnimation, d.chargingAnimation)
         focusMinutes = value(.focusMinutes, d.focusMinutes)
         approvals = value(.approvals, d.approvals)
         approvalTimeout = value(.approvalTimeout, d.approvalTimeout)

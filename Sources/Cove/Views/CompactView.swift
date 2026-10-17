@@ -84,6 +84,8 @@ struct CompactView: View {
             compactTeam(game.away)
         case .scoreAndMusic(let game, _)?:
             compactScore(game)
+        case .charging(let percent)?:
+            ChargingBattery(percent: percent)
         case .ai(let activity, let count)?:
             HStack(spacing: 6) {
                 if model.config.buddy { Buddy(mood: activity.buddyMood, size: 26, animating: activity.isLive) }
@@ -191,6 +193,13 @@ struct CompactView: View {
                 if game.isLive { Circle().fill(Palette.green).frame(width: 5, height: 5) }
                 compactTeam(game.home)
             }
+        case .charging(let percent)?:
+            Text("\(percent)%")
+                .font(Theme.Font.headline.monospacedDigit())
+                .foregroundStyle(Palette.green)
+                .lineLimit(1)
+                .fixedSize()
+                .accessibilityLabel("Charging, \(percent) percent")
         case .ai(let activity, _)?:
             HStack(spacing: 5) {
                 if activity.isLive { ArcSpinner(color: activity.agent.tint, size: 10) }
@@ -226,5 +235,46 @@ struct CompactView: View {
         }
         .font(Theme.Font.headline.monospacedDigit())
         .lineLimit(1)
+    }
+}
+
+/// The battery from the iPhone's charging moment: a green fill that rises to the current level.
+/// With Reduce Motion on, the fill simply appears at the level.
+struct ChargingBattery: View {
+    let percent: Int
+    @State private var shown: CGFloat = 0
+
+    private static let shell = CGSize(width: 26, height: 13)
+    private static let inset: CGFloat = 2
+
+    var body: some View {
+        let level = min(max(CGFloat(percent) / 100, 0), 1)
+        HStack(spacing: 1.5) {
+            ZStack(alignment: .leading) {
+                RoundedRectangle(cornerRadius: 4, style: .continuous)
+                    .stroke(Theme.inkSecondary.opacity(0.7), lineWidth: 1)
+                RoundedRectangle(cornerRadius: 2.5, style: .continuous)
+                    .fill(Palette.green)
+                    .frame(width: (Self.shell.width - Self.inset * 2) * shown, height: Self.shell.height - Self.inset * 2)
+                    .padding(.leading, Self.inset)
+                Image(systemName: "bolt.fill")
+                    .font(.system(size: 8, weight: .heavy))
+                    .foregroundStyle(Color.white)
+                    .frame(maxWidth: .infinity)
+            }
+            .frame(width: Self.shell.width, height: Self.shell.height)
+            Capsule()
+                .fill(Theme.inkSecondary.opacity(0.7))
+                .frame(width: 1.5, height: 4)
+        }
+        .accessibilityElement()
+        .accessibilityLabel("Charging")
+        .onAppear {
+            if Theme.reduceMotion {
+                shown = level
+            } else {
+                withAnimation(.easeOut(duration: 1.1).delay(0.15)) { shown = level }
+            }
+        }
     }
 }

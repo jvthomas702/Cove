@@ -20,6 +20,7 @@ Native Swift and SwiftUI, no dependencies, MIT licensed. Every commit is built, 
 | **Sports** | Choose an NBA, NFL or college football game to pin its score beside the notch and follow its latest plays. College football defaults to games featuring a Top 25 team. |
 | **Screenshot shelf** | Every screenshot lands on the shelf the moment it's saved, with a thumbnail you can drag straight out of the notch into a doc, Slack or a chat. |
 | **Long commands** | `cove-run python train.py` shows a live timer and pings you with how long it took. Scripts can push progress rings. |
+| **Charging** | Plug in and a green battery fills to your current level beside the notch with the percentage, then folds away, like the iPhone. Follows Reduce Motion; turn it off in Settings → Features. |
 | **And** | Notifications from other apps, Now Playing with album-art colors, a focus timer, a file shelf, battery alerts, and the volume and brightness meter. |
 
 ## Install
