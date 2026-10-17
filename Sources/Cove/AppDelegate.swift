@@ -446,6 +446,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         monitor.start()
         actions = monitor
+        model.refreshCI = { [weak self] in self?.actions?.refreshNow() }
     }
     private func startBluetooth() {
         guard bluetooth == nil else { return }

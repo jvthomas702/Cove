@@ -349,12 +349,14 @@ struct ChipButton: View {
 
 /// The island's one text-button look: a small tinted capsule, like iOS's tinted buttons.
 /// `prominent` fills it with the tint for the main action (Send, Start).
+/// `compact` is the smaller size for buttons inside a row (Re-run, Run Deploy).
 struct PillButtonStyle: ButtonStyle {
     var tint: Color = Theme.accent
     var prominent = false
+    var compact = false
 
     func makeBody(configuration: Configuration) -> some View {
-        PillButtonBody(configuration: configuration, tint: tint, prominent: prominent)
+        PillButtonBody(configuration: configuration, tint: tint, prominent: prominent, compact: compact)
     }
 }
 
@@ -362,16 +364,17 @@ private struct PillButtonBody: View {
     let configuration: ButtonStyleConfiguration
     let tint: Color
     let prominent: Bool
+    var compact = false
     @Environment(\.isEnabled) private var enabled
     @State private var hovered = false
 
     var body: some View {
         configuration.label
-            .font(.system(size: 11, weight: .semibold, design: .rounded))
+            .font(.system(size: compact ? 10 : 11, weight: .semibold, design: .rounded))
             .lineLimit(1)
             .foregroundStyle(prominent && enabled ? Theme.background : tint)
-            .padding(.horizontal, 10)
-            .frame(height: 24)
+            .padding(.horizontal, compact ? 8 : 10)
+            .frame(height: compact ? 20 : 24)
             .background(Capsule().fill(prominent && enabled ? tint : tint.opacity(hovered ? 0.22 : 0.13)))
             .contentShape(Capsule())
             .opacity(enabled ? (configuration.isPressed ? 0.8 : 1) : 0.45)

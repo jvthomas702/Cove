@@ -193,32 +193,91 @@ private struct MatteContextTile: View {
                         .buttonStyle(PillButtonStyle())
                 } else {
                     ForEach(model.activities.prefix(2)) { activity in
-                        Button {
-                            if activity.agent.isAI {
-                                model.selectAIActivity(activity)
-                                model.navigate(to: .ai)
-                            } else { model.open(activity) }
-                        } label: {
-                            HStack(spacing: 7) {
-                                AIAgentAvatar(activity: activity, showBuddy: model.config.buddy, size: 27)
-                                VStack(alignment: .leading, spacing: 3) {
-                                    HStack {
-                                        Text(activity.agent.displayName).font(Theme.Font.headline)
-                                        Spacer()
-                                        Text(activity.phase ?? (activity.isLive ? "Working" : "Finished"))
-                                            .font(.system(size: 9)).foregroundStyle(Theme.accent).lineLimit(1)
-                                    }
-                                    Text(activity.title).font(Theme.Font.caption).foregroundStyle(Theme.inkSecondary).lineLimit(1)
-                                }.contentShape(Rectangle())
+                        HStack(spacing: 6) {
+                            Button {
+                                if activity.agent.isAI {
+                                    model.selectAIActivity(activity)
+                                    model.navigate(to: .ai)
+                                } else { model.open(activity) }
+                            } label: {
+                                HStack(spacing: 7) {
+                                    AIAgentAvatar(activity: activity, showBuddy: model.config.buddy, size: 27)
+                                    VStack(alignment: .leading, spacing: 3) {
+                                        HStack {
+                                            Text(activity.agent.displayName).font(Theme.Font.headline)
+                                            Spacer()
+                                            Text(activity.phase ?? (activity.isLive ? "Working" : "Finished"))
+                                                .font(.system(size: 9)).foregroundStyle(Theme.accent).lineLimit(1)
+                                        }
+                                        Text(activity.title).font(Theme.Font.caption).foregroundStyle(Theme.inkSecondary).lineLimit(1)
+                                    }.contentShape(Rectangle())
+                                }
+                            }.buttonStyle(.plain)
+                            .accessibilityIdentifier("home.activity.\(activity.id)")
+                            if model.ciActionsAvailable(activity.id) {
+                                CIActionButtons(model: model, activityID: activity.id)
                             }
-                        }.buttonStyle(.plain)
-                        .accessibilityIdentifier("home.activity.\(activity.id)")
+                        }
                     }
                 }
             }
         }
         .modifier(MatteTile())
         .accessibilityIdentifier("home.activityTile")
+    }
+}
+
+/// Re-run on a failed CI run, Run <deploy workflow> on a passed one, and their progress in place of the button.
+struct CIActionButtons: View {
+    @ObservedObject var model: IslandModel
+    let activityID: String
+
+    var body: some View {
+        if let state = model.ciActionStates[activityID] {
+            HStack(spacing: 4) {
+                switch state {
+                case .working: ArcSpinner(color: Theme.accent, size: 9)
+                case .done: Image(systemName: "checkmark.circle.fill").foregroundStyle(Palette.green)
+                case .failed: Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Palette.red)
+                }
+                Text(state.label).lineLimit(1)
+            }
+            .font(.system(size: 10, weight: .semibold, design: .rounded))
+            .foregroundStyle(Theme.inkSecondary)
+            .frame(maxWidth: 110, alignment: .trailing)
+            .help(detail(state))
+            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier("ci.status")
+        } else if let run = model.ciRuns[activityID] {
+            if run.state == .failed {
+                Button { model.ciRerun(activityID) } label: {
+                    HStack(spacing: 3) {
+                        Image(systemName: "arrow.clockwise").font(.system(size: 9, weight: .bold))
+                        Text("Re-run")
+                    }
+                }
+                .buttonStyle(PillButtonStyle(compact: true))
+                .fixedSize()
+                .help("Re-run the failed jobs of \(run.workflow) on \(run.branch)")
+                .accessibilityIdentifier("ci.rerun")
+            } else if run.state == .passed, let workflow = model.ciDeploys[activityID]?.first {
+                Button { model.ciDeploy(activityID, workflow: workflow) } label: {
+                    HStack(spacing: 3) {
+                        Image(systemName: "paperplane.fill").font(.system(size: 9, weight: .bold))
+                        Text("Run \(workflow.name)")
+                    }
+                }
+                .buttonStyle(PillButtonStyle(compact: true))
+                .frame(maxWidth: 120)
+                .help("Start \(workflow.name) (\(workflow.fileName)) on \(run.branch)")
+                .accessibilityIdentifier("ci.deploy")
+            }
+        }
+    }
+
+    private func detail(_ state: CIActionState) -> String {
+        if case .failed(let message) = state { return message }
+        return state.label
     }
 }
 

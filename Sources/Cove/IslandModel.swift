@@ -62,6 +62,13 @@ final class IslandModel: ObservableObject {
     @Published var desktopAIStatus = "Checking ChatGPT app…"
     /// GitHub Actions sign-in and what's being watched (Settings → Connections).
     @Published var ciStatus: GitHubActionsMonitor.Status?
+    /// The run behind each CI activity, the deploy workflows it can start, and Re-run / Deploy progress.
+    @Published private(set) var ciRuns: [String: CIRun] = [:]
+    @Published private(set) var ciDeploys: [String: [CIWorkflow]] = [:]
+    @Published private(set) var ciActionStates: [String: CIActionState] = [:]
+    let ciClient: CIActionClient
+    /// Asks the GitHub Actions monitor to poll now (set by AppDelegate), so a re-run shows up promptly.
+    var refreshCI: (() -> Void)?
     @Published private(set) var presentation: Presentation = .idle
     @Published private(set) var expanded = false
     @Published private(set) var isPinnedOpen = false
@@ -118,8 +125,9 @@ final class IslandModel: ObservableObject {
         "net.kovidgoyal.kitty", "org.alacritty", "com.microsoft.VSCode", "com.todesktop.230313mzl4w4u92",
     ]
 
-    init(config: CoveConfig, sports: SportsMonitor? = nil, shelfStore: ShelfStore? = nil) {
+    init(config: CoveConfig, sports: SportsMonitor? = nil, shelfStore: ShelfStore? = nil, ciClient: CIActionClient? = nil) {
         self.shelfStore = shelfStore ?? ShelfStore()
+        self.ciClient = ciClient ?? CIActionClient()
         self.config = config
         self.sports = sports ?? SportsMonitor()
         // Relay changes from the nested monitor after its published values have changed.
@@ -651,6 +659,7 @@ final class IslandModel: ObservableObject {
     func removeActivity(_ id: String) {
         activities.removeAll { $0.id == id }
         aiSteps.removeValue(forKey: id)
+        forgetCIRun(id)
         dropBanners(forActivity: id)
         recompute()
     }
@@ -723,6 +732,7 @@ final class IslandModel: ObservableObject {
         if activities.count > 12 { activities = Array(activities.prefix(12)) }
         let retained = Set(activities.map(\.id))
         aiSteps = aiSteps.filter { retained.contains($0.key) }
+        for id in ciRuns.keys where !retained.contains(id) { forgetCIRun(id) }
         recompute()
     }
 
@@ -749,6 +759,81 @@ final class IslandModel: ObservableObject {
             a.openURL = run.url
             put(a)
         }
+        ciRuns[id] = run
+        if run.state == .running, ciActionStates[id]?.isWorking == false { ciActionStates[id] = nil }
+        if run.state != .running { loadDeployWorkflows(for: run) }
+    }
+
+    /// Re-run (failed runs) or Run <deploy> (passed runs), when turned on and the run supports it.
+    func ciActionsAvailable(_ activityID: String) -> Bool {
+        config.ciMonitor && config.ciActions && ciRuns[activityID] != nil
+    }
+
+    /// Re-runs the failed jobs of a failed run (or the whole run when none can be retried).
+    func ciRerun(_ activityID: String) {
+        guard let run = ciRuns[activityID], ciActionStates[activityID]?.isWorking != true else { return }
+        ciActionStates[activityID] = .working("Re-running…")
+        Task { [weak self] in
+            guard let self else { return }
+            do {
+                try await self.ciClient.rerun(repo: run.repo, runID: run.id)
+                self.finishCIAction(activityID, .done("Re-run started"))
+            } catch {
+                self.finishCIAction(activityID, .failed(error.localizedDescription), title: "Couldn't re-run · \(run.repoName)")
+            }
+        }
+    }
+
+    /// Starts a deploy or release workflow on the run's branch.
+    func ciDeploy(_ activityID: String, workflow: CIWorkflow) {
+        guard let run = ciRuns[activityID], !run.branch.isEmpty, ciActionStates[activityID]?.isWorking != true else { return }
+        ciActionStates[activityID] = .working("Starting \(workflow.name)…")
+        Task { [weak self] in
+            guard let self else { return }
+            do {
+                try await self.ciClient.dispatch(repo: run.repo, workflow: workflow, branch: run.branch)
+                self.finishCIAction(activityID, .done("\(workflow.name) started"))
+            } catch {
+                self.finishCIAction(activityID, .failed(error.localizedDescription), title: "Couldn't start \(workflow.name)")
+            }
+        }
+    }
+
+    private func finishCIAction(_ activityID: String, _ state: CIActionState, title: String? = nil) {
+        ciActionStates[activityID] = state
+        if case .failed(let message) = state, let title {
+            show(Banner(title: title, body: message, style: .failure,
+                        icon: config.buddy ? .buddy(.sad, .ci) : .symbol("xmark.octagon.fill", Palette.red),
+                        source: "GitHub Actions"))
+        } else {
+            refreshCI?()
+        }
+        // The status stays inline for a moment, then the buttons come back.
+        DispatchQueue.main.asyncAfter(deadline: .now() + (state.isFailure ? 12 : 6)) { [weak self] in
+            MainActor.assumeIsolated {
+                guard let self, self.ciActionStates[activityID] == state else { return }
+                self.ciActionStates[activityID] = nil
+            }
+        }
+    }
+
+    private func loadDeployWorkflows(for run: CIRun) {
+        let id = "ci:\(run.id)"
+        guard config.ciMonitor, config.ciActions, run.state == .passed, !run.branch.isEmpty, ciDeploys[id] == nil else { return }
+        ciDeploys[id] = []
+        Task { [weak self] in
+            guard let self else { return }
+            let found = (try? await self.ciClient.deployWorkflows(repo: run.repo, branch: run.branch)) ?? []
+            guard self.ciRuns[id] != nil else { return }
+            // The deploy workflow's own run doesn't offer to deploy again.
+            self.ciDeploys[id] = found.filter { $0.name != run.workflow }
+        }
+    }
+
+    private func forgetCIRun(_ id: String) {
+        ciRuns.removeValue(forKey: id)
+        ciDeploys.removeValue(forKey: id)
+        ciActionStates.removeValue(forKey: id)
     }
 
     // MARK: - Claude in the cloud

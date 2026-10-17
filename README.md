@@ -19,6 +19,7 @@ Native Swift and SwiftUI, no dependencies, MIT licensed. Every commit is built, 
 | **Classes and due dates** | "CPE 3000 Lecture, 50 min left" beside the notch, a heads-up before each class with a Join button for Zoom, Meet or Teams, and a Due soon list from your D2L or Canvas calendar and Reminders. |
 | **Sports** | Choose an NBA, NFL or college football game to pin its score beside the notch and follow its latest plays. College football defaults to games featuring a Top 25 team. |
 | **Screenshot shelf** | Every screenshot lands on the shelf the moment it's saved, with a thumbnail you can drag straight out of the notch into a doc, Slack or a chat. |
+| **CI runs** | Your GitHub Actions runs show live and ping when they pass or fail. A failed run has a **Re-run** button; a passed one offers **Run Deploy** when the repo has a hand-started deploy or release workflow. |
 | **Long commands** | `cove-run python train.py` shows a live timer and pings you with how long it took. Scripts can push progress rings. |
 | **And** | Notifications from other apps, Now Playing with album-art colors, a focus timer, a file shelf, battery alerts, and the volume and brightness meter. |
 
@@ -89,6 +90,10 @@ Calendars already in the Mac's Calendar app (Google added under System Settings 
 Sessions on claude.ai/code, in Claude projects and in routines run on Anthropic's machines, so Cove's hooks never hear from them. What does reach your Mac is GitHub: those sessions open pull requests that link back to the session. Cove watches for them and shows each one as a Claude activity: when it opens, while CI runs, when CI fails or passes, when it's ready for review and when it merges. Clicking it opens the session or project thread.
 
 It signs in with the GitHub CLI (`brew install gh`, then `gh auth login`) and watches the repos you pushed to in the last two days, or the ones you list as `cloudRepos` in `~/.config/cove/config.json`. Turn it off in Settings → Connections. Cloud work that never opens a pull request (a question, a document) doesn't show up.
+
+### GitHub Actions
+
+Turn on **Settings → Connections → Watch my CI runs** to see your workflow runs live in the notch. It signs in with the GitHub CLI (`gh auth login`); Cove stores no token. On Home's activity tile, a failed run has a blue **Re-run** pill (re-runs just the failed jobs, or the whole run if none can be retried). A passed run shows **Run <name>** when the repo has a workflow with a `workflow_dispatch` trigger whose name or file mentions "deploy" or "release"; it starts that workflow on the run's branch. Progress and the result appear in place of the button. GitHub needs the token's `repo` scope for this (and `workflow` for some repos): if it says no, run `gh auth refresh -s repo,workflow`. Turn the buttons off with **Re-run and deploy buttons**.
 
 ### Screenshots
 
