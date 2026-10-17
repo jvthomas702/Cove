@@ -84,7 +84,7 @@ final class CloudSessionsTests: XCTestCase {
         let cloud = CloudPR.parse(pulls([pr(number: 7, body: "https://claude.ai/code/session_q")]), repo: "o/cove").first!
         model.cloudUpdate(cloud, phase: .ciRunning, announce: true)
         XCTAssertEqual(model.activity("cloud:o/cove#7")?.state, .running)
-        XCTAssertEqual(model.activity("cloud:o/cove#7")?.url?.absoluteString, "https://claude.ai/code/session_q")
+        XCTAssertEqual(model.activity("cloud:o/cove#7")?.openURL?.absoluteString, "https://claude.ai/code/session_q")
         XCTAssertEqual(model.activity("cloud:o/cove#7")?.title, "cove #7")
         model.cloudUpdate(cloud, phase: .ciFailed, announce: true)
         XCTAssertEqual(model.activity("cloud:o/cove#7")?.state, .failed)

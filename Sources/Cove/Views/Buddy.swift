@@ -12,13 +12,15 @@ struct Buddy: View {
     var size: CGFloat = 22
     /// Small agent badge (Claude sparkle, terminal…) shown at larger sizes.
     var badge: AgentKind? = nil
+    /// List avatars stay still; the selected session and live notch animate.
+    var animating = true
 
     @State private var previous: BuddyMood?
     @State private var changedAt = Date()
     @State private var settled = false
 
     var body: some View {
-        let still = Theme.reduceMotion
+        let still = Theme.reduceMotion || !animating
         // Napping Nori is on screen all day, so once it has settled it breathes at a low frame rate.
         let slow = mood == .sleepy && settled
         TimelineView(.animation(minimumInterval: slow ? 1.0 / 6 : 1.0 / 30, paused: still)) { context in

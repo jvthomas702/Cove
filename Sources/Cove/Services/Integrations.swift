@@ -241,7 +241,7 @@ enum Permission: String, CaseIterable, Identifiable {
         switch self {
         case .calendars: return "Next class countdown and heads-ups"
         case .reminders: return "Due dates in the Due soon list"
-        case .accessibility: return "Volume and brightness keys show in the notch"
+        case .accessibility: return "ChatGPT app activity, plus volume and brightness keys"
         case .desktop: return "Screenshots drop onto the shelf"
         case .fullDiskAccess: return "Mirror notifications from other apps"
         }

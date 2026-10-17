@@ -172,6 +172,8 @@ final class IslandModelTests: XCTestCase {
 
     func testAgentLifecycle() {
         let model = makeModel()
+        // The richer AI presentation is covered by AIWidgetTests; this checks the legacy option.
+        model.config.aiWorkInNotch = false
         model.agentStarted(id: "claude:1", agent: .claude, title: "proj", detail: "Thinking", ownerApp: nil)
         XCTAssertEqual(model.compactItem, .running(count: 1, agent: .claude))
 
@@ -291,6 +293,7 @@ final class ShelfBannerTests: XCTestCase {
         var config = CoveConfig()
         config.sounds = false
         config.calendar = false
+        config.screenshotBanners = true
         let model = IslandModel(config: config)
         model.clearShelf()
         let a = URL(fileURLWithPath: "/tmp/Screenshot A.png"), b = URL(fileURLWithPath: "/tmp/Screenshot B.png")
@@ -423,7 +426,7 @@ final class GitHubActionsTests: XCTestCase {
         let run = try XCTUnwrap(CIRun.parse(Data(sample.utf8), repo: "me/app").first)
         model.ciRun(run)
         XCTAssertEqual(model.activity("ci:1")?.state, .running)
-        XCTAssertEqual(model.activity("ci:1")?.url, run.url)
+        XCTAssertEqual(model.activity("ci:1")?.openURL, run.url)
         model.ciRun(CIRun(id: 1, repo: "me/app", workflow: "build", branch: "main", commit: "", actor: "me",
                           state: .failed, url: run.url, createdAt: run.createdAt))
         XCTAssertEqual(model.activity("ci:1")?.state, .failed)

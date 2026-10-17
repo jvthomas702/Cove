@@ -4,6 +4,7 @@ import AppKit
 @MainActor
 final class AgentBridge {
     private let model: IslandModel
+    private var claudeRevisions: [String: UUID] = [:]
 
     init(model: IslandModel) {
         self.model = model
@@ -31,6 +32,8 @@ final class AgentBridge {
         let project = cwd.isEmpty ? "Claude Code" : (cwd as NSString).lastPathComponent
         let id = "claude:\(sessionID)"
 
+        let revision = UUID()
+        claudeRevisions[id] = revision
         switch event {
         case "UserPromptSubmit":
             let prompt = (obj["prompt"] as? String ?? "").oneLine(max: 90)
@@ -44,8 +47,9 @@ final class AgentBridge {
             let tool = obj["tool_name"] as? String ?? "tool"
             let input = obj["tool_input"] as? [String: Any] ?? [:]
             let detail = model.config.showToolActivity ? Self.describe(tool: tool, input: input) : "Working…"
-            model.agentUpdate(id: id, agent: .claude, title: project, detail: detail)
-            // Refresh the token count now and then while Claude works (reading the transcript isn't free).
+            model.agentUpdate(id: id, agent: .claude, title: project, detail: detail,
+                              phase: model.config.showToolActivity ? tool : "Working")
+            // Refresh session usage without changing its attention or completion state.
             if let transcript = obj["transcript_path"] as? String,
                usageReadAt[id].map({ Date().timeIntervalSince($0) > 20 }) ?? true {
                 usageReadAt[id] = Date()
@@ -54,21 +58,25 @@ final class AgentBridge {
 
         case "Notification":
             let message = obj["message"] as? String ?? "Claude needs your attention"
-            // Claude also nags after ~60s idle at the prompt; we already said it was done.
-            if message.range(of: "waiting for your input", options: .caseInsensitive) != nil,
-               let current = model.activity(id), !current.isLive {
-                return
-            }
+            let type = obj["notification_type"] as? String ?? ""
+            let actionable = ["permission_prompt", "worker_permission_prompt", "elicitation_dialog", "elicitation_url_dialog", "agent_needs_input"]
+            // Idle reminders, sign-in notices and finished-agent messages are not requests.
+            guard actionable.contains(type) else { return }
+            // A permission card already rings once when it arrives.
+            guard !model.approvals.contains(where: { $0.sessionID == id }) else { return }
             model.agentAttention(id: id, agent: .claude, title: project, message: message.oneLine(max: 140))
 
         case "Stop":
             let transcript = obj["transcript_path"] as? String
+            // Finish synchronously; late transcript I/O may enrich only this exact completion.
+            model.agentFinished(id: id, agent: .claude, title: project, summary: nil)
             let island = self.model
             DispatchQueue.global(qos: .utility).async {
                 let summary = transcript.flatMap { TranscriptReader.lastAssistantText(path: $0) }?.oneLine(max: 160)
                 let usage = transcript.flatMap { TranscriptReader.usage(path: $0) }
                 Task { @MainActor in
-                    island.agentFinished(id: id, agent: .claude, title: project, summary: summary)
+                    guard self.claudeRevisions[id] == revision else { return }
+                    if let summary { island.updateFinishedSummary(id: id, summary: summary) }
                     if let usage { island.setUsage(id: id, usage) }
                 }
             }
@@ -246,6 +254,7 @@ final class AgentBridge {
         let project = cwd.isEmpty ? "Codex" : (cwd as NSString).lastPathComponent
         let thread = obj["thread-id"] as? String ?? obj["turn-id"] as? String ?? "codex"
         let summary = (obj["last-assistant-message"] as? String)?.oneLine(max: 160)
+        guard !model.codexChats.hasLiveState(thread) else { return }
         model.agentFinished(id: "codex:\(thread)", agent: .codex, title: project, summary: summary)
     }
 }

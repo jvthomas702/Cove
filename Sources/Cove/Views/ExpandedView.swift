@@ -11,33 +11,54 @@ struct ExpandedView: View {
             Group {
                 switch model.tab {
                 case .home: HomePane(model: model)
+                case .ai: AIWorkspacePane(model: model)
                 case .schedule: SchedulePane(model: model)
+                case .sports: SportsPane(model: model)
                 case .shelf: ShelfPane(model: model)
                 }
             }
             .id(model.tab)
-            .transition(.opacity.combined(with: .scale(scale: 0.98, anchor: .top)))
+            .transition(.opacity)
             .padding(.horizontal, 14)
             .padding(.top, Theme.Space.s)
             .padding(.bottom, 14)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
         .foregroundStyle(Theme.ink)
+        .tint(Theme.accent)
+        .environment(\.colorScheme, model.config.islandTheme.colorScheme)
         .animation(Theme.snappy, value: model.tab)
     }
 
     private var header: some View {
         HStack(spacing: 0) {
             TabSwitcher(model: model)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .trailing)
             Color.clear.frame(width: model.notchSize.width)
-            Group {
-                if let battery = model.battery { BatteryGlyph(state: battery) }
+            HStack(spacing: 6) {
+                Button("Connect AI") { model.openAIConnections() }
+                    .font(Theme.Font.caption).foregroundStyle(Theme.accent)
+                    .padding(.horizontal, 9).frame(height: 30)
+                    .background(RoundedRectangle(cornerRadius: 8).fill(Theme.accent.opacity(0.10)))
+                    .buttonStyle(PressableStyle())
+                    .contentShape(Rectangle()).accessibilityIdentifier("ai.connect")
+                DeviceSettingsMenu()
+                IconButton(systemImage: "gearshape", size: 12, hit: 28) { model.openSettings?(.general) }
+                    .help("Cove settings").accessibilityLabel("Cove settings")
+                    .accessibilityIdentifier("island.settings")
+                IconButton(systemImage: model.isPinnedOpen ? "pin.fill" : "pin", size: 12, hit: 28) { model.togglePinnedOpen() }
+                    .foregroundStyle(model.isPinnedOpen ? Theme.accent : Theme.inkSecondary)
+                    .help(model.isPinnedOpen ? "Unpin the notch" : "Keep the notch open")
+                    .accessibilityLabel(model.isPinnedOpen ? "Unpin notch" : "Pin notch open")
+                    .accessibilityIdentifier("notch.pin")
+                IconButton(systemImage: "xmark", size: 11, hit: 28) { model.setExpanded(false) }
+                    .help("Close the notch").accessibilityLabel("Close notch")
+                    .accessibilityIdentifier("notch.close")
             }
-            .frame(maxWidth: .infinity, alignment: .trailing)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.horizontal, 14)
-        .frame(height: model.notchSize.height)
+        .frame(height: max(34, model.notchSize.height))
     }
 }
 
@@ -50,12 +71,14 @@ private struct TabSwitcher: View {
         HStack(spacing: 2) {
             ForEach(IslandModel.Tab.allCases, id: \.self) { tab in
                 Button {
-                    model.tab = tab
+                    model.navigate(to: tab)
                 } label: {
-                    Image(systemName: symbol(for: tab))
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(model.tab == tab ? Theme.ink : Theme.inkTertiary)
-                        .frame(width: 30, height: 20)
+                    HStack(spacing: 4) {
+                        Image(systemName: symbol(for: tab)).font(.system(size: 10))
+                        Text(label(for: tab)).font(.system(size: 12, weight: .medium))
+                    }
+                        .foregroundStyle(model.tab == tab ? Theme.accent : Theme.inkSecondary)
+                        .padding(.horizontal, 7).frame(height: 30)
                         .background {
                             if model.tab == tab {
                                 Capsule().fill(Theme.surfaceRaised).matchedGeometryEffect(id: "pill", in: pill)
@@ -70,6 +93,9 @@ private struct TabSwitcher: View {
                 }
                 .buttonStyle(PressableStyle())
                 .help(label(for: tab))
+                .accessibilityLabel(label(for: tab))
+                .accessibilityIdentifier("tab.\(tab.rawValue)")
+                .accessibilityAddTraits(model.tab == tab ? .isSelected : [])
             }
         }
         .padding(2)
@@ -79,7 +105,9 @@ private struct TabSwitcher: View {
     private func symbol(for tab: IslandModel.Tab) -> String {
         switch tab {
         case .home: return "house.fill"
+        case .ai: return "sparkles"
         case .schedule: return "calendar"
+        case .sports: return "sportscourt.fill"
         case .shelf: return "tray.full.fill"
         }
     }
@@ -87,28 +115,29 @@ private struct TabSwitcher: View {
     private func label(for tab: IslandModel.Tab) -> String {
         switch tab {
         case .home: return "Home"
-        case .schedule: return "Schedule"
-        case .shelf: return "Shelf"
+        case .ai: return "AI"
+        case .schedule: return "Calendar"
+        case .sports: return "Sports"
+        case .shelf: return "Files"
         }
     }
 }
 
 // MARK: - Home
 
-struct HomePane: View {
+struct AIWorkspacePane: View {
     @ObservedObject var model: IslandModel
 
     var body: some View {
-        HStack(alignment: .top, spacing: Theme.Space.m) {
-            VStack(spacing: Theme.Space.s) {
-                UpNextCard(model: model)
-                MediaCard(model: model)
-                FocusCard(model: model)
+        VStack(spacing: 10) {
+            HStack(alignment: .top, spacing: 10) {
+                AIWorkWidget(model: model)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                if !model.aiActivities.isEmpty {
+                    AIWorkOverview(model: model).frame(width: 250)
+                }
             }
-            .frame(width: 210)
-
-            ActivityList(model: model)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            AgentComposer(model: model)
         }
     }
 }
@@ -531,7 +560,7 @@ struct ActivityList: View {
                     Circle()
                         .fill(connected ? Palette.green : Palette.red)
                         .frame(width: 5, height: 5)
-                    Text(connected ? "Hooks connected" : model.serverStatus)
+                    Text(connected ? "Cove online" : model.serverStatus)
                         .font(.system(size: 10.5))
                         .foregroundStyle(Theme.inkTertiary)
                 }
@@ -546,11 +575,11 @@ struct ActivityList: View {
                             .font(.system(size: 20, weight: .medium))
                             .foregroundStyle(Theme.inkTertiary)
                     }
-                    Text("Claude Code, Codex and long commands show up here")
+                    Text("All caught up")
                         .font(Theme.Font.caption)
                         .foregroundStyle(Theme.inkSecondary)
                         .multilineTextAlignment(.center)
-                    Text("Run a command with cove-run, or try the demo from the menu bar")
+                    Text("Agent updates and notifications appear here")
                         .font(.system(size: 10.5))
                         .foregroundStyle(Theme.inkTertiary)
                         .multilineTextAlignment(.center)
@@ -612,6 +641,9 @@ struct ActivityRow: View {
                 }
                 HStack(spacing: 6) {
                     statusBadge
+                    if activity.id.hasPrefix("web:") || activity.id.hasPrefix("desktop:") {
+                        Text(activity.originLabel).font(.system(size: 9)).foregroundStyle(Theme.inkTertiary)
+                    }
                     Text(activity.detail)
                         .font(Theme.Font.caption)
                         .foregroundStyle(Theme.inkSecondary)
@@ -733,40 +765,27 @@ struct ShelfPane: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
-            files
-            if !model.clips.isEmpty { ClipStrip(model: model) }
-        }
-    }
-
-    @ViewBuilder
-    private var files: some View {
-        if model.shelf.isEmpty {
-            DropZone(targeted: model.isDropTargeted)
-        } else {
-            VStack(alignment: .leading, spacing: Theme.Space.s) {
-                HStack {
-                    SectionTitle(title: "Shelf", count: model.shelf.count)
-                    Spacer()
-                    Text("Drag files out to use them")
-                        .font(.system(size: 10.5))
-                        .foregroundStyle(Theme.inkTertiary)
+            HStack {
+                SectionTitle(title: "Shelf", count: model.shelf.count)
+                Spacer()
+                if model.canUndoShelf {
+                    ChipButton(title: "Undo", systemImage: "arrow.uturn.backward") { model.undoShelfRemoval() }
+                        .accessibilityIdentifier("shelf.undo")
+                }
+                if !model.shelf.isEmpty {
                     ChipButton(title: "Clear", systemImage: "trash") { model.clearShelf() }
+                        .accessibilityIdentifier("shelf.clear")
                 }
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: Theme.Space.s) {
-                        ForEach(model.shelf, id: \.self) { url in
-                            ShelfItem(url: url, model: model)
-                        }
-                    }
-                    .padding(.vertical, 6)
-                    .padding(.horizontal, 2)
-                }
-                .frame(maxHeight: .infinity)
-                .background(
-                    RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
-                        .strokeBorder(Palette.blue.opacity(model.isDropTargeted ? 0.7 : 0), lineWidth: 1.5)
-                )
             }
+            if model.shelf.isEmpty { DropZone(targeted: model.isDropTargeted) }
+            else {
+                ScrollView {
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 96), spacing: 8)], spacing: 8) {
+                        ForEach(model.shelf, id: \.self) { url in ShelfItem(url: url, model: model) }
+                    }.padding(.vertical, 6).padding(.horizontal, 2)
+                }.frame(maxHeight: .infinity).accessibilityIdentifier("shelf.items")
+            }
+            if !model.clips.isEmpty { ClipStrip(model: model) }
         }
     }
 }
@@ -867,6 +886,9 @@ struct ShelfItem: View {
                 .truncationMode(.middle)
                 .multilineTextAlignment(.center)
                 .frame(width: 80)
+            if !FileManager.default.fileExists(atPath: url.path) {
+                Text("Unavailable").font(.system(size: 9)).foregroundStyle(Palette.amber)
+            }
         }
         .padding(8)
         .background(RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous).fill(hovering ? Theme.surfaceRaised : Theme.surface))
@@ -882,6 +904,7 @@ struct ShelfItem: View {
                         .background(Circle().fill(Color.white.opacity(0.85)))
                 }
                 .buttonStyle(PressableStyle())
+                .accessibilityLabel("Remove \(url.lastPathComponent) from shelf")
                 .offset(x: 4, y: -4)
                 .transition(.scale.combined(with: .opacity))
             }
@@ -890,10 +913,12 @@ struct ShelfItem: View {
         .animation(Theme.snappy, value: hovering)
         .onHover { hovering = $0 }
         .onDrag { NSItemProvider(contentsOf: url) ?? NSItemProvider() }
-        .onTapGesture(count: 2) { NSWorkspace.shared.open(url) }
+        .onTapGesture(count: 2) { model.previewShelfItem(url) }
         .help(url.path)
+        .accessibilityIdentifier("shelf.item.\(url.lastPathComponent)")
         .contextMenu {
-            Button("Open") { NSWorkspace.shared.open(url) }
+            Button("Preview / Annotate / Rename") { model.previewShelfItem(url) }
+            Button("Open in default app") { NSWorkspace.shared.open(url) }
             Button("Copy") { model.copyToPasteboard(url) }
             Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([url]) }
             Divider()

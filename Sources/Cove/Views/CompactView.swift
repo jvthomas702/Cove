@@ -18,7 +18,7 @@ struct CompactView: View {
         }
         .frame(height: model.notchSize.height)
         .contentShape(Rectangle())
-        .onTapGesture { model.setExpanded(true) }
+        .onTapGesture { model.openByClick() }
         .animation(Theme.snappy, value: model.compactItem)
     }
 
@@ -80,6 +80,15 @@ struct CompactView: View {
                 .foregroundStyle(Palette.amber)
         case .music?:
             ArtworkView(model: model, size: 20, matchID: "art")
+        case .sports(let game)?:
+            compactTeam(game.away)
+        case .ai(let activity, let count)?:
+            HStack(spacing: 6) {
+                if model.config.buddy { Buddy(mood: activity.buddyMood, size: 26, animating: activity.isLive) }
+                else { AgentGlyph(agent: activity.agent, animating: activity.isLive) }
+                Text(activity.agent.displayName).font(Theme.Font.headline).lineLimit(1)
+                if count > 1 { Text("+\(count - 1)").font(Theme.Font.number).foregroundStyle(Theme.inkSecondary) }
+            }
         case nil:
             EmptyView()
         }
@@ -170,8 +179,31 @@ struct CompactView: View {
                 .minimumScaleFactor(0.7)
         case .music(let np)?:
             EqualizerBars(playing: np.isPlaying, color: model.accent ?? np.appTint)
+        case .sports(let game)?:
+            HStack(spacing: 5) {
+                if game.isLive { Circle().fill(Palette.green).frame(width: 5, height: 5) }
+                compactTeam(game.home)
+            }
+        case .ai(let activity, _)?:
+            HStack(spacing: 5) {
+                if activity.isLive { ArcSpinner(color: activity.agent.tint, size: 10) }
+                else if activity.state == .failed { Image(systemName: "xmark.circle.fill").foregroundStyle(Palette.red) }
+                else { Image(systemName: "checkmark.circle.fill").foregroundStyle(Palette.green) }
+                Text(activity.phase ?? (activity.isLive ? "Working…" : "Finished"))
+                    .font(Theme.Font.number).foregroundStyle(Theme.inkSecondary).lineLimit(1)
+            }
         case nil:
             EmptyView()
         }
+    }
+
+    private func compactTeam(_ team: SportsTeam) -> some View {
+        HStack(spacing: 5) {
+            TeamLogo(team: team, size: 18)
+            Text(team.abbreviation).foregroundStyle(team.tint)
+            Text(team.score).foregroundStyle(Theme.ink)
+        }
+        .font(Theme.Font.headline.monospacedDigit())
+        .lineLimit(1)
     }
 }

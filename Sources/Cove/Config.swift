@@ -1,5 +1,10 @@
 import Foundation
 
+enum IslandTheme: String, Codable, CaseIterable {
+    case darkMatte
+    var title: String { "Black" }
+}
+
 /// User settings, stored as JSON at ~/.config/cove/config.json.
 /// Every key is optional in the file; anything missing falls back to the default below.
 struct CoveConfig: Codable {
@@ -13,7 +18,8 @@ struct CoveConfig: Codable {
     var bannerSeconds: Double = 4.5
     /// Expand the island when the pointer rests on it.
     var hoverToExpand: Bool = true
-    var hoverDelay: Double = 0.12
+    var hoverDelay: Double = 0.25
+    var islandTheme: IslandTheme = .darkMatte
     /// Mirror macOS notifications into the island (needs Full Disk Access).
     var mirrorNotifications: Bool = true
     /// Bundle IDs whose notifications should never be mirrored.
@@ -71,9 +77,25 @@ struct CoveConfig: Codable {
     // MARK: Screenshots
     /// Put every new screenshot on the shelf.
     var screenshotsToShelf: Bool = true
+    /// Keep captures quiet unless the user explicitly asks for a banner.
+    var screenshotBanners: Bool = false
     /// Move new screenshots from the Desktop into ~/Pictures/Screenshots, keeping the Desktop clean.
     var screenshotsMoveOffDesktop: Bool = false
 
+    // MARK: Widgets & sports
+    var homeWidget: HomeWidget = .auto
+    var desktopAIActivity: Bool = true
+    var aiWorkInNotch: Bool = true
+    var sportsEnabled: Bool = true
+    var sportsLeague: SportsLeague = .nfl
+    var sportsGameID: String? = nil
+    /// "Big games": at least one Top 25 team. Turn off to browse all FBS games.
+    var sportsRankedOnly: Bool = true
+    var sportsFavoriteTeams: [String] = []
+    var sportsWatchedGames: [String] = []
+    var sportsAutoFollow: Bool = true
+    var sportsStartAlerts: Bool = false
+    var sportsScoreAlerts: Bool = false
     // MARK: Clipboard
     /// Keep the last few copied texts on the shelf (in memory only, never saved to disk).
     var clipboardHistory: Bool = false
@@ -125,6 +147,8 @@ struct CoveConfig: Codable {
         bannerSeconds = value(.bannerSeconds, d.bannerSeconds)
         hoverToExpand = value(.hoverToExpand, d.hoverToExpand)
         hoverDelay = value(.hoverDelay, d.hoverDelay)
+        // Older white-theme values fall back to the consistent black appearance.
+        islandTheme = value(.islandTheme, d.islandTheme)
         mirrorNotifications = value(.mirrorNotifications, d.mirrorNotifications)
         ignoreApps = value(.ignoreApps, d.ignoreApps)
         highlightKeywords = value(.highlightKeywords, d.highlightKeywords)
@@ -145,7 +169,20 @@ struct CoveConfig: Codable {
         dueAlertHours = value(.dueAlertHours, d.dueAlertHours)
         ignoreCalendars = value(.ignoreCalendars, d.ignoreCalendars)
         screenshotsToShelf = value(.screenshotsToShelf, d.screenshotsToShelf)
+        screenshotBanners = value(.screenshotBanners, d.screenshotBanners)
         screenshotsMoveOffDesktop = value(.screenshotsMoveOffDesktop, d.screenshotsMoveOffDesktop)
+        homeWidget = value(.homeWidget, d.homeWidget)
+        desktopAIActivity = value(.desktopAIActivity, d.desktopAIActivity)
+        aiWorkInNotch = value(.aiWorkInNotch, d.aiWorkInNotch)
+        sportsEnabled = value(.sportsEnabled, d.sportsEnabled)
+        sportsLeague = value(.sportsLeague, d.sportsLeague)
+        sportsGameID = value(.sportsGameID, d.sportsGameID)
+        sportsRankedOnly = value(.sportsRankedOnly, d.sportsRankedOnly)
+        sportsFavoriteTeams = Array(Set(value(.sportsFavoriteTeams, d.sportsFavoriteTeams))).sorted()
+        sportsWatchedGames = Array(Set(value(.sportsWatchedGames, d.sportsWatchedGames))).sorted()
+        sportsAutoFollow = value(.sportsAutoFollow, d.sportsAutoFollow)
+        sportsStartAlerts = value(.sportsStartAlerts, d.sportsStartAlerts)
+        sportsScoreAlerts = value(.sportsScoreAlerts, d.sportsScoreAlerts)
         clipboardHistory = value(.clipboardHistory, d.clipboardHistory)
         eventStartAlert = value(.eventStartAlert, d.eventStartAlert)
         buddy = value(.buddy, d.buddy)

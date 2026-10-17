@@ -1,8 +1,8 @@
 import Foundation
 import os
 
-/// Checks GitHub once a day for a newer Cove release and says so once per version.
-/// Cove isn't notarized, so there's no auto-update; this just points at the download.
+/// Announces new releases from Cove's public distribution channel once per version.
+/// Sparkle remains responsible for signed update checks, downloads and installation.
 @MainActor
 final class UpdateChecker {
     struct Release: Equatable {
@@ -14,7 +14,7 @@ final class UpdateChecker {
 
     private let currentVersion: String
     private var timer: Timer?
-    private static let latestURL = URL(string: "https://api.github.com/repos/jvthomas702/Cove/releases/latest")!
+    private static let latestURL = URL(string: "https://api.github.com/repos/jvthomas702/Cove-updates/releases/latest")!
     private static let announcedKey = "lastAnnouncedRelease"
 
     init(currentVersion: String) {

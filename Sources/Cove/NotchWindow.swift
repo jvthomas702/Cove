@@ -17,8 +17,30 @@ extension NSScreen {
 
 /// Borderless, non-activating panel that floats above the menu bar on every Space.
 final class NotchPanel: NSPanel {
-    override var canBecomeKey: Bool { false }
+    var acceptsKeyboardInput = false
+    override var canBecomeKey: Bool { acceptsKeyboardInput }
     override var canBecomeMain: Bool { false }
+
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        // The accessory app may have no Edit menu. Route text shortcuts to this panel's
+        // field editor instead of the application that remains active behind the notch.
+        let modifiers = event.modifierFlags.intersection([.command, .shift, .control, .option])
+        guard acceptsKeyboardInput, modifiers.contains(.command),
+              !modifiers.contains(.control), !modifiers.contains(.option),
+              let editor = firstResponder as? NSTextView else { return super.performKeyEquivalent(with: event) }
+        switch event.charactersIgnoringModifiers?.lowercased() {
+        case "a" where !modifiers.contains(.shift): editor.selectAll(self)
+        case "c" where !modifiers.contains(.shift): editor.copy(self)
+        case "x" where !modifiers.contains(.shift): editor.cut(self)
+        case "v" where !modifiers.contains(.shift): editor.paste(self)
+        case "z":
+            guard let undo = editor.undoManager else { return super.performKeyEquivalent(with: event) }
+            if modifiers.contains(.shift) { if undo.canRedo { undo.redo() } }
+            else if undo.canUndo { undo.undo() }
+        default: return super.performKeyEquivalent(with: event)
+        }
+        return true
+    }
 }
 
 /// Hosts the SwiftUI island. Lets clicks land without activating Cove first, and does hover
@@ -55,7 +77,8 @@ final class IslandHostingView: NSHostingView<IslandRootView> {
 
     override func mouseExited(with event: NSEvent) {
         super.mouseExited(with: event)
-        model?.setHovering(false)
+        // Resizing a tracking area can emit an exit even while the pointer remains over the island.
+        update(with: event)
     }
 
     private func update(with event: NSEvent) {
@@ -69,7 +92,7 @@ final class IslandHostingView: NSHostingView<IslandRootView> {
             width: island.width,
             height: island.height + 4
         )
-        model.setHovering(rect.contains(event.locationInWindow))
+        model.setHovering(rect.contains(window.mouseLocationOutsideOfEventStream))
     }
 }
 
@@ -111,6 +134,11 @@ final class NotchWindowController {
         host.model = model
         host.sizingOptions = []
         panel.contentView = host
+        panel.acceptsKeyboardInput = model.expanded
+        model.$expanded.sink { [weak panel] expanded in
+            panel?.acceptsKeyboardInput = expanded
+            if !expanded { panel?.resignKey() }
+        }.store(in: &cancellables)
 
         relocate()
 
@@ -120,10 +148,22 @@ final class NotchWindowController {
             MainActor.assumeIsolated { self?.relocate() }
         })
 
-        // recompute() sets `presentation` before `currentSize`, so the presentation is current here.
+        for (name, tracking) in [(NSMenu.didBeginTrackingNotification, true), (NSMenu.didEndTrackingNotification, false)] {
+            observers.append(NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak model] _ in
+                MainActor.assumeIsolated { model?.setMenuTracking(tracking) }
+            })
+        }
+
+        // @Published emits before currentSize is stored. Resizing/displaying synchronously can
+        // lay out SwiftUI with the old height, clipping new controls below the visible island.
         model.$currentSize
             .removeDuplicates()
-            .sink { [weak self] size in self?.resize(to: size) }
+            .sink { [weak self] size in
+                Task { @MainActor [weak self] in
+                    guard let self, self.model.currentSize == size else { return }
+                    self.resize(to: size)
+                }
+            }
             .store(in: &cancellables)
 
         panel.orderFrontRegardless()
@@ -133,6 +173,7 @@ final class NotchWindowController {
     func relocate() {
         guard let s = NSScreen.screens.first(where: { $0.hasNotch }) ?? NSScreen.main ?? NSScreen.screens.first else { return }
         screen = s
+        model.availableIslandWidth = max(300, s.frame.width - 48)
         model.hasHardwareNotch = s.hasNotch
         model.notchSize = s.notchSize
         applyFrame(windowSize(for: model.currentSize))
@@ -168,6 +209,6 @@ final class NotchWindowController {
             MainActor.assumeIsolated { self?.applyFrame(target) }
         }
         shrinkWork = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.55, execute: work)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.40, execute: work)
     }
 }

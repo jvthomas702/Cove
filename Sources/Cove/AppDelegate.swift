@@ -11,6 +11,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var nowPlaying: NowPlayingMonitor?
     private var mirror: NotificationMirror?
     private let battery = BatteryMonitor()
+    private let desktopAI = DesktopAIActivityMonitor()
     private var bluetooth: BluetoothBatteryMonitor?
     private var calendar: CalendarMonitor?
     private var feeds: ICSFeedMonitor?
@@ -28,6 +29,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var hiddenUntil: Date?
     private var unhideTimer: Timer?
     private var observers: [NSObjectProtocol] = []
+    private let updater = CoveUpdater()
     private var settingsController: SettingsController!
     private var settingsWindow: SettingsWindowController?
     private var updates: UpdateChecker?
@@ -41,6 +43,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var version: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "dev" }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        NSApp.appearance = NSAppearance(named: .darkAqua)
         guard !anotherCopyIsRunning() else {
             NSApp.terminate(nil)
             return
@@ -52,8 +55,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         windowController = NotchWindowController(model: model)
         agents = AgentBridge(model: model)
 
-        settingsController = SettingsController(model: model)
+        settingsController = SettingsController(model: model, updater: updater)
         model.openSettings = { [weak self] pane in self?.openSettings(pane: pane) }
+        model.applyConfig = { [weak self] config in self?.updateConfig(config) }
         settingsController.onConfigChange = { [weak self] config in self?.updateConfig(config) }
         settingsController.onRunDemo = { [weak self] in self?.runDemo() }
         settingsController.onCopyDiagnostics = { [weak self] in self?.copyDiagnostics() }
@@ -73,6 +77,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         battery.start()
         if config.calendar { startCalendar(config) }
         startFeeds(config)
+        model.sports.start(config: config)
+        desktopAI.onEvent = { [weak self] event in self?.model.ingest(event) }
+        desktopAI.onStatus = { [weak self] status in
+            if self?.model.desktopAIStatus != status { self?.model.desktopAIStatus = status }
+        }
+        model.codexChats.start()
+        desktopAI.start(enabled: config.desktopAIActivity)
         if config.screenshotsToShelf { startScreenshots() }
         startHUD(mode: config.hud)
         hotKeys.onAction = { [weak self] action in self?.model.handleShortcut(action) }
@@ -98,12 +109,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             MainActor.assumeIsolated {
                 self?.calendar?.refresh()
                 self?.feeds?.fetchAll()
+                self?.model.sports.refresh()
                 self?.screenshots?.recheckAccess()
                 self?.windowController.relocate()
             }
         })
 
         buildStatusItem()
+        if !debugAPI { updater.start() }
         welcomeIfNeeded()
     }
 
@@ -114,8 +127,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         battery.stop()
         calendar?.stop()
         feeds?.stop()
+        model.sports.stop()
+        model.codexChats.stop()
+        desktopAI.stop()
         screenshots?.stop()
         cloud?.stop()
+        actions?.stop()
+        clipboard?.stop()
+        bluetooth?.stop()
+        updates?.stop()
+        hotKeys.stop()
         volume.stop()
         mediaKeys.stop()
     }
@@ -176,6 +197,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let old = model.config
         CoveConfig.save(new)
         model.config = new
+        model.sports.update(config: new)
+        if new.desktopAIActivity != old.desktopAIActivity { desktopAI.start(enabled: new.desktopAIActivity) }
 
         if new.calendar != old.calendar {
             if new.calendar {
@@ -355,9 +378,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard !debugAPI, updates == nil else { return }
         let checker = UpdateChecker(currentVersion: version)
         checker.onNewRelease = { [weak self] release in
-            self?.model.show(Banner(title: "Cove \(release.version) is out", body: "Click to download it",
+            self?.model.show(Banner(title: "Cove \(release.version) is out", body: "Update from Settings → About",
                                     style: .info, icon: .symbol("arrow.down.circle.fill", Palette.blue),
-                                    sticky: true, openURL: release.url, source: "Update"))
+                                    showsUpdates: true, source: "Update"))
         }
         checker.start()
         updates = checker
@@ -541,6 +564,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(statusLine)
         menu.addItem(.separator())
         addItem(to: menu, "Settings…", #selector(openSettingsFromMenu), key: ",")
+        addItem(to: menu, "Check for Updates…", #selector(checkForUpdates))
+        addItem(to: menu, "Pin / unpin notch", #selector(togglePinFromMenu))
         addItem(to: menu, "Run demo", #selector(runDemoFromMenu))
         addItem(to: menu, "Send test notification", #selector(sendTest))
         menu.addItem(.separator())
@@ -576,6 +601,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return item
     }
 
+    @objc private func checkForUpdates() { updater.check() }
+    @objc private func togglePinFromMenu() { model.togglePinnedOpen() }
     @objc private func openSettingsFromMenu() { openSettings() }
     @objc private func runDemoFromMenu() { runDemo() }
 
@@ -611,6 +638,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             "Claude hooks: \(ClaudeHooks.isInstalled ? "connected" : "not connected"); Codex: \(CodexNotify.state)",
             "CLI tools: \(CLIInstaller.isInstalled ? "installed" : "missing"); extension: \(BrowserExtension.installedVersion ?? "not copied")",
             "Last extension event: \(model.lastExtensionEvent.map { "\($0)" } ?? "never")",
+            "ChatGPT app: \(model.desktopAIStatus)",
         ]
         for permission in Permission.allCases {
             let allowed = permission == .desktop ? model.screenshotAccess == .ok : permission.isGranted

@@ -15,7 +15,7 @@ check() { if eval "$2"; then echo "PASS $1"; else echo "FAIL $1"; failures=$((fa
 mkdir -p ~/.config/cove ~/Desktop
 cat > ~/.config/cove/config.json <<'JSON'
 { "calendar": false, "mirrorNotifications": false, "assignmentCalendars": [], "hud": "passive", "mediaApps": [], "sounds": false,
-  "screenshotsToShelf": true, "bannerSeconds": 6 }
+  "screenshotsToShelf": true, "screenshotBanners": true, "sportsEnabled": false, "desktopAIActivity": false, "bannerSeconds": 6 }
 JSON
 defaults delete app.cove.island 2>/dev/null || true
 

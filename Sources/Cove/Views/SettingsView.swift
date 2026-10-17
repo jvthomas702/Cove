@@ -7,6 +7,7 @@ import SwiftUI
 @MainActor
 final class SettingsController: ObservableObject {
     let model: IslandModel
+    let updater: CoveUpdater
     /// Called with the new config whenever a setting changes (AppDelegate saves and applies it).
     var onConfigChange: ((CoveConfig) -> Void)?
     var onRunDemo: (() -> Void)?
@@ -33,8 +34,9 @@ final class SettingsController: ObservableObject {
     private var timer: Timer?
     private var modelChanges: AnyCancellable?
 
-    init(model: IslandModel) {
+    init(model: IslandModel, updater: CoveUpdater? = nil) {
         self.model = model
+        self.updater = updater ?? CoveUpdater()
         // Settings panes read config and calendar status from the model, so redraw when it changes.
         modelChanges = model.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }
         refresh()
@@ -278,9 +280,9 @@ struct SettingsView: View {
                     .badge(pane == .permissions ? missingPermissions : 0)
                     .tag(pane)
             }
-            .navigationSplitViewColumnWidth(164)
+            .navigationSplitViewColumnWidth(170)
             .scrollContentBackground(.hidden)
-            .background(Color.black)
+            .background(Theme.surface)
         } detail: {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
@@ -298,10 +300,11 @@ struct SettingsView: View {
                 .padding(18)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .background(Color.black)
+            .background(Theme.background)
         }
-        .frame(minWidth: 560, minHeight: 440)
-        .preferredColorScheme(.dark)
+        .background(Theme.background)
+        .frame(minWidth: 620, minHeight: 520)
+        .preferredColorScheme(model.config.islandTheme.colorScheme)
     }
 
     private var missingPermissions: Int {
@@ -337,7 +340,7 @@ private struct SettingsGroup<Content: View>: View {
             VStack(alignment: .leading, spacing: 12) { content }
                 .padding(14)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.primary.opacity(0.05)))
+                .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Theme.surface))
             if let footer {
                 Text(footer).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }
@@ -374,6 +377,11 @@ private struct GeneralPane: View {
                       isOn: controller.binding(\.checkForUpdates))
         }
         SettingsGroup(title: "The island") {
+            Picker("Home widget", selection: controller.binding(\.homeWidget)) {
+                ForEach(HomeWidget.allCases.filter { $0 != .ai }, id: \.self) { Text($0.title).tag($0) }
+            }
+            ToggleRow(title: "Show live AI work beside the notch", detail: "Temporarily shows active AI work, then returns to your sports score",
+                      isOn: controller.binding(\.aiWorkInNotch))
             ToggleRow(title: "Open when the pointer rests on the notch",
                       detail: "Off: click the notch to open it", isOn: controller.binding(\.hoverToExpand))
             ToggleRow(title: "Play sounds", detail: "When something finishes, fails or needs you",
@@ -405,6 +413,26 @@ private struct FeaturesPane: View {
     @ObservedObject var controller: SettingsController
 
     var body: some View {
+        SettingsGroup(title: "AI activity",
+                      footer: "Open the AI tab to inspect your connected agents. App tracking reads visible window titles and generation controls locally; it needs Accessibility. Keep ChatGPT's chat window open. Browser reply previews can be turned off in the extension.") {
+            ToggleRow(title: "Follow the ChatGPT desktop app", isOn: controller.binding(\.desktopAIActivity))
+            Text(controller.model.desktopAITrackingStatus).font(.caption).foregroundStyle(.secondary)
+            if controller.model.config.desktopAIActivity && !Permission.accessibility.isGranted {
+                Button("Allow Accessibility…") { controller.request(.accessibility) }
+            }
+        }
+        SettingsGroup(title: "Sports",
+                      footer: "Choose a game in the Sports tab to pin its score and latest play to the Home widget. Selected live games refresh about every 10 seconds; other followed scores refresh each minute. ESPN coverage and delays vary.") {
+            ToggleRow(title: "Enable sports", detail: "NBA, NFL and college football", isOn: controller.binding(\.sportsEnabled))
+            ToggleRow(title: "College football: Top 25 games only", detail: "At least one ranked team; turn off to browse all FBS games",
+                      isOn: controller.binding(\.sportsRankedOnly))
+        }
+        SettingsGroup(title: "Favorite teams", footer: "Favorites stay visible in the game picker, including unranked college teams. Auto-follow selects your next live or upcoming favorite matchup after the current game ends.") {
+            SportsFavoritesPicker(model: controller.model)
+            ToggleRow(title: "Automatically follow favorite teams", isOn: controller.binding(\.sportsAutoFollow))
+            ToggleRow(title: "Notify when a followed game starts", isOn: controller.binding(\.sportsStartAlerts))
+            ToggleRow(title: "Notify about followed score changes", isOn: controller.binding(\.sportsScoreAlerts))
+        }
         SettingsGroup(title: "Claude Code permission prompts",
               footer: "Smart shows prompts in the notch unless Claude's terminal is in front or you're away from the Mac. Unanswered prompts go back to the terminal.") {
             Picker("Answer prompts from the notch", selection: controller.binding(\.approvals)) {
@@ -451,6 +479,8 @@ private struct FeaturesPane: View {
               footer: "macOS's floating thumbnail holds each screenshot for about 5 seconds before saving it. Turn on instant screenshots to skip it.") {
             ToggleRow(title: "Put new screenshots on the shelf", isOn: controller.binding(\.screenshotsToShelf))
             SwiftUI.Group {
+                ToggleRow(title: "Show a banner for new screenshots", detail: "Off by default: captures arrive quietly without changing your tab",
+                          isOn: controller.binding(\.screenshotBanners))
                 ToggleRow(title: "Instant screenshots", detail: "Hides macOS's floating thumbnail so the shelf gets them right away",
                           isOn: Binding(get: { controller.instantScreenshots }, set: { controller.setInstantScreenshots($0) }))
                 ToggleRow(title: "Move screenshots off the Desktop", detail: "Into Pictures › Screenshots",
@@ -697,6 +727,9 @@ private struct ConnectionsPane: View {
     }
 
     var body: some View {
+        Text("AI connections").font(.title2.weight(.semibold))
+        Text("Connect your coding agents and AI chats to follow their work in the notch.")
+            .font(.subheadline).foregroundStyle(.secondary)
         SettingsGroup(title: "Claude Code",
               footer: controller.claudeCodePresent ? "Adds hooks to ~/.claude/settings.json (a backup is kept). Start a new session afterwards." : "Claude Code isn't set up on this Mac yet.") {
             statusRow(title: "Agent pings and permission prompts", connected: controller.claudeHooks) {
@@ -716,8 +749,16 @@ private struct ConnectionsPane: View {
                 }
             }
         }
+        SettingsGroup(title: "ChatGPT desktop",
+                      footer: "Reads visible generation controls locally. Accessibility is required to follow the desktop app.") {
+            ToggleRow(title: "Follow ChatGPT", isOn: controller.binding(\.desktopAIActivity))
+            Text(controller.model.desktopAITrackingStatus).font(.caption).foregroundStyle(.secondary)
+            if controller.model.config.desktopAIActivity && !Permission.accessibility.isGranted {
+                Button("Allow Accessibility…") { controller.request(.accessibility) }
+            }
+        }
         SettingsGroup(title: "Browser chat tabs",
-              footer: "Works in Chrome, Arc, Brave and Edge. Pings when ChatGPT, Claude or Gemini finishes answering in a background tab.") {
+              footer: "Works in Chrome, Arc, Brave and Edge. Shows live work and reply previews for ChatGPT, Claude and Gemini. After updating Cove, reload the unpacked extension and refresh your chat tabs.") {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Cove extension")
@@ -766,7 +807,7 @@ private struct ConnectionsPane: View {
 
     private func statusRow(title: String, connected: Bool, connectTitle: String = "Connect", action: @escaping () -> Void) -> some View {
         HStack {
-            Circle().fill(connected ? Color.green : Color.secondary.opacity(0.4)).frame(width: 8, height: 8)
+            Circle().fill(connected ? Theme.accent : Color.secondary.opacity(0.4)).frame(width: 8, height: 8)
             Text(title)
             Spacer()
             if connected && connectTitle == "Install" {
@@ -793,6 +834,7 @@ private struct AboutPane: View {
                 Text(controller.model.serverStatus).font(.caption).foregroundStyle(.secondary)
             }
         }
+        UpdateSettingsGroup(updater: controller.updater)
         SettingsGroup(title: "Help") {
             HStack {
                 Button("Run the demo") { controller.onRunDemo?() }
@@ -802,6 +844,20 @@ private struct AboutPane: View {
             Text("Copy diagnostics puts a short report on your clipboard (versions, permissions, connections) to paste into a bug report. It contains no notification or chat content.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+        }
+    }
+}
+
+
+private struct UpdateSettingsGroup: View {
+    @ObservedObject var updater: CoveUpdater
+    var body: some View {
+        SettingsGroup(title: "Updates", footer: updater.status) {
+            ToggleRow(title: "Automatically check for updates", isOn: Binding(get: { updater.automaticChecks }, set: { updater.setAutomaticChecks($0) }))
+            ToggleRow(title: "Download and install updates automatically", detail: "Install verified updates when Cove is ready to restart",
+                      isOn: Binding(get: { updater.automaticDownloads }, set: { updater.setAutomaticDownloads($0) }))
+            Button("Check for updates…") { updater.check() }.disabled(!updater.canCheck)
+                .accessibilityIdentifier("updates.check")
         }
     }
 }

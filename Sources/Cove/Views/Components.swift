@@ -142,7 +142,7 @@ struct PlaybackBar: View {
             VStack(spacing: 3) {
                 GeometryReader { geo in
                     ZStack(alignment: .leading) {
-                        Capsule().fill(Color.white.opacity(0.14))
+                        Capsule().fill(Theme.surfaceRaised)
                         Capsule()
                             .fill(tint)
                             .frame(width: duration > 0 ? geo.size.width * min(elapsed / duration, 1) : 0)
@@ -379,9 +379,22 @@ struct IconButton: View {
 /// Buttons dip slightly when pressed, so clicks feel physical.
 struct PressableStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(configuration.isPressed ? 0.94 : 1)
-            .opacity(configuration.isPressed ? 0.85 : 1)
-            .animation(.spring(response: 0.2, dampingFraction: 0.7), value: configuration.isPressed)
+        PressableContent(label: configuration.label, pressed: configuration.isPressed)
+    }
+}
+
+private struct PressableContent<Content: View>: View {
+    let label: Content
+    let pressed: Bool
+    @State private var hovered = false
+
+    var body: some View {
+        label
+            .scaleEffect(pressed && !Theme.reduceMotion ? 0.98 : 1)
+            .opacity(pressed ? 0.85 : 1)
+            .brightness(hovered && !pressed ? 0.035 : 0)
+            .onHover { hovered = $0 }
+            .animation(.easeOut(duration: Theme.reduceMotion ? 0.05 : 0.12), value: pressed)
+            .animation(.easeOut(duration: 0.12), value: hovered)
     }
 }

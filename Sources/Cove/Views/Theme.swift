@@ -6,14 +6,16 @@ import SwiftUI
 /// and numbers), and concentric corner radii.
 enum Theme {
     // MARK: Ink (text and icons on black)
-    static let ink = Color.white.opacity(0.96)
-    static let inkSecondary = Color.white.opacity(0.62)
-    static let inkTertiary = Color.white.opacity(0.40)
+    static let ink = Color(hex: 0xE3E7EF)
+    static let inkSecondary = Color(hex: 0xA4ABBA)
+    static let inkTertiary = inkSecondary.opacity(0.72)
 
     // MARK: Surfaces (layered on the black island)
-    static let surface = Color.white.opacity(0.045)
-    static let surfaceRaised = Color.white.opacity(0.09)
-    static let hairline = Color.white.opacity(0.07)
+    static let background = Color(hex: 0x000000)
+    static let surface = Color(hex: 0x111216)
+    static let surfaceRaised = Color(hex: 0x222329)
+    static let hairline = Color(hex: 0xE3E7EF).opacity(0.10)
+    static let accent = Color(hex: 0x8FC7FF)
 
     // MARK: Spacing (4-pt grid)
     enum Space {
@@ -47,15 +49,19 @@ enum Theme {
     // MARK: Motion
     static var reduceMotion: Bool { NSWorkspace.shared.accessibilityDisplayShouldReduceMotion }
 
-    /// The island's morph: a little overshoot when it grows, like the iPhone.
+    /// A quick, well-damped spring keeps the panel anchored without overshoot.
     static var morph: Animation {
-        reduceMotion ? .easeInOut(duration: 0.18) : .spring(response: 0.46, dampingFraction: 0.74, blendDuration: 0.1)
+        reduceMotion ? .easeInOut(duration: 0.18) : .spring(response: 0.34, dampingFraction: 0.90, blendDuration: 0.1)
     }
 
     /// Small state changes inside the island.
     static var snappy: Animation {
-        reduceMotion ? .easeInOut(duration: 0.15) : .spring(response: 0.3, dampingFraction: 0.86)
+        reduceMotion ? .easeInOut(duration: 0.15) : .spring(response: 0.25, dampingFraction: 0.92)
     }
+}
+
+extension IslandTheme {
+    var colorScheme: ColorScheme { .dark }
 }
 
 /// Trackpad haptic tap (only felt on Force Touch trackpads while a finger is resting on them).
@@ -71,26 +77,10 @@ enum Haptics {
 
 // MARK: - Morph transition
 
-/// Content dissolves through a blur while the island changes shape, instead of a plain cross-fade.
-struct BlurMorph: ViewModifier {
-    let active: Bool
-
-    func body(content: Content) -> some View {
-        content
-            .blur(radius: active ? 10 : 0)
-            .opacity(active ? 0 : 1)
-            .scaleEffect(active ? 0.9 : 1, anchor: .top)
-    }
-}
-
+/// Content fades while the shell moves; text and controls keep their scale.
 extension AnyTransition {
     static var islandMorph: AnyTransition {
-        let base = AnyTransition.modifier(active: BlurMorph(active: true), identity: BlurMorph(active: false))
-        if Theme.reduceMotion { return .opacity }
-        return .asymmetric(
-            insertion: base.animation(.spring(response: 0.42, dampingFraction: 0.82).delay(0.07)),
-            removal: base.animation(.easeOut(duration: 0.14))
-        )
+        .opacity.animation(.easeOut(duration: Theme.reduceMotion ? 0.10 : 0.16))
     }
 }
 

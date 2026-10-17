@@ -83,6 +83,7 @@ enum AgentKind: String {
 
     /// Chats that live in a browser tab.
     var isWeb: Bool { self == .chatgpt || self == .gemini }
+    var isAI: Bool { [.claude, .codex, .chatgpt, .gemini].contains(self) }
 }
 
 /// Tokens a Claude Code session has used, summed over its transcript.
@@ -107,6 +108,18 @@ enum ActivityState: Equatable {
     case running, attention, done, failed
 }
 
+enum AIActivityFilter: String, CaseIterable {
+    case all = "All", live = "Live", finished = "Done"
+
+    func includes(_ activity: Activity) -> Bool {
+        switch self {
+        case .all: return true
+        case .live: return activity.isLive
+        case .finished: return !activity.isLive
+        }
+    }
+}
+
 struct Activity: Identifiable, Equatable {
     let id: String
     var agent: AgentKind
@@ -121,12 +134,38 @@ struct Activity: Identifiable, Equatable {
     var seen: Bool = true
     /// The app that was frontmost when the work started (usually your terminal); clicking jumps back to it.
     var ownerApp: String? = nil
-    /// A web page to open instead (a CI run on GitHub, a Claude cloud session at claude.ai).
-    var url: URL? = nil
+    var phase: String? = nil
+    var openURL: URL? = nil
+
+    var originLabel: String {
+        if id.hasPrefix("web:") { return "Browser tab" }
+        if id.hasPrefix("desktop:") { return "Desktop app" }
+        if id.hasPrefix("cloud:") { return "Claude cloud" }
+        if id.hasPrefix("ci:") { return "GitHub Actions" }
+        return "Agent"
+    }
     /// Tokens used so far (Claude Code sessions, read from the transcript).
     var tokens: TokenUsage? = nil
 
     var isLive: Bool { state == .running || state == .attention }
+
+    var buddyMood: BuddyMood {
+        switch state {
+        case .running: return .working
+        case .attention: return .alert
+        case .done: return .happy
+        case .failed: return .sad
+        }
+    }
+}
+
+/// An observed phase of one session. Repeated reply chunks update the current phase.
+struct AIActivityStep: Identifiable, Equatable {
+    let id = UUID()
+    var phase: String
+    var detail: String
+    var state: ActivityState
+    var date: Date
 }
 
 // MARK: - Banners (transient notifications)
@@ -178,6 +217,8 @@ struct Banner: Identifiable, Equatable {
     var duration: TimeInterval? = nil
     /// Clicking opens the shelf tab.
     var showsShelf: Bool = false
+    /// Clicking opens the signed in-app updater in Settings → About.
+    var showsUpdates: Bool = false
     /// Whether it's kept in the "Earlier" list after it disappears.
     var logged: Bool = true
     /// Overrides the small label above the title ("Finished", "Needs you", an app name…).
@@ -200,6 +241,10 @@ struct CoveEvent: Decodable {
     /// 0…1 for a progress ring on a running activity.
     var progress: Double?
     var sticky: Bool?
+    var phase: String? = nil
+    var url: String? = nil
+    /// Keep the finished activity in the widget without an interrupting banner.
+    var silent: Bool? = nil
 }
 
 // MARK: - Media & power
