@@ -760,6 +760,14 @@ struct ShelfPane: View {
     @ObservedObject var model: IslandModel
 
     var body: some View {
+        if model.isDropTargeted && model.config.airDropDropZone {
+            DropTargets(hover: model.dropHover)
+        } else {
+            shelf
+        }
+    }
+
+    private var shelf: some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
             HStack {
                 SectionTitle(title: "Shelf", count: model.shelf.count)
@@ -833,6 +841,47 @@ private struct ClipChip: View {
                 Button("Remove") { model.removeClip(text) }
             }
             .animation(Theme.snappy, value: hovering)
+    }
+}
+
+/// Shown while a file is dragged over the island: send it with AirDrop, or keep it on the shelf.
+/// The island's drop handler routes the drop by these tiles' frames (see DropRouting).
+private struct DropTargets: View {
+    let hover: DropTarget?
+
+    var body: some View {
+        HStack(spacing: Theme.Space.s) {
+            tile(.airDrop, symbol: "dot.radiowaves.left.and.right", title: "AirDrop", detail: "Send to a nearby device")
+            tile(.keep, symbol: "tray.and.arrow.down.fill", title: "Keep", detail: "Put it on the shelf")
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .animation(Theme.snappy, value: hover)
+    }
+
+    private func tile(_ target: DropTarget, symbol: String, title: String, detail: String) -> some View {
+        let active = hover == target
+        return VStack(spacing: 6) {
+            Image(systemName: symbol)
+                .font(.system(size: 22, weight: .medium))
+                .foregroundStyle(Palette.blue)
+                .symbolEffect(.bounce, value: active)
+            Text(title).font(Theme.Font.headline).foregroundStyle(active ? Theme.ink : Theme.inkSecondary)
+            Text(detail).font(Theme.Font.caption).foregroundStyle(Theme.inkTertiary).lineLimit(1)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(
+            RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
+                .fill(active ? Palette.blue.opacity(0.16) : Theme.surface)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
+                .strokeBorder(active ? Palette.blue.opacity(0.9) : Palette.blue.opacity(0.25),
+                              style: StrokeStyle(lineWidth: 1.5, dash: active ? [] : [6, 5]))
+        )
+        .scaleEffect(active ? 1.02 : 1)
+        .dropTargetFrame(target)
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("drop.\(target.rawValue)")
     }
 }
 

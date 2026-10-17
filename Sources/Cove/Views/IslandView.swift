@@ -88,7 +88,6 @@ struct IslandRootView: View {
 
 struct IslandShell: View {
     @ObservedObject var model: IslandModel
-    @State private var dropTargeted = false
     @Namespace private var namespace
 
     var body: some View {
@@ -132,13 +131,12 @@ struct IslandShell: View {
         .frame(width: size.width, height: size.height)
         .contentShape(Rectangle())
         // Hover is handled by IslandHostingView's tracking area (see NotchWindow.swift).
-        .onDrop(of: [UTType.fileURL], isTargeted: $dropTargeted) { providers in
-            model.receiveDrop(providers)
-            return true
+        // One drop handler for the whole island; the AirDrop and Keep targets report their frames to it.
+        .coordinateSpace(name: DropRouting.space)
+        .onPreferenceChange(DropTargetFramesKey.self) { [model] frames in
+            MainActor.assumeIsolated { model.dropFrames = frames }
         }
-        .onChange(of: dropTargeted) { _, targeted in
-            model.setDropTargeted(targeted)
-        }
+        .onDrop(of: [UTType.fileURL], delegate: IslandDropDelegate(model: model))
         .onChange(of: p) { _, next in
             if next == .expanded || next == .approval { Haptics.tap() }
         }

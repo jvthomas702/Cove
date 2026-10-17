@@ -82,6 +82,10 @@ struct CoveConfig: Codable {
     /// Move new screenshots from the Desktop into ~/Pictures/Screenshots, keeping the Desktop clean.
     var screenshotsMoveOffDesktop: Bool = false
 
+    // MARK: Drop zone
+    /// Dragging a file onto the island shows two targets: AirDrop and Keep (the shelf).
+    var airDropDropZone: Bool = true
+
     // MARK: Widgets & sports
     var homeWidget: HomeWidget = .auto
     var desktopAIActivity: Bool = true
@@ -171,6 +175,7 @@ struct CoveConfig: Codable {
         screenshotsToShelf = value(.screenshotsToShelf, d.screenshotsToShelf)
         screenshotBanners = value(.screenshotBanners, d.screenshotBanners)
         screenshotsMoveOffDesktop = value(.screenshotsMoveOffDesktop, d.screenshotsMoveOffDesktop)
+        airDropDropZone = value(.airDropDropZone, d.airDropDropZone)
         homeWidget = value(.homeWidget, d.homeWidget)
         desktopAIActivity = value(.desktopAIActivity, d.desktopAIActivity)
         aiWorkInNotch = value(.aiWorkInNotch, d.aiWorkInNotch)
