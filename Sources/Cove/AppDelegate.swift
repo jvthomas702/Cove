@@ -28,6 +28,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var observers: [NSObjectProtocol] = []
     private var settingsController: SettingsController!
     private var settingsWindow: SettingsWindowController?
+    private var clipboard: ClipboardMonitor?
 
     /// Extra routes used by CI to drive the UI for screenshots. Only on with the `--debug-api` launch argument.
     private let debugAPI = CommandLine.arguments.contains("--debug-api")
@@ -70,6 +71,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if config.screenshotsToShelf { startScreenshots() }
         startHUD(mode: config.hud)
         BrowserExtension.syncFromBundle()
+        if config.clipboardHistory { startClipboard() }
 
         observers.append(NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main
@@ -181,6 +183,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         if new.screenshotsToShelf != old.screenshotsToShelf {
             if new.screenshotsToShelf { startScreenshots() } else { screenshots?.stop(); screenshots = nil }
+        }
+        if new.clipboardHistory != old.clipboardHistory {
+            if new.clipboardHistory {
+                startClipboard()
+            } else {
+                clipboard?.stop()
+                clipboard = nil
+                model.clearClips()
+            }
         }
         if new.hud != old.hud {
             stopHUD()
@@ -296,6 +307,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// Calendar links pasted in Settings (D2L, Canvas, Google's secret iCal address). Always running;
     /// with no links it does nothing.
+    private func startClipboard() {
+        guard clipboard == nil else { return }
+        let monitor = ClipboardMonitor()
+        monitor.onCopy = { [weak self] text in self?.model.addClip(text) }
+        monitor.start()
+        clipboard = monitor
+    }
+
     private func startFeeds(_ config: CoveConfig) {
         feeds?.stop()
         let monitor = ICSFeedMonitor(config: config)

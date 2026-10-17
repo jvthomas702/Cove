@@ -725,6 +725,14 @@ struct ShelfPane: View {
     @ObservedObject var model: IslandModel
 
     var body: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
+            files
+            if !model.clips.isEmpty { ClipStrip(model: model) }
+        }
+    }
+
+    @ViewBuilder
+    private var files: some View {
         if model.shelf.isEmpty {
             DropZone(targeted: model.isDropTargeted)
         } else {
@@ -753,6 +761,56 @@ struct ShelfPane: View {
                 )
             }
         }
+    }
+}
+
+/// Recently copied text: click a clip to copy it again, or drag it into any app.
+private struct ClipStrip: View {
+    @ObservedObject var model: IslandModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                SectionTitle(title: "Copied", count: model.clips.count)
+                Spacer()
+                ChipButton(title: "Clear", systemImage: "trash") { model.clearClips() }
+            }
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    ForEach(model.clips, id: \.self) { clip in
+                        ClipChip(text: clip, model: model)
+                    }
+                }
+            }
+        }
+    }
+}
+
+private struct ClipChip: View {
+    let text: String
+    @ObservedObject var model: IslandModel
+    @State private var hovering = false
+
+    var body: some View {
+        Text(text.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: "\n", with: " "))
+            .font(Theme.Font.caption)
+            .foregroundStyle(Theme.inkSecondary)
+            .lineLimit(1)
+            .truncationMode(.tail)
+            .frame(maxWidth: 140, alignment: .leading)
+            .padding(.horizontal, 10)
+            .frame(height: 26)
+            .background(Capsule().fill(hovering ? Theme.surfaceRaised : Theme.surface))
+            .contentShape(Capsule())
+            .onHover { hovering = $0 }
+            .onTapGesture { model.copyClip(text) }
+            .onDrag { NSItemProvider(object: text as NSString) }
+            .help("Click to copy")
+            .contextMenu {
+                Button("Copy") { model.copyClip(text) }
+                Button("Remove") { model.removeClip(text) }
+            }
+            .animation(Theme.snappy, value: hovering)
     }
 }
 
