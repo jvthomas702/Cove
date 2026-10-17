@@ -1,10 +1,9 @@
-# Cove 1.4.0
+# Cove 1.5.0
 
-- Combines the black sports and chat workspace with the latest updates from main.
-- Nori, the black companion with glowing eyes, has springier expressions and motion. List avatars stay still and Reduce Motion is respected.
-- Adds keyboard shortcuts, optional clipboard history, Bluetooth battery display, GitHub Actions activity, Claude token usage, and Claude cloud pull-request activity.
-- Keeps full sports Gamecast, favorites, offline logos, screenshot editing and persistent shelf undo.
-- Keeps existing local Codex chat prompts, exact chat targeting, retained drafts and accurate approval/input attention alerts.
-- New-release notices open Settings → About for signed in-app updates instead of asking you to download another copy.
+- A smaller black island with two Home tiles, icon tabs, simpler controls, tinted pill buttons and prominent Start and Send buttons.
+- Show a followed game’s score alongside playing music in the compact island.
+- Finished games drop out of the followed strip and compact notch; one-off watched games are cleared when they end.
+- Nori has richer expressions: thinking glances, springier landings and spins, attention pings, sighs and occasional sleepy peeks. Static list avatars and Reduce Motion remain supported.
+- Retains sports Gamecast, favorites, screenshot editing and undo, existing local Codex chat prompts, attention fixes, optional device and cloud activity, and signed in-app updates.
 
-Existing chat messaging supports local Codex chats. Claude cloud activity appears when a cloud session opens a GitHub pull request; it is a status view, not a cloud chat composer. Optional clipboard, CI and Bluetooth features can be enabled in Settings.
+Update through Settings → About → Check for Updates. Your existing Cove installation updates in place.
