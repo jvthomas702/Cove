@@ -127,6 +127,23 @@ final class AgentBridgeTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: url) }
         XCTAssertEqual(TranscriptReader.lastAssistantText(path: url.path), "All 14 tests pass.")
     }
+
+    func testTranscriptUsageCountsEachMessageOnce() throws {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("cove-usage-\(UUID()).jsonl")
+        let lines = [
+            #"{"type":"user","message":{"content":"hi"}}"#,
+            #"{"type":"assistant","message":{"id":"m1","content":[],"usage":{"input_tokens":10,"cache_read_input_tokens":1000,"output_tokens":5}}}"#,
+            #"{"type":"assistant","message":{"id":"m1","content":[],"usage":{"input_tokens":10,"cache_read_input_tokens":1000,"output_tokens":50}}}"#,
+            #"{"type":"assistant","message":{"id":"m2","content":[],"usage":{"input_tokens":20,"cache_creation_input_tokens":200,"output_tokens":100}}}"#,
+        ]
+        try lines.joined(separator: "\n").write(to: url, atomically: true, encoding: .utf8)
+        defer { try? FileManager.default.removeItem(at: url) }
+        let usage = try XCTUnwrap(TranscriptReader.usage(path: url.path))
+        XCTAssertEqual(usage, TokenUsage(input: 1230, output: 150))
+        XCTAssertEqual(usage.short, "1k tokens")
+        XCTAssertEqual(TokenUsage(input: 800, output: 40).short, "840 tokens")
+        XCTAssertEqual(TokenUsage(input: 1_250_000, output: 50_000).short, "1.3M tokens")
+    }
 }
 
 // MARK: - Island state

@@ -599,6 +599,13 @@ struct ActivityRow: View {
                             .transition(.scale.combined(with: .opacity))
                     }
                     Spacer(minLength: 4)
+                    if let tokens = activity.tokens {
+                        Text(tokens.short)
+                            .font(.system(size: 10.5, weight: .medium, design: .rounded).monospacedDigit())
+                            .foregroundStyle(Theme.inkTertiary)
+                            .contentTransition(.numericText())
+                            .help("\(tokens.input.formatted()) in, \(tokens.output.formatted()) out")
+                    }
                     timeLabel
                         .font(.system(size: 10.5, weight: .medium, design: .rounded).monospacedDigit())
                         .foregroundStyle(Theme.inkTertiary)
