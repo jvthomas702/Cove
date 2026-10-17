@@ -46,6 +46,7 @@ final class ConfigTests: XCTestCase {
         XCTAssertEqual(config.approvals, "smart")
         XCTAssertTrue(config.buddy)
         XCTAssertTrue(config.screenshotsToShelf)
+        XCTAssertTrue(config.shortcuts)
     }
 
     func testWrongTypesFallBackInsteadOfFailing() throws {

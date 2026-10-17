@@ -378,6 +378,9 @@ private struct GeneralPane: View {
                       isOn: controller.binding(\.sounds))
             ToggleRow(title: "Show what Claude is doing", detail: "\"Editing eval.py\", \"$ pytest\" and so on",
                       isOn: controller.binding(\.showToolActivity))
+            ToggleRow(title: "Keyboard shortcuts",
+                      detail: "⌃⌥Space opens the island. On a permission prompt: ⌃⌥Y allow, ⌃⌥N deny, ⌃⌥A always allow, ⌃⌥T terminal",
+                      isOn: controller.binding(\.shortcuts))
         }
         SettingsGroup(title: "Pip") {
             HStack(spacing: 14) {

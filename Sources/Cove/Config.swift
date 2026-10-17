@@ -80,6 +80,10 @@ struct CoveConfig: Codable {
     var hud: String = "replace"
     var hudSeconds: Double = 1.4
 
+    // MARK: Keyboard
+    /// ⌃⌥Space opens the island; ⌃⌥Y / N / A / T answer Claude's permission prompts.
+    var shortcuts: Bool = true
+
     init() {}
 
     init(from decoder: Decoder) throws {
@@ -121,6 +125,7 @@ struct CoveConfig: Codable {
         buddyAlwaysVisible = value(.buddyAlwaysVisible, d.buddyAlwaysVisible)
         hud = value(.hud, d.hud)
         hudSeconds = value(.hudSeconds, d.hudSeconds)
+        shortcuts = value(.shortcuts, d.shortcuts)
     }
 
     static var directory: URL {
