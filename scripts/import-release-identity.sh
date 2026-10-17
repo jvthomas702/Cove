@@ -14,14 +14,16 @@ NAME="${COVE_SIGNING_NAME:-Cove Release Signing}"
 
 KEYCHAIN="${RUNNER_TEMP:-/tmp}/cove-release.keychain-db"
 KEYCHAIN_PASS="$(openssl rand -hex 16)"
-P12="$(mktemp)"
-trap 'rm -f "$P12"' EXIT
+WORK="$(mktemp -d)"
+trap 'rm -rf "$WORK"' EXIT
+# `security import` guesses the format from the extension, so keep .p12.
+P12="$WORK/release.p12"
 printf '%s' "$COVE_SIGNING_P12" | base64 --decode > "$P12"
 
 security create-keychain -p "$KEYCHAIN_PASS" "$KEYCHAIN" >&2
 security set-keychain-settings "$KEYCHAIN" >&2
 security unlock-keychain -p "$KEYCHAIN_PASS" "$KEYCHAIN" >&2
-security import "$P12" -k "$KEYCHAIN" -P "$COVE_SIGNING_P12_PASSWORD" -T /usr/bin/codesign >&2
+security import "$P12" -f pkcs12 -k "$KEYCHAIN" -P "$COVE_SIGNING_P12_PASSWORD" -T /usr/bin/codesign >&2
 security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASS" "$KEYCHAIN" >/dev/null 2>&1
 # codesign only searches keychains in the user's search list.
 security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | tr -d '"' | xargs) >&2
