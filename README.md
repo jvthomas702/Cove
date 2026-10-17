@@ -44,7 +44,7 @@ Needs macOS 14 or later and Xcode or the Command Line Tools (`xcode-select --ins
 
 ## Set up
 
-Cove opens **Settings** on first launch. Everything is a click from there:
+Cove opens **Settings** on first launch and turns on **Open Cove when you log in**, so it's back after a restart (turn it off on the Permissions or General page). Everything is a click from there:
 
 - **Permissions**: shows what's allowed. Turn on only what you want: Calendars and Reminders for classes and due dates, Accessibility for the volume and brightness keys, Desktop folder for screenshots, Full Disk Access for notifications from other apps.
 - **Connections**: connects Claude Code (adds hooks to `~/.claude/settings.json`, with a backup), Codex, the browser extension, and installs the `cove-run` and `cove-notify` terminal tools.
