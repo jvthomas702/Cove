@@ -684,6 +684,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             openSettings(pane: SettingsPane(rawValue: arg) ?? .general)
         case "close-settings":
             settingsWindow?.close()
+        case "theme":
+            var next = model.config
+            next.islandTheme = IslandTheme(rawValue: arg) ?? .darkMatte
+            model.applyConfig?(next)
         case "approval":
             let input: [String: Any] = ["file_path": "/Users/you/hdc/eval.py", "old_string": "acc = evaluate(model)", "new_string": "acc = evaluate(model, seeds=3)\nplot_confusion_matrix(model)"]
             let (action, preview) = AgentBridge.describePermission(tool: "Edit", input: input)

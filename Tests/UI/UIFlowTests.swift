@@ -62,14 +62,14 @@ final class UIFlowTests: XCTestCase {
 
     func testCollegeFootballRankedFilter() {
         window.buttons["tab.sports"].click()
-        window.radioButtons["College football"].click()
+        window.radioButtons["CFB"].click()
         let ranked = window.buttons["sports.game.401858488"]
         XCTAssertTrue(ranked.waitForExistence(timeout: 8))
         XCTAssertFalse(window.buttons["sports.game.401871067"].exists)
         window.checkBoxes["sports.top25"].click()
         XCTAssertTrue(window.buttons["sports.game.401871067"].waitForExistence(timeout: 5))
         ranked.click()
-        XCTAssertTrue(text("Play-by-play").waitForExistence(timeout: 5))
+        XCTAssertTrue(window.radioButtons["Plays"].waitForExistence(timeout: 5))
         XCTAssertFalse(text("Updates paused.").exists)
     }
 

@@ -24,6 +24,8 @@ enum SportsLeague: String, Codable, CaseIterable {
         case .collegeFootball: return "College football"
         }
     }
+    /// Fits a narrow segmented control.
+    var shortTitle: String { self == .collegeFootball ? "CFB" : title }
     var path: String {
         switch self {
         case .nba: return "basketball/nba"

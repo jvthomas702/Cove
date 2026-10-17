@@ -5,17 +5,21 @@ import SwiftUI
 /// everything on it is built from a few white tints, one type family (SF Pro, rounded for titles
 /// and numbers), and concentric corner radii.
 enum Theme {
+    /// The look in use. Set from the config on the main thread; views re-render when the config changes.
+    static var style: IslandTheme = .darkMatte
+    static var isTerminal: Bool { style == .terminal }
+
     // MARK: Ink (text and icons on black)
-    static let ink = Color(hex: 0xE3E7EF)
-    static let inkSecondary = Color(hex: 0xA4ABBA)
-    static let inkTertiary = inkSecondary.opacity(0.72)
+    static var ink: Color { isTerminal ? Color(hex: 0xA6F5B8) : Color(hex: 0xE3E7EF) }
+    static var inkSecondary: Color { isTerminal ? Color(hex: 0x5FB574) : Color(hex: 0xA4ABBA) }
+    static var inkTertiary: Color { inkSecondary.opacity(0.72) }
 
     // MARK: Surfaces (layered on the black island)
     static let background = Color(hex: 0x000000)
-    static let surface = Color(hex: 0x111216)
-    static let surfaceRaised = Color(hex: 0x222329)
-    static let hairline = Color(hex: 0xE3E7EF).opacity(0.10)
-    static let accent = Color(hex: 0x8FC7FF)
+    static var surface: Color { isTerminal ? Color(hex: 0x050D07) : Color(hex: 0x111216) }
+    static var surfaceRaised: Color { isTerminal ? Color(hex: 0x0C1C10) : Color(hex: 0x222329) }
+    static var hairline: Color { isTerminal ? Color(hex: 0x3BE36A).opacity(0.22) : Color(hex: 0xE3E7EF).opacity(0.10) }
+    static var accent: Color { isTerminal ? Color(hex: 0x3BE36A) : Color(hex: 0x8FC7FF) }
 
     // MARK: Spacing (4-pt grid)
     enum Space {
@@ -27,22 +31,25 @@ enum Theme {
 
     // MARK: Radii — concentric: island 34 → card (34 − 14 inset) 20 → row 12.
     // The banner is near-pill, like an iPhone live activity dropping out of the island.
+    // The terminal look squares everything off.
     enum Radius {
         static let islandExpanded: CGFloat = 34
         static let islandBanner: CGFloat = 30
-        static let card: CGFloat = 20
-        static let row: CGFloat = 12
-        static let thumb: CGFloat = 8
+        static var card: CGFloat { Theme.isTerminal ? 6 : 20 }
+        static var row: CGFloat { Theme.isTerminal ? 4 : 12 }
+        static var thumb: CGFloat { Theme.isTerminal ? 3 : 8 }
     }
 
-    // MARK: Type
+    // MARK: Type (all monospaced in the terminal look)
     enum Font {
-        static let title = SwiftUI.Font.system(size: 13, weight: .semibold, design: .rounded)
-        static let headline = SwiftUI.Font.system(size: 12, weight: .semibold, design: .rounded)
-        static let body = SwiftUI.Font.system(size: 11)
-        static let caption = SwiftUI.Font.system(size: 10)
-        static let section = SwiftUI.Font.system(size: 11, weight: .semibold, design: .rounded)
-        static let number = SwiftUI.Font.system(size: 10, weight: .semibold, design: .rounded).monospacedDigit()
+        private static var rounded: SwiftUI.Font.Design { Theme.isTerminal ? .monospaced : .rounded }
+        private static var plain: SwiftUI.Font.Design { Theme.isTerminal ? .monospaced : .default }
+        static var title: SwiftUI.Font { .system(size: 13, weight: .semibold, design: rounded) }
+        static var headline: SwiftUI.Font { .system(size: 12, weight: .semibold, design: rounded) }
+        static var body: SwiftUI.Font { .system(size: 11, design: plain) }
+        static var caption: SwiftUI.Font { .system(size: 10, design: plain) }
+        static var section: SwiftUI.Font { .system(size: 11, weight: .semibold, design: rounded) }
+        static var number: SwiftUI.Font { .system(size: 10, weight: .semibold, design: rounded).monospacedDigit() }
         static let code = SwiftUI.Font.system(size: 10, design: .monospaced)
     }
 

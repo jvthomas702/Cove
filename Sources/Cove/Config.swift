@@ -2,7 +2,9 @@ import Foundation
 
 enum IslandTheme: String, Codable, CaseIterable {
     case darkMatte
-    var title: String { "Black" }
+    /// Green-on-black monospace, like a terminal.
+    case terminal
+    var title: String { self == .terminal ? "Terminal" : "Black" }
 }
 
 /// User settings, stored as JSON at ~/.config/cove/config.json.

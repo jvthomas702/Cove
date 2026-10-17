@@ -377,6 +377,11 @@ private struct GeneralPane: View {
                       isOn: controller.binding(\.checkForUpdates))
         }
         SettingsGroup(title: "The island") {
+            Picker("Look", selection: controller.binding(\.islandTheme)) {
+                ForEach(IslandTheme.allCases, id: \.self) { Text($0.title).tag($0) }
+            }
+            .pickerStyle(.segmented)
+            .accessibilityIdentifier("settings.look")
             Picker("Home widget", selection: controller.binding(\.homeWidget)) {
                 ForEach(HomeWidget.allCases.filter { $0 != .ai }, id: \.self) { Text($0.title).tag($0) }
             }

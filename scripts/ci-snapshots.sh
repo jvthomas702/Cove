@@ -136,6 +136,13 @@ ls -la "$HOME/Desktop" | head
 sleep 1.2; island 11-screenshot-banner
 check "screenshot reached the shelf" "defaults read app.cove.island shelf 2>/dev/null | grep -q 'Screenshot 2026-10-12'"
 debug expand/shelf; sleep 1; island 12-shelf
+debug expand/ai; sleep 1; island 12b-ai
+debug expand/sports; sleep 4; island 12c-sports
+debug theme/terminal; sleep 0.5
+debug expand/home; sleep 1; island 12d-terminal-home
+debug expand/ai; sleep 1; island 12e-terminal-ai
+debug expand/sports; sleep 1; island 12f-terminal-sports
+debug theme/darkMatte; sleep 0.5
 debug collapse; sleep 1
 
 debug hud; sleep 0.3; island 13-hud
