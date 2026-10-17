@@ -133,8 +133,9 @@ struct UIHostView: View {
         notch.panel.title = "Cove Test Notch"
         notch.panel.orderOut(nil)
         let initialSize = model.size(for: .expanded)
-        // Keep the fixture toolbar at a stable origin while the real island changes height.
-        window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: initialSize.width, height: 550), styleMask: [.titled, .closable], backing: .buffered, defer: false)
+        // Keep the fixture toolbar at a stable origin while the real island changes height,
+        // and wide enough for every fixture button now that the island itself is narrow.
+        window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: max(initialSize.width, 1000), height: 550), styleMask: [.titled, .closable], backing: .buffered, defer: false)
         window.title = "Cove UI Test"
         window.isReleasedWhenClosed = false
         let host = NSHostingView(rootView: UIHostView(model: model, showNotch: { [weak self] in

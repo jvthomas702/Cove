@@ -21,6 +21,7 @@ final class IslandModel: ObservableObject {
         case focus(end: Date)
         case music(NowPlaying)
         case sports(SportsGame)
+        case scoreAndMusic(SportsGame, NowPlaying)   // a live score and what's playing, side by side
         case ai(Activity, count: Int)
     }
 
@@ -126,6 +127,7 @@ final class IslandModel: ObservableObject {
             Task { @MainActor in
                 self?.objectWillChange.send()
                 self?.recompute()
+                self?.forgetFinishedWatchedGames()
             }
         }
         self.sports.onAutomaticSelection = { [weak self] game in
@@ -203,6 +205,7 @@ final class IslandModel: ObservableObject {
         switch compactItem {
         case .event?, .ongoing?: return 104
         case .sports?: return 104
+        case .scoreAndMusic?: return 116
         case .ai?: return 92
         case .hud?: return 64
         case .napping? where nextEventToday != nil:
@@ -236,7 +239,8 @@ final class IslandModel: ObservableObject {
         let workingAI = aiActivities.filter(\.isLive)
         if config.aiWorkInNotch, let work = workingAI.first { return .ai(work, count: workingAI.count) }
         if config.homeWidget == .ai, let work = aiActivities.first { return .ai(work, count: workingAI.count) }
-        if config.sportsEnabled, config.homeWidget == .sports, let game = sports.selectedGame {
+        if config.sportsEnabled, config.homeWidget == .sports, let game = sports.selectedGame, !game.isFinal {
+            if let np = nowPlaying, np.isPlaying { return .scoreAndMusic(game, np) }
             return .sports(game)
         }
         // A class or meeting about to start beats background work.
@@ -381,10 +385,20 @@ final class IslandModel: ObservableObject {
         applyConfig?(next)
     }
 
+    /// Followed games that haven't ended; a game drops out of the list once it's final.
     var followedSportsGames: [SportsGame] {
-        var games = sports.allGames.filter { $0.isFollowed(in: config) }
-        if let game = sports.selectedGame, !games.contains(where: { $0.key == game.key }) { games.insert(game, at: 0) }
+        var games = sports.allGames.filter { $0.isFollowed(in: config) && !$0.isFinal }
+        if let game = sports.selectedGame, !game.isFinal, !games.contains(where: { $0.key == game.key }) { games.insert(game, at: 0) }
         return games.sorted { if $0.isLive != $1.isLive { return $0.isLive }; return ($0.start ?? .distantFuture) < ($1.start ?? .distantFuture) }
+    }
+
+    /// Games followed one at a time are only worth following until they end.
+    func forgetFinishedWatchedGames() {
+        let ended = SportsFollowRules.finishedWatchedGames(sports.allGames, config: config)
+        guard !ended.isEmpty else { return }
+        var next = config
+        next.sportsWatchedGames.removeAll { ended.contains($0) }
+        applyConfig?(next)
     }
 
     func chooseSportsLeague(_ league: SportsLeague) {

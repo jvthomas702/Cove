@@ -58,7 +58,7 @@ struct AIWorkWidget: View {
                         }.accessibilityIdentifier("ai.detail")
                         HStack {
                             Button("Open \(activity.agent.displayName)") { model.open(activity) }
-                                .font(Theme.Font.caption).buttonStyle(.plain).foregroundStyle(Theme.accent)
+                                .buttonStyle(PillButtonStyle())
                             Spacer()
                             TimelineView(.periodic(from: .now, by: 1)) { context in
                                 Text(formatDuration((activity.finishedAt ?? context.date).timeIntervalSince(activity.startedAt)))

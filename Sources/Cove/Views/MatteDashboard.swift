@@ -1,26 +1,28 @@
 import AppKit
 import SwiftUI
 
-/// A single row of matte tiles, like the reference. Gamecast stays one click away.
+/// Two matte tiles at most: music, plus the live game if there is one, or else recent activity.
+/// AI connections live in the AI tab and the header, so Home stays uncluttered on a narrow island.
 struct HomePane: View {
     @ObservedObject var model: IslandModel
+    @ObservedObject var sports: SportsMonitor
+    init(model: IslandModel) { self.model = model; self.sports = model.sports }
+
+    private var showsGame: Bool {
+        guard sports.enabled, let game = sports.selectedGame else { return false }
+        return !game.isFinal
+    }
 
     var body: some View {
-        GeometryReader { geometry in
-            // A smaller display keeps the same tiles reachable without shrinking their text.
-            let width = max(930, geometry.size.width)
-            let space = width - 30
-            ScrollView(.horizontal) {
-                HStack(spacing: 10) {
-                    MatteMusicTile(model: model).frame(width: space * 0.23)
-                    MatteSportsTile(model: model).frame(width: space * 0.32)
-                    MatteContextTile(model: model).frame(width: space * 0.26)
-                    AIConnectionsTile(model: model).frame(width: space * 0.19)
-                }
-                .frame(height: 140)
+        HStack(spacing: 10) {
+            MatteMusicTile(model: model).frame(maxWidth: .infinity)
+            if showsGame {
+                MatteSportsTile(model: model).frame(maxWidth: .infinity)
+            } else {
+                MatteContextTile(model: model).frame(maxWidth: .infinity)
             }
-            .scrollIndicators(.automatic)
         }
+        .frame(height: 128)
         .accessibilityIdentifier("home.matteDashboard")
     }
 }
@@ -160,17 +162,17 @@ private struct MatteContextTile: View {
                     Text(IslandModel.relative(event.start)).font(Theme.Font.caption).foregroundStyle(Theme.accent)
                 } else { Text("No upcoming events").font(Theme.Font.caption).foregroundStyle(Theme.inkSecondary) }
                 Spacer(minLength: 0)
-                Button("Schedule →") { model.navigate(to: .schedule) }.buttonStyle(.plain).foregroundStyle(Theme.accent)
+                Button("Schedule") { model.navigate(to: .schedule) }.buttonStyle(PillButtonStyle())
             case .focus:
                 Text("Focus").font(Theme.Font.headline)
                 if let end = model.focusEnd {
                     Text(timerInterval: Date()...max(end, Date()), countsDown: true)
                         .font(.system(size: 28, weight: .medium).monospacedDigit())
-                    Button("End session") { model.stopFocus() }.buttonStyle(.plain).foregroundStyle(Theme.accent)
+                    Button("End session") { model.stopFocus() }.buttonStyle(PillButtonStyle(tint: Palette.red))
                 } else {
                     Text("A little room to concentrate").font(Theme.Font.caption).foregroundStyle(Theme.inkSecondary)
                     Spacer(minLength: 0)
-                    Button("Start 25 minutes") { model.startFocus(minutes: 25) }.buttonStyle(.plain).foregroundStyle(Theme.accent)
+                    Button("Start 25 min") { model.startFocus(minutes: 25) }.buttonStyle(PillButtonStyle())
                 }
             default:
                 HStack {
@@ -188,8 +190,8 @@ private struct MatteContextTile: View {
                     Text(model.history.first?.body ?? "Connected tasks and notifications appear here")
                         .font(Theme.Font.caption).foregroundStyle(Theme.inkSecondary).lineLimit(2)
                     Spacer(minLength: 0)
-                    Button("Connections →") { model.openAIConnections() }
-                        .buttonStyle(.plain).font(Theme.Font.caption).foregroundStyle(Theme.accent)
+                    Button("Connections") { model.openAIConnections() }
+                        .buttonStyle(PillButtonStyle())
                 } else {
                     ForEach(model.activities.prefix(2)) { activity in
                         Button {
@@ -221,60 +223,23 @@ private struct MatteContextTile: View {
     }
 }
 
-private struct AIConnectionsTile: View {
-    @ObservedObject var model: IslandModel
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Label("AI connections", systemImage: "link").font(Theme.Font.headline)
-            HStack(spacing: 5) {
-                Circle().fill(statusTint)
-                    .frame(width: 5, height: 5)
-                Text(model.aiStatusTitle).font(Theme.Font.caption).lineLimit(1)
-            }.accessibilityIdentifier("home.aiStatus")
-            if model.aiActivities.isEmpty {
-                Text("Coding agents & AI chats")
-                    .font(.system(size: 10)).foregroundStyle(Theme.inkSecondary).lineLimit(2)
-            } else {
-                Button("View AI work →") { model.navigate(to: .ai) }
-                    .font(Theme.Font.caption).foregroundStyle(Theme.accent).buttonStyle(.plain)
-                    .frame(height: 24).contentShape(Rectangle()).accessibilityIdentifier("home.viewAI")
-            }
-            Spacer(minLength: 0)
-            Button { model.openAIConnections() } label: {
-                Label("Connect AI", systemImage: "plus")
-                    .font(Theme.Font.caption).foregroundStyle(Theme.accent)
-                    .frame(maxWidth: .infinity).frame(height: 28)
-                    .background(RoundedRectangle(cornerRadius: 8).fill(Theme.accent.opacity(0.12)))
-                    .contentShape(Rectangle())
-            }.buttonStyle(PressableStyle())
-                .accessibilityIdentifier("home.connectAI")
-        }.modifier(MatteTile())
-            .accessibilityIdentifier("home.connectionsTile")
-    }
-
-    private var statusTint: Color {
-        switch model.aiStatusState {
-        case .attention: return Palette.amber
-        case .failed: return Palette.red
-        case nil: return Theme.inkTertiary
-        default: return Theme.accent
-        }
-    }
-}
-
 /// Explicit shortcuts to macOS settings, rather than switches with guessed state.
 struct DeviceSettingsMenu: View {
     var body: some View {
-        Menu("Devices") {
+        Menu {
             Button("Sound & volume…") { settings("com.apple.Sound-Settings.extension") }
             Button("Display & brightness…") { settings("com.apple.Displays-Settings.extension") }
             Button("Wi-Fi…") { settings("com.apple.wifi-settings-extension") }
             Button("AirDrop…") {
                 NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Library/CoreServices/Finder.app/Contents/Applications/AirDrop.app"))
             }
+        } label: {
+            Image(systemName: "slider.horizontal.3").font(.system(size: 12, weight: .semibold))
         }
-        .font(Theme.Font.caption).menuStyle(.borderlessButton).fixedSize()
-        .help("Device settings").accessibilityIdentifier("device.settings")
+        .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
+        .frame(width: 28, height: 28)
+        .background(Circle().fill(Color.white.opacity(0.07)))
+        .help("Device settings").accessibilityLabel("Device settings").accessibilityIdentifier("device.settings")
     }
     private func settings(_ pane: String) {
         if let url = URL(string: "x-apple.systempreferences:\(pane)") { NSWorkspace.shared.open(url) }

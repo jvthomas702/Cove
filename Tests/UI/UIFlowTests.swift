@@ -258,7 +258,7 @@ final class UIFlowTests: XCTestCase {
             app.launchArguments = theme == "light-system" ? ["--light-system"] : []
             app.launch()
             XCTAssertTrue(window.waitForExistence(timeout: 10))
-            window.buttons["home.activity.web:chatgpt:ui:tab:1"].click()
+            window.buttons["tab.ai"].click()
             let companion = window.descendants(matching: .any).matching(identifier: "ai.companion").firstMatch
             XCTAssertTrue(companion.waitForExistence(timeout: 8))
             XCTAssertTrue(window.scrollViews["ai.detail"].exists)
@@ -292,7 +292,7 @@ final class UIFlowTests: XCTestCase {
     }
 
     func testAIFiltersKeepDetailsInSyncAndRecoverFromEmptyResults() {
-        window.buttons["home.viewAI"].click()
+        window.buttons["tab.ai"].click()
         window.buttons["ai.filter.done"].click()
         XCTAssertTrue(text("No finished tasks yet").waitForExistence(timeout: 5))
         XCTAssertFalse(window.buttons["Open ChatGPT"].exists)

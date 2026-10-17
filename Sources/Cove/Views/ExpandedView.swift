@@ -130,7 +130,7 @@ struct AIWorkspacePane: View {
                 AIWorkWidget(model: model)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 if !model.aiActivities.isEmpty {
-                    AIWorkOverview(model: model).frame(width: 250)
+                    AIWorkOverview(model: model).frame(width: 200)
                 }
             }
             AgentComposer(model: model)
