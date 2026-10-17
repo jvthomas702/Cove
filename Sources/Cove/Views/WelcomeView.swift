@@ -59,7 +59,7 @@ struct WelcomeView: View {
         VStack(spacing: 0) {
             Buddy(mood: step == .allow ? .working : .happy, size: 56)
                 .frame(height: 70)
-                .padding(.top, 34)
+                .padding(.top, 28)
             Text(title)
                 .font(.system(size: 22, weight: .semibold, design: .rounded))
                 .foregroundStyle(Theme.ink)
@@ -91,7 +91,7 @@ struct WelcomeView: View {
             }
             footer
         }
-        .frame(width: 480, height: 560)
+        .frame(width: 480, height: 620)
         .background(Theme.background)
         .preferredColorScheme(.dark)
     }
@@ -269,19 +269,23 @@ private struct PickRow: View {
     @Binding var isOn: Bool
 
     var body: some View {
-        Toggle(isOn: $isOn) {
-            HStack(spacing: 12) {
-                Image(systemName: feature.symbol).frame(width: 22).foregroundStyle(isOn ? Theme.accent : Theme.inkTertiary)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(feature.title).foregroundStyle(Theme.ink)
-                    Text(feature.detail).font(.caption).foregroundStyle(Theme.inkSecondary)
-                }
+        HStack(spacing: 12) {
+            Image(systemName: feature.symbol).frame(width: 22).foregroundStyle(isOn ? Theme.accent : Theme.inkTertiary)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(feature.title).foregroundStyle(Theme.ink)
+                Text(feature.detail).font(.caption).foregroundStyle(Theme.inkSecondary)
             }
+            Spacer(minLength: 8)
+            Toggle(feature.title, isOn: $isOn)
+                .labelsHidden()
+                .toggleStyle(.switch)
+                .tint(Theme.accent)
         }
-        .toggleStyle(.switch)
-        .tint(Theme.accent)
-        .padding(.horizontal, 12).padding(.vertical, 9)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 12).padding(.vertical, 8)
         .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Theme.surface))
+        .contentShape(Rectangle())
+        .onTapGesture { isOn.toggle() }
         .accessibilityIdentifier("welcome.pick.\(feature.id)")
     }
 }
@@ -322,7 +326,7 @@ final class WelcomeWindowController: NSWindowController, NSWindowDelegate {
     init(controller: SettingsController) {
         self.controller = controller
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 480, height: 560),
+            contentRect: NSRect(x: 0, y: 0, width: 480, height: 620),
             styleMask: [.titled, .closable, .fullSizeContentView],
             backing: .buffered,
             defer: false
