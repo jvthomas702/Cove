@@ -46,6 +46,7 @@ final class ConfigTests: XCTestCase {
         XCTAssertEqual(config.approvals, "smart")
         XCTAssertTrue(config.buddy)
         XCTAssertTrue(config.screenshotsToShelf)
+        XCTAssertTrue(config.shortcuts)
     }
 
     func testWrongTypesFallBackInsteadOfFailing() throws {
@@ -333,5 +334,131 @@ final class CalendarClassifierTests: XCTestCase {
         XCTAssertEqual(CalendarMonitor.cleanDueTitle("Lab 5 Report - Due"), "Lab 5 Report")
         XCTAssertEqual(CalendarMonitor.cleanDueTitle("Quiz 3 - Availability Ends"), "Quiz 3")
         XCTAssertEqual(CalendarMonitor.cleanDueTitle("Homework 7"), "Homework 7")
+    }
+}
+
+// MARK: - Update check
+
+final class UpdateCheckerTests: XCTestCase {
+    func testVersionComparison() {
+        XCTAssertTrue(UpdateChecker.isNewer("1.0.3", than: "1.0.2"))
+        XCTAssertTrue(UpdateChecker.isNewer("1.0.10", than: "1.0.9"))
+        XCTAssertTrue(UpdateChecker.isNewer("1.1", than: "1.0.9"))
+        XCTAssertFalse(UpdateChecker.isNewer("1.0.2", than: "1.0.2"))
+        XCTAssertFalse(UpdateChecker.isNewer("1.0", than: "1.0.0"))
+        XCTAssertFalse(UpdateChecker.isNewer("1.0.1", than: "1.0.2"))
+        XCTAssertFalse(UpdateChecker.isNewer("1.0.3", than: "dev"))
+    }
+
+    func testParsesLatestRelease() {
+        let json = #"{"tag_name": "v1.0.3", "html_url": "https://github.com/jvthomas702/Cove/releases/tag/v1.0.3", "draft": false, "prerelease": false}"#
+        let release = UpdateChecker.parse(Data(json.utf8))
+        XCTAssertEqual(release?.version, "1.0.3")
+        XCTAssertEqual(release?.url.absoluteString, "https://github.com/jvthomas702/Cove/releases/tag/v1.0.3")
+        XCTAssertNil(UpdateChecker.parse(Data(#"{"tag_name": "v2.0.0-beta", "html_url": "https://x", "prerelease": true}"#.utf8)))
+}
+
+// MARK: - Clipboard history
+
+final class ClipboardTests: XCTestCase {
+    func testSkipsSecretsFilesAndBlankText() {
+        let plain: Set<String> = ["public.utf8-plain-text"]
+        XCTAssertEqual(ClipboardMonitor.clip(from: "hello", types: plain), "hello")
+        XCTAssertNil(ClipboardMonitor.clip(from: "hunter2", types: plain.union(["org.nspasteboard.ConcealedType"])))
+        XCTAssertNil(ClipboardMonitor.clip(from: "/tmp/a.png", types: plain.union(["public.file-url"])))
+        XCTAssertNil(ClipboardMonitor.clip(from: "  \n", types: plain))
+        XCTAssertNil(ClipboardMonitor.clip(from: nil, types: plain))
+    }
+
+    @MainActor
+    func testClipsAreNewestFirstAndDeduplicated() {
+}
+
+// MARK: - GitHub Actions
+
+final class GitHubActionsTests: XCTestCase {
+    private let sample = #"""
+    {"total_count": 3, "workflow_runs": [
+      {"id": 1, "name": "build", "head_branch": "main", "status": "in_progress", "conclusion": null,
+       "html_url": "https://github.com/me/app/actions/runs/1", "created_at": "2026-10-17T00:53:23Z",
+       "actor": {"login": "me"}, "head_commit": {"message": "Fix the thing\n\nLonger body"}},
+      {"id": 2, "name": "build", "head_branch": "feature", "status": "completed", "conclusion": "failure",
+       "html_url": "https://github.com/me/app/actions/runs/2", "created_at": "2026-10-17T00:40:00Z",
+       "actor": {"login": "me"}, "head_commit": {"message": "WIP"}},
+      {"id": 3, "name": "deploy", "head_branch": "main", "status": "completed", "conclusion": "cancelled",
+       "html_url": "https://github.com/me/app/actions/runs/3", "created_at": "2026-10-17T00:30:00Z",
+       "actor": {"login": "bot"}}
+    ]}
+    """#
+
+    func testParsesRuns() {
+        let runs = CIRun.parse(Data(sample.utf8), repo: "me/app")
+        XCTAssertEqual(runs.map(\.state), [.running, .failed, .cancelled])
+        XCTAssertEqual(runs[0].commit, "Fix the thing")
+        XCTAssertEqual(runs[0].repoName, "app")
+        XCTAssertEqual(runs[1].branch, "feature")
+        XCTAssertEqual(runs[2].actor, "bot")
+        XCTAssertEqual(runs[2].commit, "")
+    }
+
+    @MainActor
+    func testRunShowsAsActivityThenFinishes() throws {
+        var config = CoveConfig()
+        config.sounds = false
+        config.calendar = false
+        let model = IslandModel(config: config)
+        model.addClip("a")
+        model.addClip("b")
+        model.addClip("a")
+        XCTAssertEqual(model.clips, ["a", "b"])
+        for i in 0..<20 { model.addClip("\(i)") }
+        XCTAssertEqual(model.clips.count, 12)
+        XCTAssertEqual(model.clips.first, "19")
+        let run = try XCTUnwrap(CIRun.parse(Data(sample.utf8), repo: "me/app").first)
+        model.ciRun(run)
+        XCTAssertEqual(model.activity("ci:1")?.state, .running)
+        XCTAssertEqual(model.activity("ci:1")?.url, run.url)
+        model.ciRun(CIRun(id: 1, repo: "me/app", workflow: "build", branch: "main", commit: "", actor: "me",
+                          state: .failed, url: run.url, createdAt: run.createdAt))
+        XCTAssertEqual(model.activity("ci:1")?.state, .failed)
+}
+
+// MARK: - Bluetooth battery
+
+final class BluetoothBatteryTests: XCTestCase {
+    private let sample = #"""
+    {"SPBluetoothDataType": [{
+      "controller_properties": {"controller_state": "attrib_on"},
+      "device_connected": [
+        {"AirPods Pro": {"device_address": "AA", "device_batteryLevelLeft": "80%", "device_batteryLevelRight": "62%",
+                         "device_batteryLevelCase": "45%", "device_minorType": "Headphones"}},
+        {"Magic Keyboard": {"device_address": "BB", "device_batteryLevelMain": "64%"}},
+        {"Speaker": {"device_address": "CC"}}
+      ],
+      "device_not_connected": [{"Old AirPods": {"device_address": "DD"}}]
+    }]}
+    """#
+
+    func testParsesConnectedDevicesWithBatteries() {
+        let devices = BluetoothBattery.parse(Data(sample.utf8))
+        XCTAssertEqual(devices.map(\.name), ["AirPods Pro", "Magic Keyboard"])
+        XCTAssertEqual(devices[0].lowest, 62)
+        XCTAssertEqual(devices[0].summary, "L 80% · R 62% · Case 45%")
+        XCTAssertEqual(devices[0].symbol, "airpodspro")
+        XCTAssertEqual(devices[1].summary, "64%")
+    }
+
+    @MainActor
+    func testFirstReadingIsQuietThenConnectAndLowShowBanners() {
+        var config = CoveConfig()
+        config.sounds = false
+        config.calendar = false
+        config.buddyAlwaysVisible = false
+        let model = IslandModel(config: config)
+        model.setBluetooth([])
+        XCTAssertNil(model.banner)
+        model.setBluetooth([BluetoothBattery(name: "AirPods", left: 50, right: 50)])
+        XCTAssertEqual(model.banner?.title, "AirPods connected")
+        XCTAssertEqual(model.banner?.body, "50%")
     }
 }

@@ -74,11 +74,34 @@ struct CoveConfig: Codable {
     /// Move new screenshots from the Desktop into ~/Pictures/Screenshots, keeping the Desktop clean.
     var screenshotsMoveOffDesktop: Bool = false
 
+    // MARK: Clipboard
+    /// Keep the last few copied texts on the shelf (in memory only, never saved to disk).
+    var clipboardHistory: Bool = false
+
     // MARK: Volume / brightness HUD
     /// "replace": Cove handles the volume/brightness keys and hides the system pop-up (needs Accessibility).
     /// "passive": show Cove's HUD next to the system one. "off": no HUD.
     var hud: String = "replace"
     var hudSeconds: Double = 1.4
+
+    // MARK: Keyboard
+    /// ⌃⌥Space opens the island; ⌃⌥Y / N / A / T answer Claude's permission prompts.
+    var shortcuts: Bool = true
+
+    // MARK: Updates
+    /// Check GitHub once a day and show a banner when a newer release is out.
+    var checkForUpdates: Bool = true
+
+    // MARK: GitHub Actions
+    /// Live activity while your GitHub Actions runs work, and a banner when they pass or fail.
+    /// Signs in through the GitHub CLI (`gh auth login`).
+    var ciMonitor: Bool = false
+    /// "owner/repo" to watch every run on. Empty: your own runs on repos you pushed to recently.
+    var ciRepos: [String] = []
+
+    // MARK: Bluetooth
+    /// AirPods and other Bluetooth accessories: battery when they connect, and when they run low.
+    var bluetoothBattery: Bool = false
 
     init() {}
 
@@ -116,11 +139,17 @@ struct CoveConfig: Codable {
         ignoreCalendars = value(.ignoreCalendars, d.ignoreCalendars)
         screenshotsToShelf = value(.screenshotsToShelf, d.screenshotsToShelf)
         screenshotsMoveOffDesktop = value(.screenshotsMoveOffDesktop, d.screenshotsMoveOffDesktop)
+        clipboardHistory = value(.clipboardHistory, d.clipboardHistory)
         eventStartAlert = value(.eventStartAlert, d.eventStartAlert)
         buddy = value(.buddy, d.buddy)
         buddyAlwaysVisible = value(.buddyAlwaysVisible, d.buddyAlwaysVisible)
         hud = value(.hud, d.hud)
         hudSeconds = value(.hudSeconds, d.hudSeconds)
+        shortcuts = value(.shortcuts, d.shortcuts)
+        checkForUpdates = value(.checkForUpdates, d.checkForUpdates)
+        ciMonitor = value(.ciMonitor, d.ciMonitor)
+        ciRepos = value(.ciRepos, d.ciRepos)
+        bluetoothBattery = value(.bluetoothBattery, d.bluetoothBattery)
     }
 
     static var directory: URL {
