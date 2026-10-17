@@ -176,18 +176,19 @@ final class IslandModel: ObservableObject {
         switch p {
         case .idle: return n
         case .compact: return CGSize(width: n.width + compactWing * 2, height: n.height)
-        case .banner: return CGSize(width: max(n.width + 250, 440), height: n.height + 72)
+        case .banner: return CGSize(width: max(n.width + 200, 390), height: n.height + 60)
         case .expanded:
-            let width = min(1000, availableIslandWidth)
-            if tab == .home { return CGSize(width: width, height: n.height + 174) }
-            if tab == .ai { return CGSize(width: width, height: n.height + 430) }
-            if tab == .sports { return CGSize(width: width, height: n.height + 342) }
-            if tab == .shelf { return CGSize(width: width, height: n.height + (shelf.count <= 4 ? 172 : 252)) }
-            return CGSize(width: width, height: n.height + 252)
+            // Narrow and short, like the iPhone island opened: just wide enough for the tabs and buttons.
+            let width = min(max(n.width + 440, 620), availableIslandWidth)
+            if tab == .home { return CGSize(width: width, height: n.height + 150) }
+            if tab == .ai { return CGSize(width: width, height: n.height + 330) }
+            if tab == .sports { return CGSize(width: width, height: n.height + 280) }
+            if tab == .shelf { return CGSize(width: width, height: n.height + (shelf.count <= 4 ? 150 : 220)) }
+            return CGSize(width: width, height: n.height + 220)
         case .approval:
             // Grows with the preview (a one-line command vs. an 8-line diff).
             let lines = CGFloat(max(approvals.first?.preview.lines.count ?? 1, 1))
-            return CGSize(width: max(n.width + 350, 540), height: n.height + min(134 + lines * 16, 264))
+            return CGSize(width: max(n.width + 320, 500), height: n.height + min(124 + lines * 16, 250))
         }
     }
 
@@ -200,14 +201,14 @@ final class IslandModel: ObservableObject {
     /// Width of each wing in compact mode. Wider for things that need words (a class name, a level bar).
     var compactWing: CGFloat {
         switch compactItem {
-        case .event?, .ongoing?: return 128
-        case .sports?: return 128
-        case .ai?: return 112
-        case .hud?: return 74
+        case .event?, .ongoing?: return 104
+        case .sports?: return 104
+        case .ai?: return 92
+        case .hud?: return 64
         case .napping? where nextEventToday != nil:
-            return 66   // napping Nori plus the next class time
+            return 60   // napping Nori plus the next class time
         case .napping?, .attention?, .running?, .progress?, .finished?:
-            return config.buddy ? 56 : Self.wing   // room for a Nori you can actually see
+            return config.buddy ? 46 : Self.wing   // room for a Nori you can actually see
         default: return Self.wing
         }
     }
