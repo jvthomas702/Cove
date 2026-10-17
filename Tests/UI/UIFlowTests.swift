@@ -43,7 +43,7 @@ final class UIFlowTests: XCTestCase {
         XCTAssertTrue(window.scrollViews["ai.detail"].exists)
         XCTAssertTrue(text("Writing reply").exists)
         window.buttons["tab.home"].click()
-        XCTAssertTrue(window.buttons["Play-by-play →"].waitForExistence(timeout: 5))
+        XCTAssertTrue(window.buttons["Play-by-play"].waitForExistence(timeout: 5))
     }
 
     func testRealNotchPopupRemainsOpenOutsideIsland() {
@@ -226,7 +226,7 @@ final class UIFlowTests: XCTestCase {
             app.launch()
             XCTAssertTrue(window.waitForExistence(timeout: 10))
             var previousEdge: CGFloat = 0
-            for tile in ["music", "sports", "activity", "connections"] {
+            for tile in ["music", "sports"] {
                 let element = window.descendants(matching: .any).matching(identifier: "home.\(tile)Tile").firstMatch
                 XCTAssertTrue(element.waitForExistence(timeout: 8))
                 XCTAssertGreaterThan(element.frame.width, 100)

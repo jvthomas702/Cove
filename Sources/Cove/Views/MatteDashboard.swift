@@ -109,12 +109,10 @@ private struct MatteSportsTile: View {
                     Text("–").foregroundStyle(Theme.inkTertiary)
                     score(game.home, upcoming: game.state == "pre")
                 }
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(game.status).font(Theme.Font.number).foregroundStyle(Theme.inkSecondary).lineLimit(1)
-                    Text(sports.detailError ?? sports.plays.first?.text ?? (game.state == "pre" ? "Waiting for kickoff or tip-off" : "Play-by-play unavailable"))
-                        .font(.system(size: 10)).foregroundStyle(sports.detailError == nil ? Theme.inkSecondary : Palette.amber)
-                        .lineLimit(1).help(sports.detailError ?? sports.plays.first?.text ?? "")
-                }
+                // One line: the game clock, or why updates stopped. The latest play is a click away.
+                Text(sports.detailError ?? game.status)
+                    .font(Theme.Font.number).foregroundStyle(sports.detailError == nil ? Theme.inkSecondary : Palette.amber)
+                    .lineLimit(1).help(sports.detailError ?? sports.plays.first?.text ?? "")
             } else {
                 Text(!sports.enabled ? "Sports is turned off" : sports.loading ? "Loading games…" : "Follow a game")
                     .font(Theme.Font.headline)
@@ -123,8 +121,8 @@ private struct MatteSportsTile: View {
             }
             Spacer(minLength: 0)
             HStack {
-                Button(sports.selectedGame == nil ? "Choose game →" : "Play-by-play →") { model.navigate(to: .sports) }
-                    .font(Theme.Font.caption).foregroundStyle(Theme.accent).buttonStyle(.plain)
+                Button(sports.selectedGame == nil ? "Choose game" : "Play-by-play") { model.navigate(to: .sports) }
+                    .buttonStyle(PillButtonStyle())
                     .accessibilityIdentifier("home.openGamecast")
                 Spacer(minLength: 0)
                 Text(sports.detailError == nil ? "ESPN" : "Updates paused")
