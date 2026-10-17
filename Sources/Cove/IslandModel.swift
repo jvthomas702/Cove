@@ -436,6 +436,12 @@ final class IslandModel: ObservableObject {
         ))
     }
 
+    func setUsage(id: String, _ usage: TokenUsage) {
+        guard var a = activity(id), a.tokens != usage else { return }
+        a.tokens = usage
+        put(a)
+    }
+
     func removeActivity(_ id: String) {
         activities.removeAll { $0.id == id }
         dropBanners(forActivity: id)

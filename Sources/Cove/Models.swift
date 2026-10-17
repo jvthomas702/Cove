@@ -85,6 +85,24 @@ enum AgentKind: String {
     var isWeb: Bool { self == .chatgpt || self == .gemini }
 }
 
+/// Tokens a Claude Code session has used, summed over its transcript.
+struct TokenUsage: Equatable {
+    /// Prompt tokens, including cache reads and writes.
+    var input: Int
+    var output: Int
+
+    var total: Int { input + output }
+
+    /// "840 tokens", "42k tokens", "1.3M tokens".
+    var short: String {
+        switch total {
+        case ..<1_000: return "\(total) tokens"
+        case ..<1_000_000: return "\(Int((Double(total) / 1_000).rounded()))k tokens"
+        default: return String(format: "%.1fM tokens", Double(total) / 1_000_000)
+        }
+    }
+}
+
 enum ActivityState: Equatable {
     case running, attention, done, failed
 }
@@ -105,6 +123,8 @@ struct Activity: Identifiable, Equatable {
     var ownerApp: String? = nil
     /// A web page to open instead (a CI run on GitHub).
     var url: URL? = nil
+    /// Tokens used so far (Claude Code sessions, read from the transcript).
+    var tokens: TokenUsage? = nil
 
     var isLive: Bool { state == .running || state == .attention }
 }
