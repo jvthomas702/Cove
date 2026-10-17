@@ -11,6 +11,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var nowPlaying: NowPlayingMonitor?
     private var mirror: NotificationMirror?
     private let battery = BatteryMonitor()
+    private var bluetooth: BluetoothBatteryMonitor?
     private var calendar: CalendarMonitor?
     private var feeds: ICSFeedMonitor?
     private var eventKitSchedule = Schedule()
@@ -70,6 +71,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if config.screenshotsToShelf { startScreenshots() }
         startHUD(mode: config.hud)
         BrowserExtension.syncFromBundle()
+        if config.bluetoothBattery { startBluetooth() }
 
         observers.append(NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main
@@ -181,6 +183,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         if new.screenshotsToShelf != old.screenshotsToShelf {
             if new.screenshotsToShelf { startScreenshots() } else { screenshots?.stop(); screenshots = nil }
+        }
+        if new.bluetoothBattery != old.bluetoothBattery {
+            if new.bluetoothBattery { startBluetooth() } else { bluetooth?.stop(); bluetooth = nil }
         }
         if new.hud != old.hud {
             stopHUD()
@@ -313,6 +318,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func publishSchedule() {
         let parts = model.config.calendar ? [eventKitSchedule, feedSchedule] : [feedSchedule]
         model.setSchedule(Schedule.merged(parts))
+    }
+
+    private func startBluetooth() {
+        guard bluetooth == nil else { return }
+        let monitor = BluetoothBatteryMonitor()
+        monitor.onChange = { [weak self] devices in self?.model.setBluetooth(devices) }
+        monitor.start()
+        bluetooth = monitor
     }
 
     private func startScreenshots() {

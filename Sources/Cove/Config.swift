@@ -80,6 +80,10 @@ struct CoveConfig: Codable {
     var hud: String = "replace"
     var hudSeconds: Double = 1.4
 
+    // MARK: Bluetooth
+    /// AirPods and other Bluetooth accessories: battery when they connect, and when they run low.
+    var bluetoothBattery: Bool = false
+
     init() {}
 
     init(from decoder: Decoder) throws {
@@ -121,6 +125,7 @@ struct CoveConfig: Codable {
         buddyAlwaysVisible = value(.buddyAlwaysVisible, d.buddyAlwaysVisible)
         hud = value(.hud, d.hud)
         hudSeconds = value(.hudSeconds, d.hudSeconds)
+        bluetoothBattery = value(.bluetoothBattery, d.bluetoothBattery)
     }
 
     static var directory: URL {

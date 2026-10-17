@@ -318,3 +318,43 @@ final class CalendarClassifierTests: XCTestCase {
         XCTAssertEqual(CalendarMonitor.cleanDueTitle("Homework 7"), "Homework 7")
     }
 }
+
+// MARK: - Bluetooth battery
+
+final class BluetoothBatteryTests: XCTestCase {
+    private let sample = #"""
+    {"SPBluetoothDataType": [{
+      "controller_properties": {"controller_state": "attrib_on"},
+      "device_connected": [
+        {"AirPods Pro": {"device_address": "AA", "device_batteryLevelLeft": "80%", "device_batteryLevelRight": "62%",
+                         "device_batteryLevelCase": "45%", "device_minorType": "Headphones"}},
+        {"Magic Keyboard": {"device_address": "BB", "device_batteryLevelMain": "64%"}},
+        {"Speaker": {"device_address": "CC"}}
+      ],
+      "device_not_connected": [{"Old AirPods": {"device_address": "DD"}}]
+    }]}
+    """#
+
+    func testParsesConnectedDevicesWithBatteries() {
+        let devices = BluetoothBattery.parse(Data(sample.utf8))
+        XCTAssertEqual(devices.map(\.name), ["AirPods Pro", "Magic Keyboard"])
+        XCTAssertEqual(devices[0].lowest, 62)
+        XCTAssertEqual(devices[0].summary, "L 80% · R 62% · Case 45%")
+        XCTAssertEqual(devices[0].symbol, "airpodspro")
+        XCTAssertEqual(devices[1].summary, "64%")
+    }
+
+    @MainActor
+    func testFirstReadingIsQuietThenConnectAndLowShowBanners() {
+        var config = CoveConfig()
+        config.sounds = false
+        config.calendar = false
+        config.buddyAlwaysVisible = false
+        let model = IslandModel(config: config)
+        model.setBluetooth([])
+        XCTAssertNil(model.banner)
+        model.setBluetooth([BluetoothBattery(name: "AirPods", left: 50, right: 50)])
+        XCTAssertEqual(model.banner?.title, "AirPods connected")
+        XCTAssertEqual(model.banner?.body, "50%")
+    }
+}
