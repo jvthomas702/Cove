@@ -141,7 +141,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         defaults.set(version, forKey: "lastLaunchedVersion")
         if last == nil {
             model.show(Banner(
-                title: "Hi, I'm Pip",
+                title: "Hi, I'm Nori",
                 body: "Hover the notch to open Cove. Let's set up permissions.",
                 style: .success,
                 icon: .buddy(.happy, nil),
@@ -653,6 +653,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             config.calendarFeeds = [root.appendingPathComponent("d2l/le/calendar/feed/user/feed.ics").absoluteString,
                                     root.appendingPathComponent("calendar/ical/classes/private-abc/basic.ics").absoluteString]
             updateConfig(config)
+        case "buddy-film":
+            // Offscreen frames of every mood, for an animated preview; `done` appears when finished.
+            BuddyFilm.render(to: FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("cove-buddy-film"))
         case "hud":
             model.showHUD(.volume, level: 0.62)
         case "future-class":

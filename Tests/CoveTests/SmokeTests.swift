@@ -164,7 +164,7 @@ final class IslandModelTests: XCTestCase {
         XCTAssertNil(model.compactItem)
     }
 
-    func testPipNapsWhenAlwaysVisible() {
+    func testBuddyNapsWhenAlwaysVisible() {
         let model = makeModel()
         model.config.buddyAlwaysVisible = true
         XCTAssertEqual(model.compactItem, .napping)

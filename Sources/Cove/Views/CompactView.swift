@@ -24,8 +24,30 @@ struct CompactView: View {
 
     private var isWide: Bool { model.compactWing > IslandModel.wing }
 
+    /// Nori's mood when the leading wing shows Nori. One `Buddy` for all of these keeps it the same view
+    /// as the state changes, so it springs from one face to the next instead of being swapped out.
+    private var buddyMood: BuddyMood? {
+        guard model.config.buddy else { return model.compactItem == .napping ? .sleepy : nil }
+        switch model.compactItem {
+        case .attention?: return .alert
+        case .napping?: return .sleepy
+        case .running?, .progress?: return .working
+        case .finished(_, _, let failed)?: return failed ? .sad : .happy
+        default: return nil
+        }
+    }
+
     @ViewBuilder
     private var leading: some View {
+        if let mood = buddyMood {
+            Buddy(mood: mood, size: model.compactBuddySize)
+        } else {
+            otherLeading
+        }
+    }
+
+    @ViewBuilder
+    private var otherLeading: some View {
         switch model.compactItem {
         case .hud(let hud)?:
             Image(systemName: hud.symbol)
@@ -63,7 +85,7 @@ struct CompactView: View {
         }
     }
 
-    /// Pip when the avatar is on; the agent's own glyph otherwise.
+    /// Nori when the buddy is on; the agent's own glyph otherwise.
     @ViewBuilder
     private func agentIcon(_ agent: AgentKind, mood: BuddyMood) -> some View {
         if model.config.buddy {

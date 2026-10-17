@@ -43,7 +43,7 @@ cp -R "$ROOT/extension/." "$EXT_DIR/"
 open "$DEST/Cove.app"
 
 echo
-echo "✓ Cove $VERSION is running — Pip should be napping beside the notch."
+echo "✓ Cove $VERSION is running — Nori should be napping beside the notch."
 case ":$PATH:" in
   *":$BIN_DIR:"*) ;;
   *) echo "  Add the CLI tools to your PATH:  echo 'export PATH=\"$BIN_DIR:\$PATH\"' >> ~/.zshrc" ;;

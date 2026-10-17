@@ -12,7 +12,7 @@ final class IslandModel: ObservableObject {
     enum CompactItem: Equatable {
         case hud(HUDState)
         case attention(AgentKind)
-        case napping              // Pip resting beside the notch when nothing is going on
+        case napping              // Nori resting beside the notch when nothing is going on
         case event(CalEvent)      // starting soon
         case ongoing(CalEvent)    // happening now
         case running(count: Int, agent: AgentKind)
@@ -131,17 +131,17 @@ final class IslandModel: ObservableObject {
         case .event?, .ongoing?: return 112
         case .hud?: return 68
         case .napping? where nextEventToday != nil:
-            return 66   // napping Pip plus the next class time
+            return 66   // napping Nori plus the next class time
         case .napping?, .attention?, .running?, .progress?, .finished?:
-            return config.buddy ? 56 : Self.wing   // room for a Pip you can actually see
+            return config.buddy ? 56 : Self.wing   // room for a Nori you can actually see
         default: return Self.wing
         }
     }
 
-    /// Pip's size beside the notch: as tall as the notch allows.
+    /// Nori's size beside the notch: as tall as the notch allows.
     var compactBuddySize: CGFloat { min(max(notchSize.height - 3, 24), 34) }
 
-    /// Today's next class or meeting within 12 hours, shown next to napping Pip.
+    /// Today's next class or meeting within 12 hours, shown next to napping Nori.
     var nextEventToday: CalEvent? {
         guard config.calendar, let next = schedule.upcomingEvent(),
               next.start.timeIntervalSinceNow < 12 * 3600 else { return nil }

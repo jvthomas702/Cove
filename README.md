@@ -2,7 +2,7 @@
 
 **A Dynamic Island for the MacBook notch, built for people who run AI agents, long jobs, and a full class schedule.**
 
-Cove turns the space around the notch into a live surface. It tells you the moment Claude Code, Codex, ChatGPT or Claude finishes, lets you approve Claude Code's permission prompts without switching windows, counts down to your next class, catches every screenshot on a shelf you can drag from, and replaces the volume and brightness pop-ups. Pip, a small animated buddy, reacts to all of it.
+Cove turns the space around the notch into a live surface. It tells you the moment Claude Code, Codex, ChatGPT or Claude finishes, lets you approve Claude Code's permission prompts without switching windows, counts down to your next class, catches every screenshot on a shelf you can drag from, and replaces the volume and brightness pop-ups. Nori, a small animated buddy, reacts to all of it.
 
 Native Swift and SwiftUI, no dependencies, MIT licensed. Every commit is built, tested and run on a real Mac in CI, including screenshots of the live UI.
 
@@ -12,7 +12,7 @@ Native Swift and SwiftUI, no dependencies, MIT licensed. Every commit is built, 
 
 | | |
 |---|---|
-| **Pip** | Naps beside the notch, works along with your agents, hops with confetti when something finishes, waves an amber "!" when something needs you, and droops when something fails. |
+| **Nori** | A small black buddy with glowing eyes that blends into the island and lights its rim in the status color. Naps beside the notch, reads along with your agents, hops with confetti when something finishes, waves an amber "!" when something needs you, and droops when something fails. |
 | **Approve from the notch** | When Claude Code asks permission, the island drops down with exactly what it wants to do (the command, or a red and green diff) and **Allow**, **Always allow**, **Deny** and **Answer in terminal**. |
 | **Agent pings** | Claude Code and Codex sessions show as live activities with what they're doing right now, then a banner with the final message. Click to jump back to the terminal. |
 | **Browser chat tabs** | A small extension pings you when ChatGPT, Claude or Gemini finishes answering in a background tab (Chrome, Arc, Brave, Edge). |
@@ -95,7 +95,7 @@ Sources/Cove/
 ├── AppDelegate.swift            lifecycle, menu bar, routing, applying settings
 ├── IslandModel.swift            all island state: activities, banners, approvals, calendar, shelf
 ├── NotchWindow.swift            borderless panel above the menu bar, sized to the island
-├── Views/                       island shape and states, Pip, settings window, design tokens
+├── Views/                       island shape and states, Nori, settings window, design tokens
 └── Services/
     ├── EventServer.swift        HTTP server on 127.0.0.1 (Network.framework)
     ├── AgentBridge.swift        Claude Code hooks, permission prompts, Codex

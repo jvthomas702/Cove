@@ -38,7 +38,7 @@ sleep 2; full 02-settings-permissions
 debug settings/features; sleep 1; full 03-settings-features
 debug settings/connections; sleep 1; full 04-settings-connections
 debug close-settings; debug collapse; sleep 1.5
-island 05-idle-pip
+island 05-idle-buddy
 
 post /hook/claude '{"hook_event_name":"UserPromptSubmit","session_id":"ci","cwd":"/Users/you/hdc-classifier","prompt":"Add a confusion-matrix plot to eval.py"}'
 post /hook/claude '{"hook_event_name":"PreToolUse","session_id":"ci","cwd":"/Users/you/hdc-classifier","tool_name":"Edit","tool_input":{"file_path":"/Users/you/hdc-classifier/eval.py"}}'
@@ -143,7 +143,15 @@ debug future-class; debug collapse; sleep 2; island 15-napping-next-class
 zoom() { sips -c 60 420 --cropOffset 0 170 "$OUT/$1.png" --out "$OUT/$1-zoom.png" >/dev/null 2>&1 && sips -Z 1260 "$OUT/$1-zoom.png" >/dev/null 2>&1; }
 zoom 15-napping-next-class; zoom 06-working
 
-# Idle cost: Pip napping beside the notch, nothing else going on.
+# Nori: every mood as a still sheet, plus frames of it moving through them (stitched into a GIF later).
+debug buddy-film
+for _ in $(seq 1 120); do [ -f "$HOME/cove-buddy-film/done" ] && break; sleep 0.5; done
+check "buddy film rendered" "[ -f \"$HOME/cove-buddy-film/done\" ]"
+cp "$HOME/cove-buddy-film/sheet.png" "$OUT/16-buddy-moods.png" 2>/dev/null
+mkdir -p "$OUT/buddy-film" && cp "$HOME"/cove-buddy-film/f*.png "$OUT/buddy-film/" 2>/dev/null
+echo "buddy frames: $(ls "$OUT/buddy-film" | wc -l | tr -d ' ')"
+
+# Idle cost: Nori napping beside the notch, nothing else going on.
 debug collapse; sleep 3
 PID="$(pgrep -x Cove | head -1)"
 if [ -n "$PID" ]; then

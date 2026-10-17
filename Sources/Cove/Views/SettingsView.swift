@@ -384,13 +384,13 @@ private struct GeneralPane: View {
                       detail: "⌃⌥Space opens the island. On a permission prompt: ⌃⌥Y allow, ⌃⌥N deny, ⌃⌥A always allow, ⌃⌥T terminal",
                       isOn: controller.binding(\.shortcuts))
         }
-        SettingsGroup(title: "Pip") {
+        SettingsGroup(title: "Nori") {
             HStack(spacing: 14) {
                 Buddy(mood: controller.model.config.buddy ? .happy : .sleepy, size: 44)
                 VStack(alignment: .leading, spacing: 10) {
-                    ToggleRow(title: "Show Pip", detail: "Reacts when agents and commands work, finish, fail or need you",
+                    ToggleRow(title: "Show Nori", detail: "Reacts when agents and commands work, finish, fail or need you",
                               isOn: controller.binding(\.buddy))
-                    ToggleRow(title: "Keep Pip beside the notch when nothing is happening",
+                    ToggleRow(title: "Keep Nori beside the notch when nothing is happening",
                               isOn: controller.binding(\.buddyAlwaysVisible))
                         .disabled(!controller.model.config.buddy)
                 }
