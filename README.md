@@ -21,6 +21,7 @@ Native Swift and SwiftUI, no dependencies, MIT licensed. Every commit is built, 
 | **Screenshot shelf** | Every screenshot lands on the shelf the moment it's saved, with a thumbnail you can drag straight out of the notch into a doc, Slack or a chat. |
 | **Long commands** | `cove-run python train.py` shows a live timer and pings you with how long it took. Scripts can push progress rings. |
 | **External displays** | Docked with the lid closed? The island moves to your main display, or set **Show on → Active display** to have it follow the pointer from screen to screen. Displays without a notch get a floating black pill instead of a fake notch. |
+| **Camera and mic dot** | A green dot beside the notch while any app has a camera on, orange while one is using a microphone, like the iPhone. No permissions needed; turn it off in Settings → Features. |
 | **And** | Notifications from other apps, Now Playing with album-art colors, a focus timer, a file shelf, battery alerts, and the volume and brightness meter. |
 
 ## Install
@@ -157,6 +158,7 @@ Sources/Cove/
     ├── NotificationMirror.swift Notification Center's database (read only)
     ├── NowPlayingMonitor.swift  Music and Spotify
     ├── SystemControls.swift     volume, brightness, media keys
+    ├── MediaUseMonitor.swift    camera and microphone in use (privacy dot)
     └── BatteryMonitor.swift     power source changes
 extension/                       browser extension (Manifest V3)
 bin/                             cove-run, cove-notify and hook scripts (bundled into the app)

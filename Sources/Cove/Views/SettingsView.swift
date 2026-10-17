@@ -533,6 +533,8 @@ private struct FeaturesPane: View {
             ToggleRow(title: "Battery alerts", detail: "Charging, 20% and 10%", isOn: controller.binding(\.batteryAlerts))
             ToggleRow(title: "AirPods and Bluetooth battery", detail: "Levels when they connect, and alerts at 20% and 10%",
                       isOn: controller.binding(\.bluetoothBattery))
+            ToggleRow(title: "Camera and mic indicator", detail: "A green dot beside the notch while a camera is on, orange while a microphone is",
+                      isOn: controller.binding(\.privacyIndicator))
             VStack(alignment: .leading, spacing: 4) {
                 Text("Highlight notifications that mention")
                 TextField("interview, offer, deadline", text: Binding(

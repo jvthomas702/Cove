@@ -21,6 +21,7 @@ enum Palette {
     static let command = Color(hex: 0x8AB4F8)
     static let green = Color(hex: 0x30D158)
     static let amber = Color(hex: 0xFFB340)
+    static let orange = Color(hex: 0xFF9F0A)
     static let red = Color(hex: 0xFF453A)
     static let blue = Color(hex: 0x0A84FF)
     static let spotify = Color(hex: 0x1DB954)

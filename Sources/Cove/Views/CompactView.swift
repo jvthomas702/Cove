@@ -12,14 +12,24 @@ struct CompactView: View {
                 .frame(width: wing - 8, alignment: isWide ? .leading : .center)
                 .padding(.leading, 8)
             Color.clear.frame(width: model.notchSize.width)
-            trailing
-                .frame(width: wing - 8, alignment: isWide ? .trailing : .center)
-                .padding(.trailing, 8)
+            // The privacy dot takes the outer edge of the trailing wing, so it never widens the island.
+            HStack(spacing: 0) {
+                trailing
+                    .frame(maxWidth: .infinity, alignment: isWide ? .trailing : .center)
+                if let dot = model.privacyDot {
+                    PrivacyDotView(dot: dot)
+                        .padding(.leading, 4)
+                        .transition(.scale.combined(with: .opacity))
+                }
+            }
+            .frame(width: wing - 8)
+            .padding(.trailing, 8)
         }
         .frame(height: model.notchSize.height)
         .contentShape(Rectangle())
         .onTapGesture { model.openByClick() }
         .animation(Theme.snappy, value: model.compactItem)
+        .animation(Theme.snappy, value: model.privacyDot)
     }
 
     private var isWide: Bool { model.compactWing > IslandModel.wing }
@@ -91,7 +101,7 @@ struct CompactView: View {
                 Text(activity.agent.displayName).font(Theme.Font.headline).lineLimit(1)
                 if count > 1 { Text("+\(count - 1)").font(Theme.Font.number).foregroundStyle(Theme.inkSecondary) }
             }
-        case nil:
+        case .privacy?, nil:
             EmptyView()
         }
     }
@@ -111,7 +121,7 @@ struct CompactView: View {
         switch model.compactItem {
         case .hud(let hud)?:
             LevelBar(level: hud.muted ? 0 : hud.level, tint: hud.kind == .brightness ? Palette.amber : Theme.ink)
-                .frame(width: 50, height: 5)
+                .frame(width: model.privacyDot == nil ? 50 : 42, height: 5)
         case .napping?:
             if let next = model.nextEventToday {
                 HStack(spacing: 4) {
@@ -199,7 +209,7 @@ struct CompactView: View {
                 Text(activity.phase ?? (activity.isLive ? "Working…" : "Finished"))
                     .font(Theme.Font.number).foregroundStyle(Theme.inkSecondary).lineLimit(1)
             }
-        case nil:
+        case .privacy?, nil:
             EmptyView()
         }
     }
@@ -226,5 +236,20 @@ struct CompactView: View {
         }
         .font(Theme.Font.headline.monospacedDigit())
         .lineLimit(1)
+    }
+}
+
+/// The iPhone's recording indicator: green for a camera, orange for a microphone.
+struct PrivacyDotView: View {
+    let dot: PrivacyDot
+
+    var body: some View {
+        Circle()
+            .fill(dot == .camera ? Palette.green : Palette.orange)
+            .frame(width: 6, height: 6)
+            .help(dot.label)
+            .accessibilityElement()
+            .accessibilityLabel(dot.label)
+            .accessibilityIdentifier("privacy-dot")
     }
 }

@@ -165,6 +165,10 @@ struct CoveConfig: Codable {
     /// AirPods and other Bluetooth accessories: battery when they connect, and when they run low.
     var bluetoothBattery: Bool = false
 
+    // MARK: Privacy
+    /// A green dot beside the notch while any camera is on, orange while a microphone is, like the iPhone.
+    var privacyIndicator: Bool = true
+
     init() {}
 
     init(from decoder: Decoder) throws {
@@ -236,6 +240,7 @@ struct CoveConfig: Codable {
         phoneToken = value(.phoneToken, d.phoneToken)
         phoneOnlyWhenAway = value(.phoneOnlyWhenAway, d.phoneOnlyWhenAway)
         phoneApprovals = value(.phoneApprovals, d.phoneApprovals)
+        privacyIndicator = value(.privacyIndicator, d.privacyIndicator)
     }
 
     static var directory: URL {
