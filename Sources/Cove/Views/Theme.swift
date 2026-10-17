@@ -8,6 +8,7 @@ enum Theme {
     /// The look in use. Set from the config on the main thread; views re-render when the config changes.
     static var style: IslandTheme = .darkMatte
     static var isTerminal: Bool { style == .terminal }
+    static var buttonLook: ButtonLook = .outline
 
     // MARK: Ink (text and icons on black)
     static var ink: Color { isTerminal ? Color(hex: 0xA6F5B8) : Color(hex: 0xE3E7EF) }

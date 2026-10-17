@@ -38,7 +38,7 @@ final class IslandModel: ObservableObject {
 
     // State
     @Published var config: CoveConfig {
-        didSet { Theme.style = config.islandTheme; recompute() }
+        didSet { Theme.style = config.islandTheme; Theme.buttonLook = config.buttonLook; recompute() }
     }
     /// What Cove can see in Calendar (Settings → Features → Calendar).
     @Published var calendarStatus = CalendarStatus()
@@ -122,6 +122,7 @@ final class IslandModel: ObservableObject {
         self.shelfStore = shelfStore ?? ShelfStore()
         self.config = config
         Theme.style = config.islandTheme
+        Theme.buttonLook = config.buttonLook
         self.sports = sports ?? SportsMonitor()
         // Relay changes from the nested monitor after its published values have changed.
         sportsChanges = self.sports.objectWillChange.sink { [weak self] _ in

@@ -348,10 +348,10 @@ struct ChipButton: View {
     }
 }
 
-/// The island's one text-button look, after the iPhone's Dynamic Island controls:
-/// a frosted grey capsule with white text, a solid white capsule for the main action,
-/// and a soft colored fill only when the color means something (Join, End).
-/// In the terminal look it becomes a bracketed `[ label ]` with a thin green outline.
+/// The island's one text-button look. No grey: buttons carry the accent color, drawn as an
+/// outline, a glow or a dark tint (Settings → General → Buttons). `prominent` (Start, Send) is
+/// always a solid accent fill. A `tint` replaces the accent when the color means something
+/// (green Join, red End). In the terminal look buttons become a bracketed `[ label ]`.
 struct PillButtonStyle: ButtonStyle {
     var tint: Color? = nil
     var prominent = false
@@ -368,17 +368,28 @@ private struct PillButtonBody: View {
     @Environment(\.isEnabled) private var enabled
     @State private var hovered = false
 
-    private var foreground: Color {
-        if Theme.isTerminal { return prominent && enabled ? Theme.background : (tint ?? Theme.accent) }
-        if prominent && enabled { return .black }
-        return tint ?? Theme.ink
-    }
+    private var color: Color { tint ?? Theme.accent }
+    private var solid: Bool { prominent && enabled }
+    private var look: ButtonLook { Theme.buttonLook }
 
     private var fill: Color {
-        if Theme.isTerminal { return prominent && enabled ? Theme.accent : Theme.accent.opacity(hovered ? 0.14 : 0) }
-        if prominent && enabled { return Color.white.opacity(hovered ? 0.85 : 0.94) }
-        if let tint { return tint.opacity(hovered ? 0.26 : 0.18) }
-        return Color.white.opacity(hovered ? 0.17 : 0.11)
+        if solid { return color.opacity(hovered ? 0.85 : 1) }
+        if Theme.isTerminal { return color.opacity(hovered ? 0.14 : 0) }
+        switch look {
+        case .outline: return color.opacity(hovered ? 0.12 : 0)
+        case .glow: return color.opacity(hovered ? 0.16 : 0.08)
+        case .tinted: return color.opacity(hovered ? 0.30 : 0.20)
+        }
+    }
+
+    private var stroke: Color {
+        if solid { return .clear }
+        if Theme.isTerminal { return color.opacity(0.55) }
+        switch look {
+        case .outline: return color.opacity(hovered ? 0.9 : 0.6)
+        case .glow: return color.opacity(0.25)
+        case .tinted: return .clear
+        }
     }
 
     var body: some View {
@@ -390,11 +401,13 @@ private struct PillButtonBody: View {
         }
             .font(.system(size: 11, weight: .semibold, design: Theme.isTerminal ? .monospaced : .rounded))
             .lineLimit(1)
-            .foregroundStyle(foreground)
+            .foregroundStyle(solid ? Theme.background : color)
             .padding(.horizontal, Theme.isTerminal ? 6 : 11)
             .frame(height: 26)
             .background(shape.fill(fill))
-            .overlay { if Theme.isTerminal { shape.strokeBorder((tint ?? Theme.accent).opacity(0.55), lineWidth: 1) } }
+            .overlay { shape.strokeBorder(stroke, lineWidth: 1) }
+            .shadow(color: look == .glow && !Theme.isTerminal && enabled ? color.opacity(hovered ? 0.55 : 0.35) : .clear,
+                    radius: look == .glow ? 7 : 0)
             .contentShape(shape)
             .opacity(enabled ? (configuration.isPressed ? 0.75 : 1) : 0.4)
             .scaleEffect(configuration.isPressed && !Theme.reduceMotion ? 0.95 : 1)
@@ -421,7 +434,11 @@ struct IconButton: View {
                     if Theme.isTerminal {
                         RoundedRectangle(cornerRadius: 3).strokeBorder(Theme.accent.opacity(hovering ? 0.8 : 0.35), lineWidth: 1)
                     } else {
-                        Circle().fill(Color.white.opacity(hovering ? 0.18 : 0.10))
+                        switch Theme.buttonLook {
+                        case .outline: Circle().strokeBorder(Theme.accent.opacity(hovering ? 0.7 : 0.3), lineWidth: 1)
+                        case .glow: Circle().fill(Theme.accent.opacity(hovering ? 0.16 : 0))
+                        case .tinted: Circle().fill(Theme.accent.opacity(hovering ? 0.26 : 0.14))
+                        }
                     }
                 }
                 .contentShape(Circle())

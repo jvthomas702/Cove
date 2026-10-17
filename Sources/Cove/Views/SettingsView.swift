@@ -382,6 +382,12 @@ private struct GeneralPane: View {
             }
             .pickerStyle(.segmented)
             .accessibilityIdentifier("settings.look")
+            Picker("Buttons", selection: controller.binding(\.buttonLook)) {
+                ForEach(ButtonLook.allCases, id: \.self) { Text($0.title).tag($0) }
+            }
+            .pickerStyle(.segmented)
+            .disabled(controller.model.config.islandTheme == .terminal)
+            .accessibilityIdentifier("settings.buttons")
             Picker("Home widget", selection: controller.binding(\.homeWidget)) {
                 ForEach(HomeWidget.allCases.filter { $0 != .ai }, id: \.self) { Text($0.title).tag($0) }
             }

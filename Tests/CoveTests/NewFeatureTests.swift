@@ -29,6 +29,12 @@ import XCTest
         config.sportsAutoFollow = false
         XCTAssertNil(SportsFollowRules.automaticGame([live], current: nil, config: config))
     }
+    func testButtonLookDefaultsToOutlineAndRoundTrips() throws {
+        XCTAssertEqual(try JSONDecoder().decode(CoveConfig.self, from: Data("{}".utf8)).buttonLook, .outline)
+        var config = CoveConfig(); config.buttonLook = .glow
+        let restored = try JSONDecoder().decode(CoveConfig.self, from: JSONEncoder().encode(config))
+        XCTAssertEqual(restored.buttonLook, .glow)
+    }
     func testFinishedWatchedGamesAreDropped() {
         var config = CoveConfig(); config.sportsWatchedGames = ["nba:1", "nba:2", "nba:3"]
         let games = [game("1", state: "post"), game("2", state: "in"), game("4", state: "post")]

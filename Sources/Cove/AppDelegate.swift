@@ -689,6 +689,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             next.sportsEnabled = true
             next.sportsLeague = SportsLeague(rawValue: arg) ?? .nba
             model.applyConfig?(next)
+        case "buttons":
+            var next = model.config
+            next.buttonLook = ButtonLook(rawValue: arg) ?? .outline
+            model.applyConfig?(next)
         case "theme":
             var next = model.config
             next.islandTheme = IslandTheme(rawValue: arg) ?? .darkMatte

@@ -138,6 +138,11 @@ check "screenshot reached the shelf" "defaults read app.cove.island shelf 2>/dev
 debug expand/shelf; sleep 1; island 12-shelf
 debug expand/ai; sleep 1; island 12b-ai
 debug sports/collegeFootball; debug expand/sports; sleep 6; island 12c-sports
+for look in outline glow tinted; do
+  debug buttons/$look; debug expand/ai; sleep 1; island 12g-buttons-$look-ai
+  debug expand/home; sleep 1; island 12h-buttons-$look-home
+done
+debug buttons/outline
 debug theme/terminal; sleep 0.5
 debug expand/home; sleep 1; island 12d-terminal-home
 debug expand/ai; sleep 1; island 12e-terminal-ai
