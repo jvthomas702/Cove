@@ -110,20 +110,20 @@ final class IslandModel: ObservableObject {
         switch p {
         case .idle: return n
         case .compact: return CGSize(width: n.width + compactWing * 2, height: n.height)
-        case .banner: return CGSize(width: max(n.width + 250, 440), height: n.height + 72)
-        case .expanded: return CGSize(width: max(n.width + 450, 660), height: n.height + 252)
+        case .banner: return CGSize(width: max(n.width + 200, 390), height: n.height + 62)
+        case .expanded: return CGSize(width: max(n.width + 380, 570), height: n.height + 214)
         case .approval:
             // Grows with the preview (a one-line command vs. an 8-line diff).
             let lines = CGFloat(max(approvals.first?.preview.lines.count ?? 1, 1))
-            return CGSize(width: max(n.width + 420, 620), height: n.height + min(134 + lines * 17, 280))
+            return CGSize(width: max(n.width + 350, 540), height: n.height + min(134 + lines * 16, 264))
         }
     }
 
     /// Width of each wing in compact mode. Wider for things that need words (a class name, a level bar).
     var compactWing: CGFloat {
         switch compactItem {
-        case .event?, .ongoing?: return 128
-        case .hud?: return 74
+        case .event?, .ongoing?: return 112
+        case .hud?: return 68
         case .napping? where nextEventToday != nil:
             return 66   // napping Pip plus the next class time
         case .napping?, .attention?, .running?, .progress?, .finished?:
