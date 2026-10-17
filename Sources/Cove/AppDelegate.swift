@@ -221,6 +221,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         } else if new.ciRepos != old.ciRepos {
             actions?.update(repos: new.ciRepos)
+        }
         if new.cloudSessions != old.cloudSessions {
             if new.cloudSessions {
                 startCloud(repos: new.cloudRepos)
