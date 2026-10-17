@@ -34,6 +34,9 @@ final class IslandModel: ObservableObject {
     /// The island's current size; the window follows this.
     @Published private(set) var currentSize = CGSize(width: 190, height: 32)
     @Published var hasHardwareNotch = true
+    /// On displays without a notch the island floats as a pill this far below the top edge.
+    static let floatingInset: CGFloat = 4
+    var islandTopInset: CGFloat { hasHardwareNotch ? 0 : Self.floatingInset }
     @Published var availableIslandWidth: CGFloat = 1200 { didSet { recompute() } }
 
     // State

@@ -81,6 +81,7 @@ struct IslandRootView: View {
 
     var body: some View {
         IslandShell(model: model)
+            .padding(.top, model.islandTopInset)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .environment(\.colorScheme, model.presentation == .expanded ? model.config.islandTheme.colorScheme : .dark)
     }
@@ -95,7 +96,9 @@ struct IslandShell: View {
         let p = model.presentation
         let size = model.currentSize
         // Keep the smooth pill silhouette and the expanded panel's rounded top corners.
-        let shape = IslandShape(ear: 0, bottomRadius: radius(for: p), roundedTop: p == .expanded)
+        // Without a hardware notch the island floats below the top edge, so every state is fully rounded.
+        let floating = !model.hasHardwareNotch
+        let shape = IslandShape(ear: 0, bottomRadius: radius(for: p), roundedTop: p == .expanded || floating)
         let isOpen = p == .expanded || p == .banner || p == .approval
 
         ZStack(alignment: .top) {
@@ -111,7 +114,8 @@ struct IslandShell: View {
                 .id(p)
         }
         .overlay(alignment: .top) {
-            if p == .expanded {
+            // Covers the real notch; a display without one gets no fake cutout.
+            if p == .expanded && !floating {
                 UnevenRoundedRectangle(bottomLeadingRadius: 10, bottomTrailingRadius: 10)
                     .fill(Color.black).frame(width: model.notchSize.width, height: model.notchSize.height)
                     .allowsHitTesting(false)
@@ -149,7 +153,7 @@ struct IslandShell: View {
 
     private func radius(for p: IslandModel.Presentation) -> CGFloat {
         switch p {
-        case .idle: return 10
+        case .idle: return model.hasHardwareNotch ? 10 : model.notchSize.height / 2
         case .compact: return model.notchSize.height / 2   // a full pill
         case .banner: return Theme.Radius.islandBanner
         case .expanded, .approval: return Theme.Radius.islandExpanded

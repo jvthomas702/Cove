@@ -380,6 +380,13 @@ private struct GeneralPane: View {
             Picker("Home widget", selection: controller.binding(\.homeWidget)) {
                 ForEach(HomeWidget.allCases.filter { $0 != .ai }, id: \.self) { Text($0.title).tag($0) }
             }
+            Picker("Show on", selection: controller.binding(\.islandDisplay)) {
+                ForEach(IslandDisplay.allCases, id: \.self) { Text($0.title).tag($0) }
+            }
+            Text(controller.model.config.islandDisplay == .notch
+                 ? "The MacBook's notch, or the main display when the lid is closed"
+                 : "Follows the pointer from display to display")
+                .font(.caption).foregroundStyle(.secondary)
             ToggleRow(title: "Show live AI work beside the notch", detail: "Temporarily shows active AI work, then returns to your sports score",
                       isOn: controller.binding(\.aiWorkInNotch))
             ToggleRow(title: "Open when the pointer rests on the notch",

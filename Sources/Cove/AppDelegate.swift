@@ -633,7 +633,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         var lines = [
             "Cove \(version) on macOS \(os)",
             "Server: \(model.serverStatus)",
-            "Notch: \(Int(model.notchSize.width))×\(Int(model.notchSize.height)) (hardware: \(model.hasHardwareNotch))",
+            "Notch: \(Int(model.notchSize.width))×\(Int(model.notchSize.height)) (hardware: \(model.hasHardwareNotch)); show on: \(model.config.islandDisplay.title)",
             "Screenshot folder: \(ScreenshotWatcher.screenshotFolder.path) — access \(model.screenshotAccess), floating thumbnail \(ScreenshotWatcher.floatingThumbnail ? "on" : "off")",
             "Claude hooks: \(ClaudeHooks.isInstalled ? "connected" : "not connected"); Codex: \(CodexNotify.state)",
             "CLI tools: \(CLIInstaller.isInstalled ? "installed" : "missing"); extension: \(BrowserExtension.installedVersion ?? "not copied")",
