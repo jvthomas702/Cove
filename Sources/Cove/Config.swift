@@ -116,6 +116,8 @@ struct CoveConfig: Codable {
     var homeWidget: HomeWidget = .auto
     var desktopAIActivity: Bool = true
     var aiWorkInNotch: Bool = true
+    /// A "Today" list of finished Claude Code and Codex runs in the AI tab (kept for the current day).
+    var agentRecap: Bool = true
     var sportsEnabled: Bool = true
     var sportsLeague: SportsLeague = .nfl
     var sportsGameID: String? = nil
@@ -227,6 +229,7 @@ struct CoveConfig: Codable {
         homeWidget = value(.homeWidget, d.homeWidget)
         desktopAIActivity = value(.desktopAIActivity, d.desktopAIActivity)
         aiWorkInNotch = value(.aiWorkInNotch, d.aiWorkInNotch)
+        agentRecap = value(.agentRecap, d.agentRecap)
         sportsEnabled = value(.sportsEnabled, d.sportsEnabled)
         sportsLeague = value(.sportsLeague, d.sportsLeague)
         sportsGameID = value(.sportsGameID, d.sportsGameID)

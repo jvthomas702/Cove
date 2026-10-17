@@ -129,6 +129,9 @@ struct AIWorkspacePane: View {
             if !model.aiActivities.isEmpty { AIWorkOverview(model: model) }
             AIWorkWidget(model: model)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+            if model.showsRecap {
+                AgentRecapList(model: model).frame(height: IslandModel.recapHeight)
+            }
             AgentComposer(model: model)
         }
     }

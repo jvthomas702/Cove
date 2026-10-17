@@ -104,7 +104,8 @@ struct UIHostView: View {
         if !CommandLine.arguments.contains("--preserve-shelf") {
             ShelfStore(defaults: shelfDefaults, root: FileManager.default.temporaryDirectory.appendingPathComponent("cove-ui-shelf")).clear()
         }
-        model = IslandModel(config: config, sports: SportsMonitor(session: URLSession(configuration: sessionConfig)), shelfStore: ShelfStore(defaults: shelfDefaults, root: FileManager.default.temporaryDirectory.appendingPathComponent("cove-ui-shelf")))
+        model = IslandModel(config: config, sports: SportsMonitor(session: URLSession(configuration: sessionConfig)), shelfStore: ShelfStore(defaults: shelfDefaults, root: FileManager.default.temporaryDirectory.appendingPathComponent("cove-ui-shelf")),
+                            recapStore: AgentRecapStore(url: FileManager.default.temporaryDirectory.appendingPathComponent("cove-ui-recap-\(UUID().uuidString).json")))
         model.agentLauncher.folder = UIFeed.root
         model.agentLauncher.resolveExecutable = { _ in URL(fileURLWithPath: "/usr/bin/true") }
         model.agentLauncher.openCommand = { url, completion in
