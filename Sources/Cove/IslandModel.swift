@@ -485,6 +485,8 @@ final class IslandModel: ObservableObject {
     func tapBanner(_ b: Banner) {
         if b.showsUpdates {
             openSettings?(.about)
+        } else if b.showsPermissions {
+            openSettings?(.permissions)
         } else if b.showsShelf {
             tab = .shelf
             setExpanded(true)
