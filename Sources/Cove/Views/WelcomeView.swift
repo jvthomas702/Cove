@@ -336,7 +336,7 @@ final class WelcomeWindowController: NSWindowController, NSWindowDelegate {
         window.isReleasedWhenClosed = false
         super.init(window: window)
         window.contentView = NSHostingView(rootView: Root(controller: controller, state: state) { [weak self] in
-            self?.close()
+            MainActor.assumeIsolated { self?.close() }
         })
         window.center()
         window.delegate = self

@@ -327,8 +327,8 @@ struct SettingsView: View {
                     case .general: GeneralPane(controller: controller)
                     case .agents: AgentsPane(controller: controller)
                     case .classes: ClassesPane(controller: controller)
-                    case .sports: SportsPane(controller: controller)
-                    case .shelf: ShelfPane(controller: controller)
+                    case .sports: SportsSettingsPane(controller: controller)
+                    case .shelf: ShelfSettingsPane(controller: controller)
                     case .alerts: AlertsPane(controller: controller)
                     case .permissions: PermissionsPane(controller: controller)
                     case .connections: ConnectionsPane(controller: controller)
@@ -540,7 +540,7 @@ private struct ClassesPane: View {
 
 // MARK: Sports
 
-private struct SportsPane: View {
+private struct SportsSettingsPane: View {
     @ObservedObject var controller: SettingsController
 
     var body: some View {
@@ -561,7 +561,7 @@ private struct SportsPane: View {
 
 // MARK: Shelf
 
-private struct ShelfPane: View {
+private struct ShelfSettingsPane: View {
     @ObservedObject var controller: SettingsController
 
     var body: some View {
