@@ -18,6 +18,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var screenshots: ScreenshotWatcher?
     private let volume = VolumeController()
     private let mediaKeys = MediaKeyTap()
+    private let hotKeys = HotKeys()
     private var volumeStarted = false
     private var trustTimer: Timer?
     private var statusItem: NSStatusItem!
@@ -69,6 +70,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         startFeeds(config)
         if config.screenshotsToShelf { startScreenshots() }
         startHUD(mode: config.hud)
+        hotKeys.onAction = { [weak self] action in self?.model.handleShortcut(action) }
+        if config.shortcuts { hotKeys.start() }
         BrowserExtension.syncFromBundle()
 
         observers.append(NSWorkspace.shared.notificationCenter.addObserver(
@@ -181,6 +184,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         if new.screenshotsToShelf != old.screenshotsToShelf {
             if new.screenshotsToShelf { startScreenshots() } else { screenshots?.stop(); screenshots = nil }
+        }
+        if new.shortcuts != old.shortcuts {
+            if new.shortcuts { hotKeys.start() } else { hotKeys.stop() }
         }
         if new.hud != old.hud {
             stopHUD()

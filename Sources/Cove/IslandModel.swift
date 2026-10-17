@@ -847,6 +847,22 @@ final class IslandModel: ObservableObject {
         recompute()
     }
 
+    /// A global shortcut (see HotKeys). Approval keys do nothing unless a prompt is waiting.
+    func handleShortcut(_ action: HotKeys.Action) {
+        guard let request = approvals.first else {
+            if action == .toggle { setExpanded(!expanded) }
+            return
+        }
+        switch action {
+        case .toggle: setExpanded(!expanded)
+        case .allow: resolveApproval(request.id, .allow)
+        case .deny: resolveApproval(request.id, .deny)
+        case .alwaysAllow where request.canAlwaysAllow: resolveApproval(request.id, .allowAlways)
+        case .alwaysAllow: break
+        case .terminal: answerInTerminal(request.id)
+        }
+    }
+
     /// Answer in the terminal instead: hand the prompt back and jump to Claude's window.
     func answerInTerminal(_ id: UUID) {
         let sessionID = approvals.first(where: { $0.id == id })?.sessionID
