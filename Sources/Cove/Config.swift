@@ -98,6 +98,7 @@ struct CoveConfig: Codable {
     var ciMonitor: Bool = false
     /// "owner/repo" to watch every run on. Empty: your own runs on repos you pushed to recently.
     var ciRepos: [String] = []
+
     // MARK: Claude in the cloud
     /// Show pull requests from Claude cloud sessions (claude.ai/code, Claude projects) as they open,
     /// run CI and merge. Uses the GitHub CLI's sign-in (`gh auth login`).
