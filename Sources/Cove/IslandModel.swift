@@ -60,6 +60,8 @@ final class IslandModel: ObservableObject {
     @Published private(set) var focusEnd: Date?
     @Published private(set) var focusTotal: TimeInterval = 0
     @Published private(set) var shelf: [URL] = []
+    /// Recently copied text, newest first (memory only; see ClipboardMonitor).
+    @Published private(set) var clips: [String] = []
     /// Whether Cove can read the folder screenshots are saved to.
     @Published var screenshotAccess: ScreenshotWatcher.AccessState = .unknown
     private var lastScreenshotAt: Date?
@@ -972,6 +974,30 @@ final class IslandModel: ObservableObject {
     func clearShelf() {
         shelf.removeAll()
         saveShelf()
+    }
+
+    // MARK: - Clipboard history
+
+    func addClip(_ text: String) {
+        clips.removeAll { $0 == text }
+        clips.insert(text, at: 0)
+        if clips.count > 12 { clips.removeLast(clips.count - 12) }
+    }
+
+    /// Puts a clip back on the clipboard (it moves to the front when the monitor sees it).
+    func copyClip(_ text: String) {
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(text, forType: .string)
+        Haptics.tap()
+    }
+
+    func removeClip(_ text: String) {
+        clips.removeAll { $0 == text }
+    }
+
+    func clearClips() {
+        clips.removeAll()
     }
 
     private func saveShelf() {

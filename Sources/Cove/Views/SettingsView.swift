@@ -457,6 +457,9 @@ private struct FeaturesPane: View {
                           isOn: controller.binding(\.screenshotsMoveOffDesktop))
             }
             .disabled(!controller.model.config.screenshotsToShelf)
+            ToggleRow(title: "Keep recent copied text on the shelf",
+                      detail: "The last 12 clips, kept in memory only. Skips passwords from password managers",
+                      isOn: controller.binding(\.clipboardHistory))
         }
         SettingsGroup(title: "Volume and brightness") {
             Picker("Show changes", selection: controller.binding(\.hud)) {

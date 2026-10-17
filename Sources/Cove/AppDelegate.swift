@@ -30,6 +30,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var settingsController: SettingsController!
     private var settingsWindow: SettingsWindowController?
     private var updates: UpdateChecker?
+    private var clipboard: ClipboardMonitor?
 
     /// Extra routes used by CI to drive the UI for screenshots. Only on with the `--debug-api` launch argument.
     private let debugAPI = CommandLine.arguments.contains("--debug-api")
@@ -75,6 +76,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if config.shortcuts { hotKeys.start() }
         BrowserExtension.syncFromBundle()
         if config.checkForUpdates { startUpdates() }
+        if config.clipboardHistory { startClipboard() }
 
         observers.append(NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main
@@ -192,6 +194,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         if new.checkForUpdates != old.checkForUpdates {
             if new.checkForUpdates { startUpdates() } else { updates?.stop(); updates = nil }
+        }
+        if new.clipboardHistory != old.clipboardHistory {
+            if new.clipboardHistory {
+                startClipboard()
+            } else {
+                clipboard?.stop()
+                clipboard = nil
+                model.clearClips()
+            }
         }
         if new.hud != old.hud {
             stopHUD()
@@ -318,6 +329,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         checker.start()
         updates = checker
+    }
+    private func startClipboard() {
+        guard clipboard == nil else { return }
+        let monitor = ClipboardMonitor()
+        monitor.onCopy = { [weak self] text in self?.model.addClip(text) }
+        monitor.start()
+        clipboard = monitor
     }
 
     private func startFeeds(_ config: CoveConfig) {
