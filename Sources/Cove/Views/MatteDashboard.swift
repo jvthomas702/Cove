@@ -237,7 +237,7 @@ struct DeviceSettingsMenu: View {
         }
         .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
         .frame(width: 28, height: 28)
-        .background(Circle().fill(Color.white.opacity(0.07)))
+        .background(Circle().strokeBorder(Theme.accent.opacity(Theme.buttonLook == .outline ? 0.3 : 0), lineWidth: 1).background(Circle().fill(Theme.accent.opacity(Theme.buttonLook == .tinted ? 0.14 : 0))))
         .help("Device settings").accessibilityLabel("Device settings").accessibilityIdentifier("device.settings")
     }
     private func settings(_ pane: String) {

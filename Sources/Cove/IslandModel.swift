@@ -38,7 +38,7 @@ final class IslandModel: ObservableObject {
 
     // State
     @Published var config: CoveConfig {
-        didSet { recompute() }
+        didSet { Theme.style = config.islandTheme; Theme.buttonLook = config.buttonLook; recompute() }
     }
     /// What Cove can see in Calendar (Settings → Features → Calendar).
     @Published var calendarStatus = CalendarStatus()
@@ -121,6 +121,8 @@ final class IslandModel: ObservableObject {
     init(config: CoveConfig, sports: SportsMonitor? = nil, shelfStore: ShelfStore? = nil) {
         self.shelfStore = shelfStore ?? ShelfStore()
         self.config = config
+        Theme.style = config.islandTheme
+        Theme.buttonLook = config.buttonLook
         self.sports = sports ?? SportsMonitor()
         // Relay changes from the nested monitor after its published values have changed.
         sportsChanges = self.sports.objectWillChange.sink { [weak self] _ in
@@ -183,7 +185,7 @@ final class IslandModel: ObservableObject {
             // Narrow and short, like the iPhone island opened: just wide enough for the tabs and buttons.
             let width = min(max(n.width + 440, 620), availableIslandWidth)
             if tab == .home { return CGSize(width: width, height: n.height + 150) }
-            if tab == .ai { return CGSize(width: width, height: n.height + 330) }
+            if tab == .ai { return CGSize(width: width, height: n.height + 346) }
             if tab == .sports { return CGSize(width: width, height: n.height + 280) }
             if tab == .shelf { return CGSize(width: width, height: n.height + (shelf.count <= 4 ? 150 : 220)) }
             return CGSize(width: width, height: n.height + 220)

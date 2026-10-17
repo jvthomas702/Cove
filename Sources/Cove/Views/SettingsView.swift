@@ -392,6 +392,17 @@ private struct GeneralPane: View {
                       isOn: Binding(get: { controller.launchAtLogin }, set: { controller.setLaunchAtLogin($0) }))
         }
         SettingsGroup(title: "The island") {
+            Picker("Look", selection: controller.binding(\.islandTheme)) {
+                ForEach(IslandTheme.allCases, id: \.self) { Text($0.title).tag($0) }
+            }
+            .pickerStyle(.segmented)
+            .accessibilityIdentifier("settings.look")
+            Picker("Buttons", selection: controller.binding(\.buttonLook)) {
+                ForEach(ButtonLook.allCases, id: \.self) { Text($0.title).tag($0) }
+            }
+            .pickerStyle(.segmented)
+            .disabled(controller.model.config.islandTheme == .terminal)
+            .accessibilityIdentifier("settings.buttons")
             Picker("Home widget", selection: controller.binding(\.homeWidget)) {
                 ForEach(HomeWidget.allCases.filter { $0 != .ai }, id: \.self) { Text($0.title).tag($0) }
             }

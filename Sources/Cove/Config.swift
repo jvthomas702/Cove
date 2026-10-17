@@ -2,7 +2,26 @@ import Foundation
 
 enum IslandTheme: String, Codable, CaseIterable {
     case darkMatte
-    var title: String { "Black" }
+    /// Green-on-black monospace, like a terminal.
+    case terminal
+    var title: String { self == .terminal ? "Terminal" : "Black" }
+}
+
+/// How buttons are drawn on the island (the terminal look always uses brackets).
+enum ButtonLook: String, Codable, CaseIterable {
+    /// Thin accent outline, accent text.
+    case outline
+    /// Accent text with a soft accent glow, no frame.
+    case glow
+    /// Filled with a dark accent tint.
+    case tinted
+    var title: String {
+        switch self {
+        case .outline: return "Outline"
+        case .glow: return "Glow"
+        case .tinted: return "Tinted"
+        }
+    }
 }
 
 /// User settings, stored as JSON at ~/.config/cove/config.json.
@@ -20,6 +39,7 @@ struct CoveConfig: Codable {
     var hoverToExpand: Bool = true
     var hoverDelay: Double = 0.25
     var islandTheme: IslandTheme = .darkMatte
+    var buttonLook: ButtonLook = .outline
     /// Mirror macOS notifications into the island (needs Full Disk Access).
     var mirrorNotifications: Bool = true
     /// Bundle IDs whose notifications should never be mirrored.
@@ -145,6 +165,7 @@ struct CoveConfig: Codable {
         hoverDelay = value(.hoverDelay, d.hoverDelay)
         // Older white-theme values fall back to the consistent black appearance.
         islandTheme = value(.islandTheme, d.islandTheme)
+        buttonLook = value(.buttonLook, d.buttonLook)
         mirrorNotifications = value(.mirrorNotifications, d.mirrorNotifications)
         ignoreApps = value(.ignoreApps, d.ignoreApps)
         highlightKeywords = value(.highlightKeywords, d.highlightKeywords)
