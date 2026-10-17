@@ -7,6 +7,18 @@
 
 Building from source (`./scripts/install.sh`) signs Cove with a local certificate so macOS keeps its permissions across updates.
 
+## What's new in 1.1.0
+
+- **iPhone-style island**: smaller, all black, no ears, and a black Settings window
+- **Nori**: the buddy is now a small black pill with glowing eyes whose rim lights up in the status color, and its moods spring from one to the next
+- **CI/CD in the notch**: GitHub Actions runs for your repos show live, with banners when they pass or fail (uses the GitHub CLI sign-in)
+- **Claude cloud sessions**: pull requests opened by Claude on the web, in projects or in routines show in the notch with their CI state
+- **Claude token usage** on each Claude Code activity
+- **AirPods and Bluetooth battery** banners when a device is low
+- **Clipboard history** on the shelf (off by default, turn it on in Settings)
+- **Keyboard shortcuts**: ⌃⌥Space opens the island, ⌃⌥Y / ⌃⌥N / ⌃⌥A answer approvals
+- **Update check**: Cove tells you when a newer release is out, starting with the next one after this
+
 ## What's new in 1.0.2
 
 - **Calendar links**: paste your D2L subscribe link and Google Calendar's secret iCal address in Settings → Features, and your classes and due dates show up, with no Calendar app setup or calendar permission needed
