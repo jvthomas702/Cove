@@ -23,6 +23,7 @@ struct HomePane: View {
             }
         }
         .frame(height: 128)
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("home.matteDashboard")
     }
 }

@@ -49,6 +49,8 @@ struct UIHostView: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
+                // First, so it sits left of the narrow island and the real notch never covers it.
+                Button("Offline") { UIFeed.offline.toggle(); model.sports.refresh() }
                 Menu("Fixtures") {
                     Button("Add AI task") {
                         model.ingest(CoveEvent(id: "web:claude:ui:tab:2", title: "Second AI task", body: "A second simulated response", kind: "running", source: "claude", phase: "Reasoning", url: "https://claude.ai/chat/ui"))
@@ -62,8 +64,6 @@ struct UIHostView: View {
                     }
                     Button("Favorite Miami Heat") { model.toggleFavorite("14", league: .nba) }
                 }.accessibilityIdentifier("ui.fixtures")
-                // Left of the island, so the real notch never covers it.
-                Button("Offline") { UIFeed.offline.toggle(); model.sports.refresh() }
                 Spacer()
                 Button("Show notch", action: showNotch)
                 Button("Hide notch", action: hideNotch)
