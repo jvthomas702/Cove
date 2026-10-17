@@ -90,6 +90,16 @@ Sessions on claude.ai/code, in Claude projects and in routines run on Anthropic'
 
 It signs in with the GitHub CLI (`brew install gh`, then `gh auth login`) and watches the repos you pushed to in the last two days, or the ones you list as `cloudRepos` in `~/.config/cove/config.json`. Turn it off in Settings → Connections. Cloud work that never opens a pull request (a question, a document) doesn't show up.
 
+### Your agents on your phone
+
+Turn on **Your phone** in Settings → Connections. Cove makes a private topic on [ntfy](https://ntfy.sh), a free push service, and shows it with a QR code. Install the free ntfy app on your phone (iOS or Android), tap +, and subscribe to that topic; or scan the code to open it in the phone's browser. No account, no server to run, and it works anywhere your phone has signal.
+
+Your phone then buzzes when an agent needs you, when one finishes or fails, and when Claude asks permission. Every ping has a **Refresh** button that answers with the list of agents running right now and the last few that finished. By default it only buzzes while you're away from the Mac (screen locked, or no typing for `approvalIdleMinutes`).
+
+Turn on **Answer Claude's permission prompts from the phone** to get Allow and Deny buttons. While you're away, permission prompts then wait for your phone (up to `approvalTimeout`) instead of going to a terminal nobody is looking at.
+
+Pings travel through ntfy.sh in plain text, and anyone who knows the topic can read them and press the buttons, so treat the topic like a password (**New topic** replaces it). To keep them private, run your own ntfy server and set `phoneServer` (and `phoneToken` if it needs sign-in) in `~/.config/cove/config.json`. The Mac has to be awake for answers to reach it.
+
 ### Screenshots
 
 New screenshots go to the shelf as soon as macOS saves them. macOS's floating thumbnail holds each screenshot for about 5 seconds first; turn on **Instant screenshots** in Settings → Features to skip it. Cove watches whatever folder your screenshots go to (⌘⇧5 → Options), and can move them off the Desktop into Pictures › Screenshots.
@@ -132,6 +142,7 @@ Sources/Cove/
     ├── EventServer.swift        HTTP server on 127.0.0.1 (Network.framework)
     ├── AgentBridge.swift        Claude Code hooks, permission prompts, Codex
     ├── CloudSessions.swift      pull requests from Claude cloud sessions, via GitHub
+    ├── PhoneRelay.swift         agent pings to your phone and answers back, via ntfy
     ├── Integrations.swift       permissions, hooks, CLI tools, browser extension setup
     ├── CalendarMonitor.swift    EventKit classes and reminders
     ├── ICSFeeds.swift           calendar links (D2L, Canvas, Google iCal): download and parse

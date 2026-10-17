@@ -1,5 +1,6 @@
 import AppKit
 import Combine
+import CoreImage
 import ServiceManagement
 import SwiftUI
 
@@ -12,6 +13,8 @@ final class SettingsController: ObservableObject {
     var onConfigChange: ((CoveConfig) -> Void)?
     var onRunDemo: (() -> Void)?
     var onCopyDiagnostics: (() -> Void)?
+    /// Pushes a status ping to the phone (Settings → Connections → Your phone).
+    var onPhoneTest: (() -> Void)?
     /// Re-reads the screenshot folder (shows macOS's access prompt the first time).
     var onRecheckScreenshots: (() -> Void)?
     /// A permission was just requested (so the calendar can re-read right away).
@@ -778,6 +781,7 @@ private struct ConnectionsPane: View {
                       detail: model.cloudStatus.isEmpty ? "Repos you pushed to in the last two days, or the cloudRepos list in config.json" : model.cloudStatus,
                       isOn: controller.binding(\.cloudSessions))
         }
+        PhoneGroup(controller: controller, model: model)
         SettingsGroup(title: "Terminal",
               footer: "cove-run <command> pings you when a long command finishes. cove-notify \"text\" posts anything to the notch.") {
             statusRow(title: "cove-run and cove-notify", connected: controller.cliInstalled, connectTitle: "Install") {
@@ -816,6 +820,65 @@ private struct ConnectionsPane: View {
                 Button(connected ? "Disconnect" : connectTitle, action: action)
             }
         }
+    }
+}
+
+/// Settings → Connections → Your phone: ntfy topic, QR code to subscribe, and what gets sent.
+private struct PhoneGroup: View {
+    @ObservedObject var controller: SettingsController
+    @ObservedObject var model: IslandModel
+
+    private var link: URL {
+        PhoneRelay.serverURL(model.config.phoneServer).appendingPathComponent(model.config.phoneTopic)
+    }
+
+    var body: some View {
+        SettingsGroup(title: "Your phone",
+              footer: "Install the free ntfy app (iOS or Android), tap +, and subscribe to the topic, or scan the code to open it in your phone's browser. Works anywhere your phone has signal. Pings pass through \(PhoneRelay.serverURL(model.config.phoneServer).host ?? "ntfy.sh") in plain text, so anyone who knows the topic can read them; set phoneServer in config.json to use your own server.") {
+            ToggleRow(title: "Send agent pings to my phone",
+                      detail: model.config.phoneRelay ? (model.phoneStatus.isEmpty ? "Starting…" : model.phoneStatus)
+                          : "Needs you, finished and permission prompts, plus a Refresh button that lists every agent",
+                      isOn: controller.binding(\.phoneRelay))
+            if model.config.phoneRelay && !model.config.phoneTopic.isEmpty {
+                HStack(alignment: .top, spacing: 14) {
+                    if let qr = Self.qrCode(link.absoluteString) {
+                        Image(nsImage: qr).interpolation(.none).resizable().frame(width: 108, height: 108)
+                            .padding(6).background(RoundedRectangle(cornerRadius: 8).fill(Color.white))
+                    }
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Topic").font(.caption).foregroundStyle(.secondary)
+                        Text(model.config.phoneTopic).font(.system(.body, design: .monospaced)).textSelection(.enabled)
+                        HStack {
+                            Button("Copy topic") {
+                                NSPasteboard.general.clearContents()
+                                NSPasteboard.general.setString(model.config.phoneTopic, forType: .string)
+                                controller.message = "Topic copied. In the ntfy app, tap + and paste it."
+                            }
+                            Button("Send a test") { controller.onPhoneTest?() }
+                            Button("New topic") { controller.binding(\.phoneTopic).wrappedValue = PhoneRelay.newTopic() }
+                                .help("Stops pings to every phone subscribed to the old topic")
+                        }
+                    }
+                }
+                ToggleRow(title: "Only when I'm away from the Mac",
+                          detail: "Screen locked, or no typing for \(Int(model.config.approvalIdleMinutes)) min",
+                          isOn: controller.binding(\.phoneOnlyWhenAway))
+                ToggleRow(title: "Answer Claude's permission prompts from the phone",
+                          detail: "Adds Allow and Deny buttons. While you're away, prompts wait for the phone instead of the terminal.",
+                          isOn: controller.binding(\.phoneApprovals))
+            }
+        }
+    }
+
+    static func qrCode(_ text: String) -> NSImage? {
+        guard let filter = CIFilter(name: "CIQRCodeGenerator") else { return nil }
+        filter.setValue(Data(text.utf8), forKey: "inputMessage")
+        filter.setValue("M", forKey: "inputCorrectionLevel")
+        guard let output = filter.outputImage?.transformed(by: CGAffineTransform(scaleX: 8, y: 8)) else { return nil }
+        let rep = NSCIImageRep(ciImage: output)
+        let image = NSImage(size: rep.size)
+        image.addRepresentation(rep)
+        return image
     }
 }
 
