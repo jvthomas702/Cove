@@ -820,6 +820,10 @@ private struct ConnectionsPane: View {
         SettingsGroup(title: "GitHub Actions",
               footer: "Shows your workflow runs live in the notch and pings when they pass or fail. Signs in with the GitHub CLI; Cove stores no token.") {
             ToggleRow(title: "Watch my CI runs", detail: ciDetail, isOn: controller.binding(\.ciMonitor))
+            ToggleRow(title: "Re-run and deploy buttons",
+                      detail: "Re-run on failed runs, Run Deploy on passed ones. Needs gh's repo and workflow scopes: gh auth refresh -s repo,workflow",
+                      isOn: controller.binding(\.ciActions))
+                .disabled(!controller.model.config.ciMonitor)
         }
         SettingsGroup(title: "Claude in the cloud",
               footer: "Sessions on claude.ai/code and in Claude projects run on Anthropic's machines, so they can't reach Cove's hooks. Cove finds the pull requests they open on GitHub and shows them opening, running CI and merging. Click one to open its session.") {

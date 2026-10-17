@@ -108,6 +108,18 @@ final class GitHubActionsMonitor {
         reposFetchedAt = nil
     }
 
+    /// Polls right away (after a re-run or deploy), then carries on at the usual pace.
+    func refreshNow() {
+        guard token != nil else { return }
+        Task { [weak self] in
+            // GitHub takes a moment to queue the new attempt.
+            try? await Task.sleep(nanoseconds: 3_000_000_000)
+            guard let self, self.token != nil else { return }
+            await self.poll()
+            self.schedule()
+        }
+    }
+
     /// Faster while something is running, so finishes show up promptly.
     private func schedule() {
         timer?.invalidate()

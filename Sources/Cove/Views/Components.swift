@@ -352,12 +352,14 @@ struct ChipButton: View {
 /// outline, a glow or a dark tint (Settings → General → Buttons). `prominent` (Start, Send) is
 /// always a solid accent fill. A `tint` replaces the accent when the color means something
 /// (green Join, red End). In the terminal look buttons become a bracketed `[ label ]`.
+/// `compact` is the smaller size for buttons inside a row (Re-run, Run Deploy).
 struct PillButtonStyle: ButtonStyle {
     var tint: Color? = nil
     var prominent = false
+    var compact = false
 
     func makeBody(configuration: Configuration) -> some View {
-        PillButtonBody(configuration: configuration, tint: tint, prominent: prominent)
+        PillButtonBody(configuration: configuration, tint: tint, prominent: prominent, compact: compact)
     }
 }
 
@@ -365,6 +367,7 @@ private struct PillButtonBody: View {
     let configuration: ButtonStyleConfiguration
     let tint: Color?
     let prominent: Bool
+    var compact = false
     @Environment(\.isEnabled) private var enabled
     @State private var hovered = false
 
@@ -399,11 +402,11 @@ private struct PillButtonBody: View {
             configuration.label
             if Theme.isTerminal { Text("]") }
         }
-            .font(.system(size: 11, weight: .semibold, design: Theme.isTerminal ? .monospaced : .rounded))
+            .font(.system(size: compact ? 10 : 11, weight: .semibold, design: Theme.isTerminal ? .monospaced : .rounded))
             .lineLimit(1)
             .foregroundStyle(solid ? Theme.background : color)
-            .padding(.horizontal, Theme.isTerminal ? 6 : 11)
-            .frame(height: 26)
+            .padding(.horizontal, Theme.isTerminal ? 6 : (compact ? 8 : 11))
+            .frame(height: compact ? 20 : 26)
             .background(shape.fill(fill))
             .overlay { shape.strokeBorder(stroke, lineWidth: 1) }
             .shadow(color: look == .glow && !Theme.isTerminal && enabled ? color.opacity(hovered ? 0.55 : 0.35) : .clear,

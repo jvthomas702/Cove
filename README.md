@@ -20,6 +20,7 @@ Native Swift and SwiftUI, no dependencies, MIT licensed. Every commit is built, 
 | **Classes and due dates** | "CPE 3000 Lecture, 50 min left" beside the notch, a heads-up before each class with a Join button for Zoom, Meet or Teams, and a Due soon list from your D2L or Canvas calendar and Reminders. |
 | **Sports** | Choose an NBA, NFL or college football game to pin its score beside the notch and follow its latest plays. College football defaults to games featuring a Top 25 team. |
 | **Screenshot shelf** | Every screenshot lands on the shelf the moment it's saved, with a thumbnail you can drag straight out of the notch into a doc, Slack or a chat. |
+| **CI runs** | Your GitHub Actions runs show live and ping when they pass or fail. A failed run has a **Re-run** button; a passed one offers **Run Deploy** when the repo has a hand-started deploy or release workflow. |
 | **Long commands** | `cove-run python train.py` shows a live timer and pings you with how long it took. Scripts can push progress rings. |
 | **External displays** | Docked with the lid closed? The island moves to your main display, or set **Show on → Active display** to have it follow the pointer from screen to screen. Displays without a notch get a floating black pill instead of a fake notch. |
 | **Camera and mic dot** | A green dot beside the notch while any app has a camera on, orange while one is using a microphone, like the iPhone. No permissions needed; turn it off in Settings → Features. |
@@ -109,6 +110,10 @@ Pings travel through ntfy.sh in plain text, and anyone who knows the topic can r
 ### External displays
 
 Settings → General → **Show on** picks where the island lives. **Notch display** (the default) keeps it on the MacBook's notch and moves it to the main display when the lid is closed or no notch is connected. **Active display** follows the pointer: move to another screen and the island goes with it (an open island waits until it closes). On a display without a notch the island is a floating pill just below the top edge, the same size as on the notch. Plugging in, unplugging or rearranging displays re-places it automatically.
+
+### GitHub Actions
+
+Turn on **Settings → Connections → Watch my CI runs** to see your workflow runs live in the notch. It signs in with the GitHub CLI (`gh auth login`); Cove stores no token. On Home's activity tile, a failed run has a blue **Re-run** pill (re-runs just the failed jobs, or the whole run if none can be retried). A passed run shows **Run <name>** when the repo has a workflow with a `workflow_dispatch` trigger whose name or file mentions "deploy" or "release"; it starts that workflow on the run's branch. Progress and the result appear in place of the button. GitHub needs the token's `repo` scope for this (and `workflow` for some repos): if it says no, run `gh auth refresh -s repo,workflow`. Turn the buttons off with **Re-run and deploy buttons**.
 
 ### Screenshots
 
