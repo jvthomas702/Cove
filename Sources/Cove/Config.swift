@@ -105,6 +105,10 @@ struct CoveConfig: Codable {
     /// Repos to watch ("owner/name"). Empty: the ones you pushed to in the last two days.
     var cloudRepos: [String] = []
 
+    // MARK: Bluetooth
+    /// AirPods and other Bluetooth accessories: battery when they connect, and when they run low.
+    var bluetoothBattery: Bool = false
+
     init() {}
 
     init(from decoder: Decoder) throws {
@@ -153,6 +157,7 @@ struct CoveConfig: Codable {
         ciRepos = value(.ciRepos, d.ciRepos)
         cloudSessions = value(.cloudSessions, d.cloudSessions)
         cloudRepos = value(.cloudRepos, d.cloudRepos)
+        bluetoothBattery = value(.bluetoothBattery, d.bluetoothBattery)
     }
 
     static var directory: URL {

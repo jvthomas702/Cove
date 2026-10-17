@@ -59,6 +59,8 @@ final class IslandModel: ObservableObject {
     /// A file drag is hovering over the island.
     @Published private(set) var isDropTargeted = false
     @Published private(set) var battery: BatteryState?
+    /// Connected AirPods and other Bluetooth accessories that report a battery; nil until first read.
+    @Published private(set) var bluetooth: [BluetoothBattery]?
     @Published private(set) var focusEnd: Date?
     @Published private(set) var focusTotal: TimeInterval = 0
     @Published private(set) var shelf: [URL] = []
@@ -715,6 +717,26 @@ final class IslandModel: ObservableObject {
             for threshold in [10, 20] where state.percent <= threshold && old.percent > threshold {
                 show(Banner(title: "Battery low", body: "\(state.percent)% remaining", style: .attention,
                             icon: .symbol("battery.25", Palette.red), sticky: threshold == 10))
+                break
+            }
+        }
+    }
+
+    /// New Bluetooth readings: a banner when headphones connect, and when anything runs low.
+    func setBluetooth(_ devices: [BluetoothBattery]) {
+        let old = bluetooth
+        bluetooth = devices
+        guard let old else { return } // first reading: just learn what's connected
+        for device in devices {
+            let icon = BannerIcon.symbol(device.symbol, Theme.ink)
+            guard let before = old.first(where: { $0.name == device.name }) else {
+                show(Banner(title: "\(device.name) connected", body: device.summary, style: .info, icon: icon, duration: 3))
+                continue
+            }
+            guard let now = device.lowest, let was = before.lowest else { continue }
+            for threshold in [10, 20] where now <= threshold && was > threshold {
+                show(Banner(title: "\(device.name) battery low", body: device.summary, style: .attention,
+                            icon: .symbol(device.symbol, Palette.red), sticky: threshold == 10))
                 break
             }
         }

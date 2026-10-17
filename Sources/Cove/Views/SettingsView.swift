@@ -473,6 +473,8 @@ private struct FeaturesPane: View {
             ToggleRow(title: "Show notifications from other apps", detail: "Needs Full Disk Access",
                       isOn: controller.binding(\.mirrorNotifications))
             ToggleRow(title: "Battery alerts", detail: "Charging, 20% and 10%", isOn: controller.binding(\.batteryAlerts))
+            ToggleRow(title: "AirPods and Bluetooth battery", detail: "Levels when they connect, and alerts at 20% and 10%",
+                      isOn: controller.binding(\.bluetoothBattery))
             VStack(alignment: .leading, spacing: 4) {
                 Text("Highlight notifications that mention")
                 TextField("interview, offer, deadline", text: Binding(
