@@ -80,6 +80,13 @@ struct CoveConfig: Codable {
     var hud: String = "replace"
     var hudSeconds: Double = 1.4
 
+    // MARK: GitHub Actions
+    /// Live activity while your GitHub Actions runs work, and a banner when they pass or fail.
+    /// Signs in through the GitHub CLI (`gh auth login`).
+    var ciMonitor: Bool = false
+    /// "owner/repo" to watch every run on. Empty: your own runs on repos you pushed to recently.
+    var ciRepos: [String] = []
+
     init() {}
 
     init(from decoder: Decoder) throws {
@@ -121,6 +128,8 @@ struct CoveConfig: Codable {
         buddyAlwaysVisible = value(.buddyAlwaysVisible, d.buddyAlwaysVisible)
         hud = value(.hud, d.hud)
         hudSeconds = value(.hudSeconds, d.hudSeconds)
+        ciMonitor = value(.ciMonitor, d.ciMonitor)
+        ciRepos = value(.ciRepos, d.ciRepos)
     }
 
     static var directory: URL {

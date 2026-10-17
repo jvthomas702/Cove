@@ -33,6 +33,8 @@ enum AgentKind: String {
     case claude, codex, command, custom
     /// Chat tabs in the browser (reported by the Cove browser extension).
     case chatgpt, gemini
+    /// GitHub Actions runs on your repos.
+    case ci
 
     var displayName: String {
         switch self {
@@ -42,6 +44,7 @@ enum AgentKind: String {
         case .custom: return "Task"
         case .chatgpt: return "ChatGPT"
         case .gemini: return "Gemini"
+        case .ci: return "CI"
         }
     }
 
@@ -53,6 +56,7 @@ enum AgentKind: String {
         case .custom: return "bell.fill"
         case .chatgpt: return "bubble.left.and.bubble.right.fill"
         case .gemini: return "sparkles"
+        case .ci: return "arrow.triangle.branch"
         }
     }
 
@@ -64,6 +68,7 @@ enum AgentKind: String {
         case .custom: return .white
         case .chatgpt: return Color(hex: 0x10A37F)
         case .gemini: return Color(hex: 0x8AB4F8)
+        case .ci: return Color(hex: 0xBF5AF2)
         }
     }
 
@@ -71,6 +76,7 @@ enum AgentKind: String {
         switch self {
         case .claude, .codex, .chatgpt, .gemini: return "\(displayName) is done"
         case .command: return "Command finished"
+        case .ci: return "CI passed"
         case .custom: return "Done"
         }
     }
@@ -97,6 +103,8 @@ struct Activity: Identifiable, Equatable {
     var seen: Bool = true
     /// The app that was frontmost when the work started (usually your terminal); clicking jumps back to it.
     var ownerApp: String? = nil
+    /// A web page to open instead (a CI run on GitHub).
+    var url: URL? = nil
 
     var isLive: Bool { state == .running || state == .attention }
 }
