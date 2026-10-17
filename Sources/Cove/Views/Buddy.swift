@@ -99,15 +99,20 @@ struct NoriFigure: View {
 
         var m = Motion.mix(Motion(previous ?? mood, t: t, size: size), Motion(mood, t: t, size: size), settledP)
         if previous != nil {
-            // The jolt of changing moods: a quick squash-and-stretch that dies out.
+            // The jolt of changing moods: a quick squash-and-stretch that dies out, and a "double take"
+            // blink right as the new feeling lands.
             m.squash += CGFloat(0.16 * exp(-since * 6) * sin(since * 22))
+            if since < 0.18 { m.squint *= CGFloat(1 - 0.85 * sin(.pi * since / 0.18)) }
         } else {
             m.scale *= 0.35 + 0.65 * p
         }
         if followsPointer, mood != .sleepy, let x = Self.pointerLook() {
             m.look.x = x
         }
-        let open = pose.open * (blinks ? blink : 1)
+        pose.glow = min(1, pose.glow + m.flash)
+        let lid = blinks ? blink : 1
+        let openL = pose.open * lid * m.squint + m.peek
+        let openR = pose.open * lid * m.squint
 
         let bodyW = size * 0.86
         let bodyH = size * 0.6
@@ -115,6 +120,12 @@ struct NoriFigure: View {
         let rim = max(0.8, size * (small ? 0.036 : 0.028))
 
         return ZStack {
+            // A ring that ripples out from Nori, like a sonar ping (needs you).
+            if m.ping > 0 && m.ping < 1 {
+                shape.stroke(pose.color, lineWidth: rim * CGFloat(2 - 1.6 * m.ping))
+                    .scaleEffect(1 + 0.55 * CGFloat(m.ping))
+                    .opacity(0.9 * (1 - m.ping))
+            }
             if pose.glow > 0.2 && size >= 20 {
                 rimLight(shape, pose: pose, width: rim * 2.4)
                     .blur(radius: size * 0.07)
@@ -124,7 +135,7 @@ struct NoriFigure: View {
                                       startPoint: .top, endPoint: .bottom))
             shape.strokeBorder(Color.white.opacity(0.16), lineWidth: rim)
             rimLight(shape, pose: pose, width: rim)
-            eyes(pose: pose, open: open, look: m.look)
+            eyes(pose: pose, openL: openL, openR: openR, look: m.look)
         }
         .frame(width: bodyW, height: bodyH)
         .scaleEffect(x: (1 + m.squash) * m.scale, y: (1 - m.squash) * m.scale, anchor: .bottom)
@@ -152,18 +163,29 @@ struct NoriFigure: View {
 
     // MARK: Eyes
 
-    private func eyes(pose: Pose, open: CGFloat, look: CGPoint) -> some View {
+    private func eyes(pose: Pose, openL: CGFloat, openR: CGFloat, look: CGPoint) -> some View {
         let s: CGFloat = small ? 1.18 : 1
         let w = size * 0.15 * s
         let h = size * 0.22 * s
         let gap = size * 0.25 * s
-        let eye = EyeShape(open: open, smile: pose.smile, slant: pose.slant)
+        // Big eyes catch a little of the status color at the bottom, like light from below.
+        let ink = small ? AnyShapeStyle(Self.eyeInk)
+            : AnyShapeStyle(LinearGradient(colors: [Self.eyeInk, Self.eyeInk, pose.color.opacity(0.9)],
+                                           startPoint: .top, endPoint: .bottom))
         return HStack(spacing: gap - w) {
-            eye.fill(Self.eyeInk).frame(width: w, height: h)
-            eye.fill(Self.eyeInk).frame(width: w, height: h).scaleEffect(x: -1, y: 1)
+            eye(openL, pose: pose, ink: ink, width: w, height: h)
+            eye(openR, pose: pose, ink: ink, width: w, height: h).scaleEffect(x: -1, y: 1)
         }
         .shadow(color: small ? .clear : pose.color.opacity(Double(0.7 * pose.glow)), radius: size * 0.05)
         .offset(x: look.x * size * 0.07, y: look.y * size * 0.05 - size * 0.01)
+    }
+
+    /// Lids close from the top, so a closing eye also sinks a little.
+    private func eye(_ open: CGFloat, pose: Pose, ink: AnyShapeStyle, width: CGFloat, height: CGFloat) -> some View {
+        EyeShape(open: open, smile: pose.smile, slant: pose.slant)
+            .fill(ink)
+            .frame(width: width, height: height)
+            .offset(y: height * 0.18 * max(0, min(1, pose.open - open)))
     }
 
     /// Happy and sleepy eyes are already shut-ish; the others blink.
@@ -195,25 +217,44 @@ struct NoriFigure: View {
     private func accessories(pose: Pose, look: CGPoint) -> some View {
         switch mood {
         case .happy:
-            ForEach(0..<3, id: \.self) { i in
-                let phase = t * 2.6 + Double(i) * 2.1
+            // A couple of slow twinkles, plus a spray of sparks kicked up every time Nori lands.
+            ForEach(0..<2, id: \.self) { i in
+                let phase = t * 2.2 + Double(i) * 2.6
                 Sparkle()
-                    .fill(i == 1 ? Palette.green : Color.white)
-                    .frame(width: size * 0.15, height: size * 0.15)
+                    .fill(Color.white)
+                    .frame(width: size * 0.12, height: size * 0.12)
                     .scaleEffect(CGFloat(0.3 + 0.7 * abs(sin(phase))))
-                    .rotationEffect(.degrees(phase * 20))
-                    .opacity(0.25 + 0.75 * abs(sin(phase)))
+                    .opacity(0.2 + 0.6 * abs(sin(phase)))
                     .offset(x: Self.sparkleX[i] * size, y: Self.sparkleY[i] * size)
             }
+            let landed = Motion.sinceLanding(t)
+            if landed < 0.55 {
+                let k = landed / 0.55
+                let reach = CGFloat(Bounce.ease(k))
+                ForEach(0..<5, id: \.self) { i in
+                    let hop = (t / Motion.hopCycle).rounded(.down)
+                    let jitter = (Noise.value(Double(i) + hop * 5) - 0.5) * 0.3
+                    let angle = Double.pi * (1.08 + 0.21 * Double(i)) + jitter
+                    Sparkle()
+                        .fill(i % 2 == 0 ? Palette.green : Color.white)
+                        .frame(width: size * 0.11, height: size * 0.11)
+                        .scaleEffect(CGFloat(1 - 0.6 * k))
+                        .rotationEffect(.degrees(k * 90))
+                        .offset(x: CGFloat(cos(angle)) * size * (0.3 + 0.28 * reach),
+                                y: size * 0.34 + CGFloat(sin(angle)) * size * (0.12 + 0.3 * reach))
+                        .opacity(1 - k * k)
+                }
+            }
         case .alert:
-            // Pops up at the start of each nudge, then settles.
+            // Springs up at the start of each nudge, overshoots, and settles.
             let local = t.truncatingRemainder(dividingBy: Motion.alertCycle)
-            let pop = local < 0.5 ? 1 + 0.35 * sin(.pi * local / 0.5) : 1
+            let pop = 0.6 + 0.4 * Bounce.settle(local * 1.6)
             Text("!")
                 .font(.system(size: size * 0.3, weight: .black, design: .rounded))
                 .foregroundStyle(Palette.amber)
                 .shadow(color: Palette.amber.opacity(0.6), radius: size * 0.04)
-                .scaleEffect(CGFloat(pop))
+                .scaleEffect(CGFloat(pop), anchor: .bottom)
+                .rotationEffect(.degrees(local < 0.55 ? sin(local * 40) * 14 * (1 - local / 0.55) : 0))
                 .offset(x: size * 0.42, y: -size * 0.24)
         case .sad:
             // A tear rolls from under one eye.
@@ -313,61 +354,105 @@ private struct Motion {
     var tilt: Double = 0
     var scale: CGFloat = 1
     var look = CGPoint.zero     // where the eyes point, −1…1 each way
+    var squint: CGFloat = 1     // multiplies how open both eyes are
+    var peek: CGFloat = 0       // opens the left eye on its own (a sleepy peek)
+    var flash: CGFloat = 0      // extra rim light
+    var ping: Double = 0        // 0…1 progress of a ring rippling out; 0 when there is none
 
     static let hopCycle = 0.95
     static let alertCycle = 1.7
+    static let sighCycle = 4.6
+    static let peekCycle = 11.0
+    private static let landAt = 0.78
 
     init() {}
 
     init(_ mood: BuddyMood, t: Double, size: CGFloat) {
         switch mood {
         case .working:
-            // Reading: eyes dart along and down a line, the head follows a little.
-            dy = CGFloat(sin(t * 3.2)) * size * 0.015
-            look = Self.saccade(t)
-            look.y = 0.25 + look.y * 0.4
-            tilt = Double(look.x) * 4
+            // Reading: eyes dart along and down a line and the body follows a beat later. Every so often
+            // Nori stops to think, glancing up and to the side with narrowed eyes.
+            let think = Self.thinking(t)
+            let read = Self.saccade(t)
+            let lagged = Self.saccade(t - 0.16)
+            look = CGPoint(x: read.x * (1 - think) + 0.7 * think,
+                           y: (0.25 + read.y * 0.4) * (1 - think) - 0.75 * think)
+            dx = lagged.x * size * 0.02 * (1 - think)
+            dy = CGFloat(sin(t * 3.2)) * size * 0.015 * (1 - think)
+            tilt = Double(lagged.x * (1 - think)) * 5 + Double(think) * 6
+            squint = 1 - 0.3 * think
+            squash = -0.03 * think
         case .happy:
-            // Crouch, jump with a stretch, land with a squash; lean the other way each hop.
+            // Crouch, jump with a stretch, land with a squash and a jelly wobble; lean the other way each
+            // hop, and every fourth hop does a full spin.
             let n = (t / Self.hopCycle).rounded(.down)
             let u = t / Self.hopCycle - n
             let side: Double = Int(n) % 2 == 0 ? 1 : -1
             if u < 0.18 {
                 squash = CGFloat(0.14 * sin(.pi * u / 0.18))
-            } else if u < 0.78 {
-                let k = (u - 0.18) / 0.6
-                dy = -CGFloat(sin(.pi * k)) * size * 0.17
-                squash = -CGFloat(0.09 * cos(.pi * k))
-                tilt = side * 8 * sin(.pi * k)
-            } else {
-                let k = (u - 0.78) / 0.22
-                squash = CGFloat(0.09 * cos(.pi * k / 2))
+                squint = 1 - 0.25 * CGFloat(sin(.pi * u / 0.18))
+            } else if u < Self.landAt {
+                let k = (u - 0.18) / (Self.landAt - 0.18)
+                dy = -CGFloat(sin(.pi * k)) * size * 0.19
+                squash = -CGFloat(0.1 * cos(.pi * k))
+                tilt = Int(n) % 4 == 3 ? 360 * Bounce.easeInOut(k) * side : side * 8 * sin(.pi * k)
+            }
+            let landed = Self.sinceLanding(t)
+            if u >= Self.landAt || u < 0.18 {
+                // Jelly: the landing squash rings out instead of stopping dead.
+                squash += CGFloat(0.13 * exp(-landed * 9) * cos(landed * 24))
+                flash = CGFloat(0.5 * exp(-landed * 8))
             }
             look = CGPoint(x: 0, y: -0.25)
         case .alert:
-            // Every so often: two quick hops and a shake, like tapping you on the shoulder.
+            // Every so often: lean in, two quick hops and a shake, and a ring pings out — like tapping
+            // you on the shoulder. Then a quick double blink.
             let local = t.truncatingRemainder(dividingBy: Self.alertCycle)
             if local < 0.55 {
                 let fade = 1 - local / 0.55
                 dx = CGFloat(sin(local * 48) * fade) * size * 0.035
                 dy = -CGFloat(abs(sin(local * 2 * .pi / 0.55 * 2))) * size * 0.06
                 tilt = sin(local * 48) * 5 * fade
+                scale = 1 + 0.07 * CGFloat(sin(.pi * local / 0.55))
             } else {
                 squash = CGFloat(sin(t * 2.4)) * 0.015
             }
+            if local < 0.9 { ping = local / 0.9 }
+            for start in [0.75, 0.95] where (start..<start + 0.13).contains(local) {
+                squint = CGFloat(1 - 0.9 * sin(.pi * (local - start) / 0.13))
+            }
             look = CGPoint(x: 0, y: -0.15)
         case .sad:
-            // Sunk down, slowly swaying, looking at the floor.
-            dy = size * 0.05 + CGFloat(sin(t * 1.2)) * size * 0.008
-            squash = 0.05
+            // Sunk down, slowly swaying, looking at the floor — with a big sigh now and then: a slow
+            // breath in (stretch, eyes lift), then a long slump out with the eyes falling shut.
+            let local = t.truncatingRemainder(dividingBy: Self.sighCycle)
+            var sigh = 0.0
+            if local < 0.9 {
+                sigh = Bounce.easeInOut(local / 0.9)
+            } else if local < 2.4 {
+                sigh = 1 - Bounce.easeInOut((local - 0.9) / 1.5)
+            }
+            let exhale = local >= 0.9 && local < 2.4 ? sin(.pi * (local - 0.9) / 1.5) : 0
+            dy = size * 0.05 + CGFloat(sin(t * 1.2)) * size * 0.008 - CGFloat(sigh) * size * 0.04
+            squash = 0.05 - CGFloat(sigh) * 0.09 + CGFloat(exhale) * 0.04
             tilt = -4 + sin(t * 0.9) * 2
-            look = CGPoint(x: CGFloat(sin(t * 0.5)) * 0.25, y: 0.75)
+            squint = 1 + 0.3 * CGFloat(sigh) - 0.7 * CGFloat(exhale)
+            look = CGPoint(x: CGFloat(sin(t * 0.5)) * 0.25, y: 0.75 - 0.6 * CGFloat(sigh))
         case .sleepy:
+            // Slow breathing; now and then one eye cracks open to check on things, then drifts shut.
             let breath = sin(t * 1.3)
             squash = CGFloat(breath) * 0.035
             dy = size * 0.02
             tilt = 3
             look = CGPoint(x: 0, y: 0.35)
+            let local = t.truncatingRemainder(dividingBy: Self.peekCycle)
+            if (6..<7.6).contains(local) {
+                let k = (local - 6) / 1.6
+                let lift = k < 0.15 ? k / 0.15 : (k < 0.6 ? 1 : 1 - (k - 0.6) / 0.4)
+                peek = 0.55 * CGFloat(lift)
+                look.x = -0.4 * peek
+                tilt = 3 - 4 * Double(peek)
+            }
         }
     }
 
@@ -380,7 +465,28 @@ private struct Motion {
         m.tilt = a.tilt + (b.tilt - a.tilt) * Double(p)
         m.scale = l(a.scale, b.scale)
         m.look = CGPoint(x: l(a.look.x, b.look.x), y: l(a.look.y, b.look.y))
+        m.squint = l(a.squint, b.squint)
+        m.peek = l(a.peek, b.peek)
+        m.flash = l(a.flash, b.flash)
+        m.ping = p < 0.5 ? a.ping : b.ping
         return m
+    }
+
+    /// Seconds since the last landing of a happy hop.
+    static func sinceLanding(_ t: Double) -> Double {
+        let u = t / hopCycle - (t / hopCycle).rounded(.down)
+        return (u - landAt + (u < landAt ? 1 : 0)) * hopCycle
+    }
+
+    /// 0 while reading, rising to 1 for a moment of thought roughly every seven seconds.
+    static func thinking(_ t: Double) -> CGFloat {
+        let cycle = 7.3
+        let local = t.truncatingRemainder(dividingBy: cycle) - 4.6
+        guard local > 0, local < 1.6 else { return 0 }
+        let ramp = 0.25
+        if local < ramp { return CGFloat(Bounce.ease(local / ramp)) }
+        if local > 1.6 - ramp { return CGFloat(Bounce.ease((1.6 - local) / ramp)) }
+        return 1
     }
 
     /// Eyes hold still, then dart to a new spot — the way eyes actually move — instead of drifting.
@@ -408,6 +514,11 @@ private enum Bounce {
     }
 
     static func ease(_ x: Double) -> Double { 1 - pow(1 - x, 3) }
+
+    static func easeInOut(_ x: Double) -> Double {
+        let c = max(0, min(x, 1))
+        return c < 0.5 ? 4 * c * c * c : 1 - pow(-2 * c + 2, 3) / 2
+    }
 }
 
 private enum Noise {
@@ -489,7 +600,8 @@ private struct Teardrop: Shape {
 @MainActor
 enum BuddyFilm {
     private static let script: [(BuddyMood, Double)] = [
-        (.sleepy, 1.6), (.working, 2.8), (.alert, 2.0), (.working, 1.2), (.happy, 2.4), (.sad, 2.2), (.sleepy, 1.6),
+        // Long enough to catch the occasional beats: a thinking pause, a sigh, a sleepy peek.
+        (.sleepy, 1.6), (.working, 5.0), (.alert, 2.0), (.working, 1.0), (.happy, 2.9), (.sad, 3.8), (.sleepy, 3.0),
     ]
     private static let moods: [(BuddyMood, String)] = [
         (.sleepy, "Idle"), (.working, "Working"), (.alert, "Needs you"), (.happy, "Done"), (.sad, "Failed"),
