@@ -339,6 +339,7 @@ final class UpdateCheckerTests: XCTestCase {
         XCTAssertEqual(release?.version, "1.0.3")
         XCTAssertEqual(release?.url.absoluteString, "https://github.com/jvthomas702/Cove/releases/tag/v1.0.3")
         XCTAssertNil(UpdateChecker.parse(Data(#"{"tag_name": "v2.0.0-beta", "html_url": "https://x", "prerelease": true}"#.utf8)))
+    }
 }
 
 // MARK: - Clipboard history
