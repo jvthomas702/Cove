@@ -342,6 +342,8 @@ struct SettingsView: View {
         }
         .background(Theme.background)
         .frame(minWidth: 620, minHeight: 520)
+        // Switches and selections use Cove's blue rather than the system grey or accent.
+        .tint(Theme.accent)
         .preferredColorScheme(model.config.islandTheme.colorScheme)
     }
 
