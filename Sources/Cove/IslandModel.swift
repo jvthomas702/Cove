@@ -18,7 +18,7 @@ final class IslandModel: ObservableObject {
         case running(count: Int, agent: AgentKind)
         case progress(Activity)
         case finished(count: Int, agent: AgentKind, failed: Bool)
-        case focus(end: Date)
+        case timer(QuickTimer)    // a quick timer or focus session counting down
         case music(NowPlaying)
         case sports(SportsGame)
         case scoreAndMusic(SportsGame, NowPlaying)   // a live score and what's playing, side by side
@@ -79,8 +79,10 @@ final class IslandModel: ObservableObject {
     @Published private(set) var battery: BatteryState?
     /// Connected AirPods and other Bluetooth accessories that report a battery; nil until first read.
     @Published private(set) var bluetooth: [BluetoothBattery]?
-    @Published private(set) var focusEnd: Date?
-    @Published private(set) var focusTotal: TimeInterval = 0
+    /// The one running (or paused) quick timer / focus session. Survives a restart.
+    @Published private(set) var timer: QuickTimer?
+    /// The timer picker is showing in Home (opened with the timer button in the header).
+    @Published var timerPickerOpen = false
     @Published private(set) var shelf: [URL] = []
     /// Recently copied text, newest first (memory only; see ClipboardMonitor).
     @Published private(set) var clips: [String] = []
@@ -99,7 +101,8 @@ final class IslandModel: ObservableObject {
 
     private var queue: [Banner] = []
     private var bannerTimer: Timer?
-    private var focusTimer: Timer?
+    private var countdown: Timer?
+    private let timerStore: QuickTimerStore
     private var pruneTimer: Timer?
     private var hoverWork: DispatchWorkItem?
     private var isHovering = false
@@ -118,8 +121,9 @@ final class IslandModel: ObservableObject {
         "net.kovidgoyal.kitty", "org.alacritty", "com.microsoft.VSCode", "com.todesktop.230313mzl4w4u92",
     ]
 
-    init(config: CoveConfig, sports: SportsMonitor? = nil, shelfStore: ShelfStore? = nil) {
+    init(config: CoveConfig, sports: SportsMonitor? = nil, shelfStore: ShelfStore? = nil, timerStore: QuickTimerStore? = nil) {
         self.shelfStore = shelfStore ?? ShelfStore()
+        self.timerStore = timerStore ?? QuickTimerStore()
         self.config = config
         self.sports = sports ?? SportsMonitor()
         // Relay changes from the nested monitor after its published values have changed.
@@ -160,6 +164,7 @@ final class IslandModel: ObservableObject {
             }
         }
         loadShelf()
+        restoreTimer()
         pruneTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.prune() }
         }
@@ -207,6 +212,7 @@ final class IslandModel: ObservableObject {
         case .sports?: return 104
         case .scoreAndMusic?: return 116
         case .ai?: return 92
+        case .timer?: return 60   // room for "12:34"
         case .hud?: return 64
         case .napping? where nextEventToday != nil:
             return 60   // napping Nori plus the next class time
@@ -236,6 +242,8 @@ final class IslandModel: ObservableObject {
     var compactItem: CompactItem? {
         if let hud { return .hud(hud) }
         if let a = activities.first(where: { $0.state == .attention }) { return .attention(a.agent) }
+        // A timer you started is the thing you're watching.
+        if let timer { return .timer(timer) }
         let workingAI = aiActivities.filter(\.isLive)
         if config.aiWorkInNotch, let work = workingAI.first { return .ai(work, count: workingAI.count) }
         if config.homeWidget == .ai, let work = aiActivities.first { return .ai(work, count: workingAI.count) }
@@ -258,7 +266,6 @@ final class IslandModel: ObservableObject {
         }
         if config.calendar, let now = schedule.currentEvent() { return .ongoing(now) }
         if let event = countdownEvent { return .event(event) }
-        if let end = focusEnd { return .focus(end: end) }
         if let np = nowPlaying, np.isPlaying { return .music(np) }
         if config.buddy && config.buddyAlwaysVisible { return .napping }
         return nil
@@ -1022,31 +1029,101 @@ final class IslandModel: ObservableObject {
         }
     }
 
-    // MARK: - Focus timer
+    // MARK: - Quick timers & focus
+
+    /// Starts the one timer (replacing any running one).
+    func startTimer(seconds: TimeInterval, label: String = "Timer") {
+        guard seconds >= 1 else { return }
+        setTimer(QuickTimer.start(seconds: seconds, label: label))
+        timerPickerOpen = false
+    }
+
+    /// Starts a timer from what was typed ("3", "90s", "1h 15m", "12:30"). False when it can't be read.
+    @discardableResult
+    func startTimer(text: String) -> Bool {
+        guard let seconds = QuickTimer.parse(text) else { return false }
+        startTimer(seconds: seconds)
+        return true
+    }
 
     func startFocus(minutes: Int) {
-        focusTimer?.invalidate()
-        let total = TimeInterval(minutes * 60)
-        focusTotal = total
-        focusEnd = Date().addingTimeInterval(total)
-        focusTimer = Timer.scheduledTimer(withTimeInterval: total, repeats: false) { [weak self] _ in
-            MainActor.assumeIsolated { self?.finishFocus() }
+        startTimer(seconds: TimeInterval(minutes * 60), label: "Focus")
+    }
+
+    func pauseTimer() {
+        guard let timer, !timer.isPaused else { return }
+        setTimer(timer.paused())
+    }
+
+    func resumeTimer() {
+        guard let timer, timer.isPaused else { return }
+        setTimer(timer.resumed())
+    }
+
+    func cancelTimer() { setTimer(nil) }
+
+    func stopFocus() { cancelTimer() }
+
+    func toggleTimerPicker() {
+        if tab != .home { navigate(to: .home); timerPickerOpen = true; return }
+        timerPickerOpen.toggle()
+    }
+
+    /// Whether Home's second tile is the timer: a timer is going, the picker is open, or Focus is the Home widget.
+    var showsTimerTile: Bool {
+        config.quickTimers && (timer != nil || timerPickerOpen || config.homeWidget == .focus)
+    }
+
+    private func setTimer(_ next: QuickTimer?) {
+        countdown?.invalidate()
+        countdown = nil
+        timer = next
+        timerStore.save(next)
+        if let next, let end = next.endDate {
+            countdown = Timer.scheduledTimer(withTimeInterval: max(end.timeIntervalSinceNow, 0.1), repeats: false) { [weak self] _ in
+                MainActor.assumeIsolated { self?.finishTimer() }
+            }
         }
         recompute()
     }
 
-    func stopFocus() {
-        focusTimer?.invalidate()
-        focusTimer = nil
-        focusEnd = nil
-        recompute()
+    /// Picks up a timer that was running when Cove quit. One that ran out meanwhile rings now,
+    /// if it ended in the last hour.
+    private func restoreTimer() {
+        guard let saved = timerStore.load() else { return }
+        if let end = saved.endDate, end <= Date() {
+            timerStore.save(nil)
+            if Date().timeIntervalSince(end) < 3600 { ringTimer(saved, late: end) }
+            return
+        }
+        setTimer(saved)
     }
 
-    private func finishFocus() {
-        let minutes = Int(focusTotal / 60)
-        stopFocus()
-        show(Banner(title: "Focus session done", body: "\(minutes) minutes — take a break.", style: .success,
-                    icon: .symbol("timer", Palette.green), sticky: true))
+    private func finishTimer() {
+        guard let done = timer else { return }
+        // Fired early (the clock changed)? Wait for the real end.
+        if let end = done.endDate, end.timeIntervalSinceNow > 0.5 { setTimer(done); return }
+        setTimer(nil)
+        ringTimer(done, late: nil)
+    }
+
+    private func ringTimer(_ done: QuickTimer, late end: Date?) {
+        if config.sounds, let sound = NSSound(named: NSSound.Name("Glass")) {
+            sound.stop()
+            sound.play()
+        }
+        let length = QuickTimer.name(done.total)
+        let body: String
+        if let end {
+            body = "\(length) · ended at \(end.formatted(date: .omitted, time: .shortened))"
+        } else {
+            body = done.label == "Focus" ? "\(length) — take a break." : "\(length) is up."
+        }
+        // An info banner, so the only sound is the Glass chime above.
+        show(Banner(title: done.label == "Focus" ? "Focus session done" : "Time's up",
+                    body: body, style: .info,
+                    icon: config.buddy ? .buddy(.happy, nil) : .symbol("timer", Palette.green),
+                    sticky: true, source: done.label))
     }
 
     // MARK: - Volume / brightness HUD

@@ -386,6 +386,8 @@ private struct GeneralPane: View {
                       detail: "Off: click the notch to open it", isOn: controller.binding(\.hoverToExpand))
             ToggleRow(title: "Play sounds", detail: "When something finishes, fails or needs you",
                       isOn: controller.binding(\.sounds))
+            ToggleRow(title: "Quick timers", detail: "A timer button in the island: 5, 10 or 25 minutes, or type 90s, 1h 15m or 12:30",
+                      isOn: controller.binding(\.quickTimers))
             ToggleRow(title: "Show what Claude is doing", detail: "\"Editing eval.py\", \"$ pytest\" and so on",
                       isOn: controller.binding(\.showToolActivity))
             ToggleRow(title: "Keyboard shortcuts",

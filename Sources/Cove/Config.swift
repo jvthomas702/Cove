@@ -34,6 +34,9 @@ struct CoveConfig: Codable {
     var batteryAlerts: Bool = true
     /// Focus timer presets, in minutes.
     var focusMinutes: [Int] = [25, 50, 90]
+    /// Quick timers: a timer button in the island's header, 5 / 10 / 25 minute chips and a field for
+    /// "3", "90s", "1h 15m" or "12:30". The countdown shows beside the notch.
+    var quickTimers: Bool = true
 
     // MARK: Claude Code approvals
     /// "smart": show permission prompts in the notch unless the terminal running Claude is in front,
@@ -156,6 +159,7 @@ struct CoveConfig: Codable {
         mediaApps = value(.mediaApps, d.mediaApps)
         batteryAlerts = value(.batteryAlerts, d.batteryAlerts)
         focusMinutes = value(.focusMinutes, d.focusMinutes)
+        quickTimers = value(.quickTimers, d.quickTimers)
         approvals = value(.approvals, d.approvals)
         approvalTimeout = value(.approvalTimeout, d.approvalTimeout)
         approvalIdleMinutes = value(.approvalIdleMinutes, d.approvalIdleMinutes)

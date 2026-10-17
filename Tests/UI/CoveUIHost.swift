@@ -104,7 +104,11 @@ struct UIHostView: View {
         if !CommandLine.arguments.contains("--preserve-shelf") {
             ShelfStore(defaults: shelfDefaults, root: FileManager.default.temporaryDirectory.appendingPathComponent("cove-ui-shelf")).clear()
         }
-        model = IslandModel(config: config, sports: SportsMonitor(session: URLSession(configuration: sessionConfig)), shelfStore: ShelfStore(defaults: shelfDefaults, root: FileManager.default.temporaryDirectory.appendingPathComponent("cove-ui-shelf")))
+        // A timer left running by an earlier test run must not take over Home.
+        let timerDefaults = UserDefaults(suiteName: "app.cove.ui-test.timer")!
+        QuickTimerStore(defaults: timerDefaults).save(nil)
+        model = IslandModel(config: config, sports: SportsMonitor(session: URLSession(configuration: sessionConfig)), shelfStore: ShelfStore(defaults: shelfDefaults, root: FileManager.default.temporaryDirectory.appendingPathComponent("cove-ui-shelf")),
+                            timerStore: QuickTimerStore(defaults: timerDefaults))
         model.agentLauncher.folder = UIFeed.root
         model.agentLauncher.resolveExecutable = { _ in URL(fileURLWithPath: "/usr/bin/true") }
         model.agentLauncher.openCommand = { url, completion in

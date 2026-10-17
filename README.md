@@ -20,7 +20,8 @@ Native Swift and SwiftUI, no dependencies, MIT licensed. Every commit is built, 
 | **Sports** | Choose an NBA, NFL or college football game to pin its score beside the notch and follow its latest plays. College football defaults to games featuring a Top 25 team. |
 | **Screenshot shelf** | Every screenshot lands on the shelf the moment it's saved, with a thumbnail you can drag straight out of the notch into a doc, Slack or a chat. |
 | **Long commands** | `cove-run python train.py` shows a live timer and pings you with how long it took. Scripts can push progress rings. |
-| **And** | Notifications from other apps, Now Playing with album-art colors, a focus timer, a file shelf, battery alerts, and the volume and brightness meter. |
+| **Quick timers** | Click the timer button in the island for 5, 10 or 25 minutes, or type "3", "90s", "1h 15m" or "12:30". The countdown and a thin ring sit beside the notch; pause or cancel from Home. At zero Nori celebrates with a chime. Timers survive a restart. |
+| **And** | Notifications from other apps, Now Playing with album-art colors, a file shelf, battery alerts, and the volume and brightness meter. |
 
 ## Install
 
@@ -89,6 +90,10 @@ Calendars already in the Mac's Calendar app (Google added under System Settings 
 Sessions on claude.ai/code, in Claude projects and in routines run on Anthropic's machines, so Cove's hooks never hear from them. What does reach your Mac is GitHub: those sessions open pull requests that link back to the session. Cove watches for them and shows each one as a Claude activity: when it opens, while CI runs, when CI fails or passes, when it's ready for review and when it merges. Clicking it opens the session or project thread.
 
 It signs in with the GitHub CLI (`brew install gh`, then `gh auth login`) and watches the repos you pushed to in the last two days, or the ones you list as `cloudRepos` in `~/.config/cove/config.json`. Turn it off in Settings → Connections. Cloud work that never opens a pull request (a question, a document) doesn't show up.
+
+### Quick timers
+
+Click the **timer** button at the left of the island's header. Home's second tile turns into the timer: tap **5 min**, **10 min** or **25 min**, or type a length and press Return. Plain numbers are minutes (`3`), and `90s`, `1h 15m`, `1.5h` and `1:15:00` work too. A clock time such as `12:30`, `9:05pm` or `7pm` counts down to the next time it comes round. While it runs, the time left (`12:34`) and a thin blue ring show beside the notch, and Home has **Pause** and **Cancel**. At zero a banner drops down with Nori celebrating and the Glass chime (if sounds are on). One timer runs at a time; starting another replaces it. The end time is saved, so a timer keeps going across a restart, and one that ran out while Cove was closed rings when it opens. Choosing **Focus** as the Home widget keeps the timer tile on Home. Turn the feature off with **Settings → General → Quick timers**.
 
 ### Screenshots
 

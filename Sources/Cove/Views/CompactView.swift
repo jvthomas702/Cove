@@ -74,10 +74,17 @@ struct CompactView: View {
             agentIcon(a.agent, mood: .working)
         case .finished(_, let agent, let failed)?:
             agentIcon(agent, mood: failed ? .sad : .happy)
-        case .focus?:
-            Image(systemName: "timer")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(Palette.amber)
+        case .timer(let timer)?:
+            TimelineView(.periodic(from: .now, by: 1)) { context in
+                ProgressRing(progress: timer.fractionLeft(at: context.date),
+                             color: timer.isPaused ? Theme.inkSecondary : Theme.accent, size: 16, lineWidth: 1.5)
+                    .overlay {
+                        Image(systemName: timer.isPaused ? "pause.fill" : "timer")
+                            .font(.system(size: 6.5, weight: .bold))
+                            .foregroundStyle(timer.isPaused ? Theme.inkSecondary : Theme.accent)
+                    }
+            }
+            .accessibilityHidden(true)
         case .music?:
             ArtworkView(model: model, size: 20, matchID: "art")
         case .sports(let game)?:
@@ -173,12 +180,17 @@ struct CompactView: View {
                     Text("\(count)").font(Theme.Font.number).foregroundStyle(Theme.inkSecondary)
                 }
             }
-        case .focus(let end)?:
-            Text(timerInterval: Date()...max(end, Date()), countsDown: true)
-                .font(Theme.Font.number)
-                .foregroundStyle(Palette.amber)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
+        case .timer(let timer)?:
+            TimelineView(.periodic(from: .now, by: 1)) { context in
+                Text(QuickTimer.clock(timer.remaining(at: context.date)))
+                    .font(.system(size: 12, weight: .semibold, design: .rounded).monospacedDigit())
+                    .foregroundStyle(timer.isPaused ? Theme.inkSecondary : Theme.ink)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("\(timer.label), \(timer.isPaused ? "paused" : "counting down")")
+            .accessibilityIdentifier("compact.timer")
         case .music(let np)?:
             EqualizerBars(playing: np.isPlaying, color: model.accent ?? np.appTint)
         case .scoreAndMusic(_, let np)?:
