@@ -34,7 +34,10 @@ check "web pages are refused" "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -X 
 check "extension origin is allowed" "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Origin: chrome-extension://abc' --data '{\"title\":\"x\",\"kind\":\"clear\",\"id\":\"x\"}' $API/event)\" = 200 ]"
 
 sleep 1.2; island 01-welcome-banner
-sleep 2; full 02-settings-permissions
+sleep 2; full 02-welcome
+debug welcome/1; sleep 1; full 02b-welcome-pick
+debug welcome/2; sleep 1; full 02c-welcome-allow
+debug close-welcome; debug settings/permissions; sleep 1; full 02d-settings-permissions
 debug settings/agents; sleep 1; full 03-settings-agents
 debug settings/alerts; sleep 1; full 03a-settings-alerts
 debug settings/connections; sleep 1; full 04-settings-connections

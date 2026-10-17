@@ -33,6 +33,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let updater = CoveUpdater()
     private var settingsController: SettingsController!
     private var settingsWindow: SettingsWindowController?
+    private var welcomeWindow: WelcomeWindowController?
     private var clipboard: ClipboardMonitor?
     private var actions: GitHubActionsMonitor?
     private var cloud: CloudSessionsMonitor?
@@ -181,7 +182,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    /// First launch: open Settings on the Permissions page. After an update: a small "updated" banner.
+    /// First launch: the welcome window (pick features, allow what they need). After an update: a small "updated" banner.
     private func welcomeIfNeeded() {
         let defaults = UserDefaults.standard
         let last = defaults.string(forKey: "lastLaunchedVersion")
@@ -189,13 +190,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if last == nil {
             model.show(Banner(
                 title: "Hi, I'm Nori",
-                body: "Hover the notch to open Cove. Let's set up permissions.",
+                body: "Hover the notch any time to open Cove.",
                 style: .success,
                 icon: .buddy(.happy, nil),
                 source: "Welcome to Cove"
             ))
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
-                MainActor.assumeIsolated { self?.openSettings(pane: .permissions) }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
+                MainActor.assumeIsolated { self?.openWelcome() }
             }
         } else if last != version {
             model.show(Banner(
@@ -227,6 +228,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             source: "Permissions"
         ))
     }
+
+    private func openWelcome(step: WelcomeStep = .hello) {
+        if welcomeWindow == nil {
+            let window = WelcomeWindowController(controller: settingsController)
+            window.onFinish = { [weak self] in
+                guard let self, !self.debugAPI else { return }
+                self.model.show(Banner(
+                    title: "Cove is ready",
+                    body: "Hover the notch to open it. Settings are in the menu bar.",
+                    style: .success,
+                    icon: .buddy(.happy, nil),
+                    source: "Welcome to Cove"
+                ))
+            }
+            welcomeWindow = window
+        }
+        welcomeWindow?.show(step: step)
+    }
+
+    @objc private func openWelcomeFromMenu() { openWelcome() }
 
     // MARK: - Settings
 
@@ -679,6 +700,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(statusLine)
         menu.addItem(.separator())
         addItem(to: menu, "Settings…", #selector(openSettingsFromMenu), key: ",")
+        addItem(to: menu, "Set Up Cove…", #selector(openWelcomeFromMenu))
         addItem(to: menu, "Check for Updates…", #selector(checkForUpdates))
         addItem(to: menu, "Pin / unpin notch", #selector(togglePinFromMenu))
         addItem(to: menu, "Run demo", #selector(runDemoFromMenu))
@@ -802,6 +824,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             openSettings(pane: SettingsPane(rawValue: arg) ?? .general)
         case "close-settings":
             settingsWindow?.close()
+        case "welcome":
+            openWelcome(step: WelcomeStep(rawValue: Int(arg) ?? 0) ?? .hello)
+        case "close-welcome":
+            welcomeWindow?.close()
         case "sports":
             var next = model.config
             next.sportsEnabled = true
