@@ -84,6 +84,10 @@ struct CoveConfig: Codable {
     /// ⌃⌥Space opens the island; ⌃⌥Y / N / A / T answer Claude's permission prompts.
     var shortcuts: Bool = true
 
+    // MARK: Updates
+    /// Check GitHub once a day and show a banner when a newer release is out.
+    var checkForUpdates: Bool = true
+
     init() {}
 
     init(from decoder: Decoder) throws {
@@ -126,6 +130,7 @@ struct CoveConfig: Codable {
         hud = value(.hud, d.hud)
         hudSeconds = value(.hudSeconds, d.hudSeconds)
         shortcuts = value(.shortcuts, d.shortcuts)
+        checkForUpdates = value(.checkForUpdates, d.checkForUpdates)
     }
 
     static var directory: URL {
