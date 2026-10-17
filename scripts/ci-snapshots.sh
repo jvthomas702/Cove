@@ -149,7 +149,7 @@ zoom 15-napping-next-class; zoom 06-working
 
 # Nori: every mood as a still sheet, plus frames of it moving through them (stitched into a GIF later).
 debug buddy-film
-for _ in $(seq 1 120); do [ -f "$HOME/cove-buddy-film/done" ] && break; sleep 0.5; done
+for _ in $(seq 1 240); do [ -f "$HOME/cove-buddy-film/done" ] && break; sleep 0.5; done
 check "buddy film rendered" "[ -f \"$HOME/cove-buddy-film/done\" ]"
 cp "$HOME/cove-buddy-film/sheet.png" "$OUT/16-buddy-moods.png" 2>/dev/null
 mkdir -p "$OUT/buddy-film" && cp "$HOME"/cove-buddy-film/f*.png "$OUT/buddy-film/" 2>/dev/null
