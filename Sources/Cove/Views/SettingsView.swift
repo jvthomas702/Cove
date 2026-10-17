@@ -278,7 +278,7 @@ struct SettingsView: View {
                     .badge(pane == .permissions ? missingPermissions : 0)
                     .tag(pane)
             }
-            .navigationSplitViewColumnWidth(150)
+            .navigationSplitViewColumnWidth(164)
             .scrollContentBackground(.hidden)
             .background(Color.black)
         } detail: {
