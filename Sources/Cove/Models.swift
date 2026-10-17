@@ -121,11 +121,11 @@ enum BannerIcon: Equatable {
     case app(String)
     /// A file thumbnail (screenshots).
     case file(URL)
-    /// Pip, the avatar, in a mood — optionally wearing a small badge for the agent it's reporting on.
+    /// Nori, the avatar, in a mood — optionally wearing a small badge for the agent it's reporting on.
     case buddy(BuddyMood, AgentKind?)
 }
 
-/// Pip's moods. Each maps to an expression and a little animation.
+/// Nori's moods. Each maps to an expression and a little animation.
 enum BuddyMood: Equatable {
     case working   // focused, eyes reading, antenna pulsing blue
     case happy     // hops with sparkles — something finished

@@ -63,9 +63,9 @@ struct CoveConfig: Codable {
     var eventStartAlert: Bool = true
 
     // MARK: Avatar
-    /// Pip, the little avatar that reacts when agents and commands work, finish, fail or need you.
+    /// Nori, the little avatar that reacts when agents and commands work, finish, fail or need you.
     var buddy: Bool = true
-    /// Keep Pip napping beside the notch even when nothing is happening.
+    /// Keep Nori napping beside the notch even when nothing is happening.
     var buddyAlwaysVisible: Bool = true
 
     // MARK: Screenshots
