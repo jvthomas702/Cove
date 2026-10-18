@@ -1,9 +1,20 @@
-# Cove 1.5.0
+# Cove 1.6.0
 
-- A smaller black island with two Home tiles, icon tabs, simpler controls, tinted pill buttons and prominent Start and Send buttons.
-- Show a followed game’s score alongside playing music in the compact island.
-- Finished games drop out of the followed strip and compact notch; one-off watched games are cleared when they end.
-- Nori has richer expressions: thinking glances, springier landings and spins, attention pings, sighs and occasional sleepy peeks. Static list avatars and Reduce Motion remain supported.
-- Retains sports Gamecast, favorites, screenshot editing and undo, existing local Codex chat prompts, attention fixes, optional device and cloud activity, and signed in-app updates.
+**Easier to start**
+- A three-step welcome window on first launch: connect Claude Code, pick what the island shows, and allow only what those picks need. Run it again from the menu bar with **Set Up Cove…**.
+- Settings is split into short pages: General, AI agents, Classes, Sports, Shelf, and Status and alerts, then Permissions, Connections and About.
+- Cove opens at login by default and says so if macOS drops a permission, with a button to fix it.
+- One updater, and releases signed with one certificate so permissions survive updates.
+
+**New**
+- Reply to a finished Claude Code or Codex session right from its banner.
+- Today's agent recap in the AI tab: what ran, for how long, and how many files changed.
+- Pushes to your phone through ntfy when an agent finishes or needs you, with Allow and Deny.
+- Re-run a failed GitHub Actions run, or start its deploy workflow, from the island.
+- Drop a file on the notch to AirDrop it or keep it on the shelf.
+- Quick timers with a live countdown beside the notch.
+- iPhone-style charging animation, and the green and orange camera and mic dot.
+- The island works on external displays and can follow the pointer between screens.
+- A Terminal look, and a choice of outline, glow or tinted accent buttons.
 
 Update through Settings → About → Check for Updates. Your existing Cove installation updates in place.

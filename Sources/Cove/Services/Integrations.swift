@@ -282,6 +282,24 @@ enum Permission: String, CaseIterable, Identifiable {
         }
     }
 
+    /// Permissions read live from macOS (the Desktop folder comes from the screenshot watcher instead).
+    static let checkable: [Permission] = allCases.filter { $0 != .desktop }
+
+    /// Permissions Cove had at some point but doesn't have now. macOS keeps permissions per code
+    /// signature, so an update signed differently loses them while System Settings still shows Cove
+    /// switched on; the fix is to remove Cove from the list and allow it again.
+    static func lost(granted: [Permission: Bool], defaults: UserDefaults = .standard) -> Set<Permission> {
+        var remembered = Set((defaults.stringArray(forKey: rememberedKey) ?? []).compactMap(Permission.init(rawValue:)))
+        let now = Set(checkable.filter { granted[$0] == true })
+        if !now.isSubset(of: remembered) {
+            remembered.formUnion(now)
+            defaults.set(remembered.map(\.rawValue).sorted(), forKey: rememberedKey)
+        }
+        return remembered.subtracting(now).intersection(checkable)
+    }
+
+    private static let rememberedKey = "rememberedPermissions"
+
     /// Asks macOS (shows the system prompt where one exists), otherwise opens the right Settings pane.
     @MainActor
     func request() async {

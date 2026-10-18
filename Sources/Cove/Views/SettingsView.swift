@@ -1,5 +1,6 @@
 import AppKit
 import Combine
+import CoreImage
 import ServiceManagement
 import SwiftUI
 
@@ -12,12 +13,16 @@ final class SettingsController: ObservableObject {
     var onConfigChange: ((CoveConfig) -> Void)?
     var onRunDemo: (() -> Void)?
     var onCopyDiagnostics: (() -> Void)?
+    /// Pushes a status ping to the phone (Settings → Connections → Your phone).
+    var onPhoneTest: (() -> Void)?
     /// Re-reads the screenshot folder (shows macOS's access prompt the first time).
     var onRecheckScreenshots: (() -> Void)?
     /// A permission was just requested (so the calendar can re-read right away).
     var onPermissionChanged: ((Permission) -> Void)?
 
     @Published private(set) var granted: [Permission: Bool] = [:]
+    /// Granted before but not now, usually because an update changed Cove's signature.
+    @Published private(set) var lost: Set<Permission> = []
     @Published private(set) var cliInstalled = false
     @Published private(set) var claudeHooks = false
     @Published private(set) var claudeCodePresent = false
@@ -61,6 +66,8 @@ final class SettingsController: ObservableObject {
             map[permission] = permission == .desktop ? model.screenshotAccess == .ok : permission.isGranted
         }
         if map != granted { granted = map }
+        let lostNow = Permission.lost(granted: map)
+        if lostNow != lost { lost = lostNow }
         cliInstalled = CLIInstaller.isInstalled
         claudeHooks = ClaudeHooks.isInstalled
         claudeCodePresent = ClaudeHooks.claudeCodeExists
@@ -184,6 +191,19 @@ final class SettingsController: ObservableObject {
         }
     }
 
+    /// Quits and reopens Cove, which some permissions (Full Disk Access) need before they apply.
+    func restart() {
+        let relaunch = Process()
+        relaunch.executableURL = URL(fileURLWithPath: "/bin/sh")
+        relaunch.arguments = ["-c", "sleep 1; /usr/bin/open \"$0\"", Bundle.main.bundlePath]
+        do {
+            try relaunch.run()
+            NSApp.terminate(nil)
+        } catch {
+            message = "Couldn't restart Cove: \(error.localizedDescription)"
+        }
+    }
+
     private func attempt(_ work: () throws -> Void) {
         do {
             try work()
@@ -242,12 +262,16 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
 // MARK: - Views
 
 enum SettingsPane: String, CaseIterable, Identifiable {
-        case general, features, permissions, connections, about
+        case general, agents, classes, sports, shelf, alerts, permissions, connections, about
         var id: String { rawValue }
         var title: String {
             switch self {
             case .general: return "General"
-            case .features: return "Features"
+            case .agents: return "AI agents"
+            case .classes: return "Classes"
+            case .sports: return "Sports"
+            case .shelf: return "Shelf"
+            case .alerts: return "Status and alerts"
             case .permissions: return "Permissions"
             case .connections: return "Connections"
             case .about: return "About"
@@ -256,12 +280,19 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         var symbol: String {
             switch self {
             case .general: return "gearshape"
-            case .features: return "square.grid.2x2"
+            case .agents: return "sparkles"
+            case .classes: return "calendar"
+            case .sports: return "sportscourt"
+            case .shelf: return "tray.full"
+            case .alerts: return "bell"
             case .permissions: return "lock.shield"
             case .connections: return "point.3.connected.trianglepath.dotted"
             case .about: return "info.circle"
             }
         }
+        /// What the island shows, then how Cove is set up, as two sidebar sections.
+        static let island: [SettingsPane] = [.general, .agents, .classes, .sports, .shelf, .alerts]
+        static let system: [SettingsPane] = [.permissions, .connections, .about]
 }
 
 struct SettingsView: View {
@@ -275,10 +306,13 @@ struct SettingsView: View {
 
     var body: some View {
         NavigationSplitView {
-            List(SettingsPane.allCases, selection: $controller.pane) { pane in
-                Label(pane.title, systemImage: pane.symbol)
-                    .badge(pane == .permissions ? missingPermissions : 0)
-                    .tag(pane)
+            List(selection: $controller.pane) {
+                Section {
+                    ForEach(SettingsPane.island) { row($0) }
+                }
+                Section {
+                    ForEach(SettingsPane.system) { row($0) }
+                }
             }
             .navigationSplitViewColumnWidth(170)
             .scrollContentBackground(.hidden)
@@ -291,7 +325,11 @@ struct SettingsView: View {
                     }
                     switch controller.pane ?? .general {
                     case .general: GeneralPane(controller: controller)
-                    case .features: FeaturesPane(controller: controller)
+                    case .agents: AgentsPane(controller: controller)
+                    case .classes: ClassesPane(controller: controller)
+                    case .sports: SportsSettingsPane(controller: controller)
+                    case .shelf: ShelfSettingsPane(controller: controller)
+                    case .alerts: AlertsPane(controller: controller)
                     case .permissions: PermissionsPane(controller: controller)
                     case .connections: ConnectionsPane(controller: controller)
                     case .about: AboutPane(controller: controller)
@@ -304,7 +342,16 @@ struct SettingsView: View {
         }
         .background(Theme.background)
         .frame(minWidth: 620, minHeight: 520)
+        // Switches and selections use Cove's blue rather than the system grey or accent.
+        .tint(Theme.accent)
         .preferredColorScheme(model.config.islandTheme.colorScheme)
+    }
+
+    private func row(_ pane: SettingsPane) -> some View {
+        Label(pane.title, systemImage: pane.symbol)
+            .badge(pane == .permissions ? missingPermissions : 0)
+            .tag(pane)
+            .accessibilityIdentifier("settings.pane.\(pane.rawValue)")
     }
 
     private var missingPermissions: Int {
@@ -371,23 +418,37 @@ private struct GeneralPane: View {
 
     var body: some View {
         SettingsGroup(title: "Startup") {
-            ToggleRow(title: "Open Cove when you log in",
+            ToggleRow(title: "Open Cove when you log in", detail: "So the island is back after a restart",
                       isOn: Binding(get: { controller.launchAtLogin }, set: { controller.setLaunchAtLogin($0) }))
-            ToggleRow(title: "Tell me when a new version is out", detail: "Checks GitHub once a day",
-                      isOn: controller.binding(\.checkForUpdates))
         }
         SettingsGroup(title: "The island") {
+            Picker("Look", selection: controller.binding(\.islandTheme)) {
+                ForEach(IslandTheme.allCases, id: \.self) { Text($0.title).tag($0) }
+            }
+            .pickerStyle(.segmented)
+            .accessibilityIdentifier("settings.look")
+            Picker("Buttons", selection: controller.binding(\.buttonLook)) {
+                ForEach(ButtonLook.allCases, id: \.self) { Text($0.title).tag($0) }
+            }
+            .pickerStyle(.segmented)
+            .disabled(controller.model.config.islandTheme == .terminal)
+            .accessibilityIdentifier("settings.buttons")
             Picker("Home widget", selection: controller.binding(\.homeWidget)) {
                 ForEach(HomeWidget.allCases.filter { $0 != .ai }, id: \.self) { Text($0.title).tag($0) }
             }
-            ToggleRow(title: "Show live AI work beside the notch", detail: "Temporarily shows active AI work, then returns to your sports score",
-                      isOn: controller.binding(\.aiWorkInNotch))
+            Picker("Show on", selection: controller.binding(\.islandDisplay)) {
+                ForEach(IslandDisplay.allCases, id: \.self) { Text($0.title).tag($0) }
+            }
+            Text(controller.model.config.islandDisplay == .notch
+                 ? "The MacBook's notch, or the main display when the lid is closed"
+                 : "Follows the pointer from display to display")
+                .font(.caption).foregroundStyle(.secondary)
             ToggleRow(title: "Open when the pointer rests on the notch",
                       detail: "Off: click the notch to open it", isOn: controller.binding(\.hoverToExpand))
             ToggleRow(title: "Play sounds", detail: "When something finishes, fails or needs you",
                       isOn: controller.binding(\.sounds))
-            ToggleRow(title: "Show what Claude is doing", detail: "\"Editing eval.py\", \"$ pytest\" and so on",
-                      isOn: controller.binding(\.showToolActivity))
+            ToggleRow(title: "Quick timers", detail: "A timer button in the island: 5, 10 or 25 minutes, or type 90s, 1h 15m or 12:30",
+                      isOn: controller.binding(\.quickTimers))
             ToggleRow(title: "Keyboard shortcuts",
                       detail: "⌃⌥Space opens the island. On a permission prompt: ⌃⌥Y allow, ⌃⌥N deny, ⌃⌥A always allow, ⌃⌥T terminal",
                       isOn: controller.binding(\.shortcuts))
@@ -407,32 +468,12 @@ private struct GeneralPane: View {
     }
 }
 
-// MARK: Features
+// MARK: AI agents
 
-private struct FeaturesPane: View {
+private struct AgentsPane: View {
     @ObservedObject var controller: SettingsController
 
     var body: some View {
-        SettingsGroup(title: "AI activity",
-                      footer: "Open the AI tab to inspect your connected agents. App tracking reads visible window titles and generation controls locally; it needs Accessibility. Keep ChatGPT's chat window open. Browser reply previews can be turned off in the extension.") {
-            ToggleRow(title: "Follow the ChatGPT desktop app", isOn: controller.binding(\.desktopAIActivity))
-            Text(controller.model.desktopAITrackingStatus).font(.caption).foregroundStyle(.secondary)
-            if controller.model.config.desktopAIActivity && !Permission.accessibility.isGranted {
-                Button("Allow Accessibility…") { controller.request(.accessibility) }
-            }
-        }
-        SettingsGroup(title: "Sports",
-                      footer: "Choose a game in the Sports tab to pin its score and latest play to the Home widget. Selected live games refresh about every 10 seconds; other followed scores refresh each minute. ESPN coverage and delays vary.") {
-            ToggleRow(title: "Enable sports", detail: "NBA, NFL and college football", isOn: controller.binding(\.sportsEnabled))
-            ToggleRow(title: "College football: Top 25 games only", detail: "At least one ranked team; turn off to browse all FBS games",
-                      isOn: controller.binding(\.sportsRankedOnly))
-        }
-        SettingsGroup(title: "Favorite teams", footer: "Favorites stay visible in the game picker, including unranked college teams. Auto-follow selects your next live or upcoming favorite matchup after the current game ends.") {
-            SportsFavoritesPicker(model: controller.model)
-            ToggleRow(title: "Automatically follow favorite teams", isOn: controller.binding(\.sportsAutoFollow))
-            ToggleRow(title: "Notify when a followed game starts", isOn: controller.binding(\.sportsStartAlerts))
-            ToggleRow(title: "Notify about followed score changes", isOn: controller.binding(\.sportsScoreAlerts))
-        }
         SettingsGroup(title: "Claude Code permission prompts",
               footer: "Smart shows prompts in the notch unless Claude's terminal is in front or you're away from the Mac. Unanswered prompts go back to the terminal.") {
             Picker("Answer prompts from the notch", selection: controller.binding(\.approvals)) {
@@ -445,6 +486,27 @@ private struct FeaturesPane: View {
                 Text("Hand back to the terminal after \(Int(controller.model.config.approvalTimeout)) seconds")
             }
         }
+        SettingsGroup(title: "In the island") {
+            ToggleRow(title: "Show what Claude is doing", detail: "\"Editing eval.py\", \"$ pytest\" and so on",
+                      isOn: controller.binding(\.showToolActivity))
+            ToggleRow(title: "Show live AI work beside the notch", detail: "Temporarily shows active AI work, then returns to your sports score",
+                      isOn: controller.binding(\.aiWorkInNotch))
+            ToggleRow(title: "Reply from banners", detail: "Answer a finished Claude Code or Codex session from its banner; it continues in Terminal",
+                      isOn: controller.binding(\.bannerReplies))
+            ToggleRow(title: "Today's agent recap", detail: "Finished Claude Code and Codex runs in the AI tab: how long they ran and files changed",
+                      isOn: controller.binding(\.agentRecap))
+        }
+        Text("Connect Claude Code, Codex, ChatGPT and browser chats in Connections.")
+            .font(.caption).foregroundStyle(.secondary)
+    }
+}
+
+// MARK: Classes
+
+private struct ClassesPane: View {
+    @ObservedObject var controller: SettingsController
+
+    var body: some View {
         CalendarLinksGroup(controller: controller)
         SettingsGroup(title: "Calendar app") {
             ToggleRow(title: "Also read the Calendar app", detail: "Google, iCloud and Exchange accounts added in System Settings → Internet Accounts",
@@ -475,6 +537,36 @@ private struct FeaturesPane: View {
                 Text("2 weeks").tag(14)
             }
         }
+    }
+}
+
+// MARK: Sports
+
+private struct SportsSettingsPane: View {
+    @ObservedObject var controller: SettingsController
+
+    var body: some View {
+        SettingsGroup(title: "Sports",
+                      footer: "Choose a game in the Sports tab to pin its score and latest play to the Home widget. Selected live games refresh about every 10 seconds; other followed scores refresh each minute. ESPN coverage and delays vary.") {
+            ToggleRow(title: "Enable sports", detail: "NBA, NFL and college football", isOn: controller.binding(\.sportsEnabled))
+            ToggleRow(title: "College football: Top 25 games only", detail: "At least one ranked team; turn off to browse all FBS games",
+                      isOn: controller.binding(\.sportsRankedOnly))
+        }
+        SettingsGroup(title: "Favorite teams", footer: "Favorites stay visible in the game picker, including unranked college teams. Auto-follow selects your next live or upcoming favorite matchup after the current game ends.") {
+            SportsFavoritesPicker(model: controller.model)
+            ToggleRow(title: "Automatically follow favorite teams", isOn: controller.binding(\.sportsAutoFollow))
+            ToggleRow(title: "Notify when a followed game starts", isOn: controller.binding(\.sportsStartAlerts))
+            ToggleRow(title: "Notify about followed score changes", isOn: controller.binding(\.sportsScoreAlerts))
+        }
+    }
+}
+
+// MARK: Shelf
+
+private struct ShelfSettingsPane: View {
+    @ObservedObject var controller: SettingsController
+
+    var body: some View {
         SettingsGroup(title: "Screenshots",
               footer: "macOS's floating thumbnail holds each screenshot for about 5 seconds before saving it. Turn on instant screenshots to skip it.") {
             ToggleRow(title: "Put new screenshots on the shelf", isOn: controller.binding(\.screenshotsToShelf))
@@ -487,10 +579,24 @@ private struct FeaturesPane: View {
                           isOn: controller.binding(\.screenshotsMoveOffDesktop))
             }
             .disabled(!controller.model.config.screenshotsToShelf)
+        }
+        SettingsGroup(title: "More on the shelf") {
+            ToggleRow(title: "AirDrop drop zone",
+                      detail: "Drag a file onto the notch, then drop it on AirDrop to send it or on Keep to shelve it",
+                      isOn: controller.binding(\.airDropDropZone))
             ToggleRow(title: "Keep recent copied text on the shelf",
                       detail: "The last 12 clips, kept in memory only. Skips passwords from password managers",
                       isOn: controller.binding(\.clipboardHistory))
         }
+    }
+}
+
+// MARK: Status and alerts
+
+private struct AlertsPane: View {
+    @ObservedObject var controller: SettingsController
+
+    var body: some View {
         SettingsGroup(title: "Volume and brightness") {
             Picker("Show changes", selection: controller.binding(\.hud)) {
                 Text("In the notch").tag("replace")
@@ -499,12 +605,18 @@ private struct FeaturesPane: View {
             }
             .pickerStyle(.segmented)
         }
+        SettingsGroup(title: "Battery and devices") {
+            ToggleRow(title: "Battery alerts", detail: "Charging, 20% and 10%", isOn: controller.binding(\.batteryAlerts))
+            ToggleRow(title: "Charging animation", detail: "A green battery fills up in the island when you plug in, in place of the Charging banner",
+                      isOn: controller.binding(\.chargingAnimation))
+            ToggleRow(title: "AirPods and Bluetooth battery", detail: "Levels when they connect, and alerts at 20% and 10%",
+                      isOn: controller.binding(\.bluetoothBattery))
+            ToggleRow(title: "Camera and mic indicator", detail: "A green dot beside the notch while a camera is on, orange while a microphone is",
+                      isOn: controller.binding(\.privacyIndicator))
+        }
         SettingsGroup(title: "Notifications") {
             ToggleRow(title: "Show notifications from other apps", detail: "Needs Full Disk Access",
                       isOn: controller.binding(\.mirrorNotifications))
-            ToggleRow(title: "Battery alerts", detail: "Charging, 20% and 10%", isOn: controller.binding(\.batteryAlerts))
-            ToggleRow(title: "AirPods and Bluetooth battery", detail: "Levels when they connect, and alerts at 20% and 10%",
-                      isOn: controller.binding(\.bluetoothBattery))
             VStack(alignment: .leading, spacing: 4) {
                 Text("Highlight notifications that mention")
                 TextField("interview, offer, deadline", text: Binding(
@@ -694,7 +806,14 @@ private struct PermissionsPane: View {
                         .foregroundStyle(.secondary)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(permission.title)
-                        Text(permission.reason).font(.caption).foregroundStyle(.secondary)
+                        if controller.lost.contains(permission) {
+                            Text("Stopped working. If System Settings still shows Cove switched on, select Cove, click −, then click Allow… again.")
+                                .font(.caption)
+                                .foregroundStyle(.orange)
+                                .fixedSize(horizontal: false, vertical: true)
+                        } else {
+                            Text(permission.reason).font(.caption).foregroundStyle(.secondary)
+                        }
                     }
                     Spacer()
                     if controller.granted[permission] == true {
@@ -708,9 +827,13 @@ private struct PermissionsPane: View {
                 if permission != Permission.allCases.last { Divider() }
             }
         }
-        Text("After turning on Full Disk Access or Accessibility, quit Cove from the menu bar and open it again.")
-            .font(.caption)
-            .foregroundStyle(.secondary)
+        HStack {
+            Text("Full Disk Access applies after Cove restarts.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Spacer()
+            Button("Restart Cove") { controller.restart() }
+        }
     }
 }
 
@@ -771,6 +894,10 @@ private struct ConnectionsPane: View {
         SettingsGroup(title: "GitHub Actions",
               footer: "Shows your workflow runs live in the notch and pings when they pass or fail. Signs in with the GitHub CLI; Cove stores no token.") {
             ToggleRow(title: "Watch my CI runs", detail: ciDetail, isOn: controller.binding(\.ciMonitor))
+            ToggleRow(title: "Re-run and deploy buttons",
+                      detail: "Re-run on failed runs, Run Deploy on passed ones. Needs gh's repo and workflow scopes: gh auth refresh -s repo,workflow",
+                      isOn: controller.binding(\.ciActions))
+                .disabled(!controller.model.config.ciMonitor)
         }
         SettingsGroup(title: "Claude in the cloud",
               footer: "Sessions on claude.ai/code and in Claude projects run on Anthropic's machines, so they can't reach Cove's hooks. Cove finds the pull requests they open on GitHub and shows them opening, running CI and merging. Click one to open its session.") {
@@ -778,6 +905,7 @@ private struct ConnectionsPane: View {
                       detail: model.cloudStatus.isEmpty ? "Repos you pushed to in the last two days, or the cloudRepos list in config.json" : model.cloudStatus,
                       isOn: controller.binding(\.cloudSessions))
         }
+        PhoneGroup(controller: controller, model: model)
         SettingsGroup(title: "Terminal",
               footer: "cove-run <command> pings you when a long command finishes. cove-notify \"text\" posts anything to the notch.") {
             statusRow(title: "cove-run and cove-notify", connected: controller.cliInstalled, connectTitle: "Install") {
@@ -816,6 +944,65 @@ private struct ConnectionsPane: View {
                 Button(connected ? "Disconnect" : connectTitle, action: action)
             }
         }
+    }
+}
+
+/// Settings → Connections → Your phone: ntfy topic, QR code to subscribe, and what gets sent.
+private struct PhoneGroup: View {
+    @ObservedObject var controller: SettingsController
+    @ObservedObject var model: IslandModel
+
+    private var link: URL {
+        PhoneRelay.serverURL(model.config.phoneServer).appendingPathComponent(model.config.phoneTopic)
+    }
+
+    var body: some View {
+        SettingsGroup(title: "Your phone",
+              footer: "Install the free ntfy app (iOS or Android), tap +, and subscribe to the topic, or scan the code to open it in your phone's browser. Works anywhere your phone has signal. Pings pass through \(PhoneRelay.serverURL(model.config.phoneServer).host ?? "ntfy.sh") in plain text, so anyone who knows the topic can read them; set phoneServer in config.json to use your own server.") {
+            ToggleRow(title: "Send agent pings to my phone",
+                      detail: model.config.phoneRelay ? (model.phoneStatus.isEmpty ? "Starting…" : model.phoneStatus)
+                          : "Needs you, finished and permission prompts, plus a Refresh button that lists every agent",
+                      isOn: controller.binding(\.phoneRelay))
+            if model.config.phoneRelay && !model.config.phoneTopic.isEmpty {
+                HStack(alignment: .top, spacing: 14) {
+                    if let qr = Self.qrCode(link.absoluteString) {
+                        Image(nsImage: qr).interpolation(.none).resizable().frame(width: 108, height: 108)
+                            .padding(6).background(RoundedRectangle(cornerRadius: 8).fill(Color.white))
+                    }
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Topic").font(.caption).foregroundStyle(.secondary)
+                        Text(model.config.phoneTopic).font(.system(.body, design: .monospaced)).textSelection(.enabled)
+                        HStack {
+                            Button("Copy topic") {
+                                NSPasteboard.general.clearContents()
+                                NSPasteboard.general.setString(model.config.phoneTopic, forType: .string)
+                                controller.message = "Topic copied. In the ntfy app, tap + and paste it."
+                            }
+                            Button("Send a test") { controller.onPhoneTest?() }
+                            Button("New topic") { controller.binding(\.phoneTopic).wrappedValue = PhoneRelay.newTopic() }
+                                .help("Stops pings to every phone subscribed to the old topic")
+                        }
+                    }
+                }
+                ToggleRow(title: "Only when I'm away from the Mac",
+                          detail: "Screen locked, or no typing for \(Int(model.config.approvalIdleMinutes)) min",
+                          isOn: controller.binding(\.phoneOnlyWhenAway))
+                ToggleRow(title: "Answer Claude's permission prompts from the phone",
+                          detail: "Adds Allow and Deny buttons. While you're away, prompts wait for the phone instead of the terminal.",
+                          isOn: controller.binding(\.phoneApprovals))
+            }
+        }
+    }
+
+    static func qrCode(_ text: String) -> NSImage? {
+        guard let filter = CIFilter(name: "CIQRCodeGenerator") else { return nil }
+        filter.setValue(Data(text.utf8), forKey: "inputMessage")
+        filter.setValue("M", forKey: "inputCorrectionLevel")
+        guard let output = filter.outputImage?.transformed(by: CGAffineTransform(scaleX: 8, y: 8)) else { return nil }
+        let rep = NSCIImageRep(ciImage: output)
+        let image = NSImage(size: rep.size)
+        image.addRepresentation(rep)
+        return image
     }
 }
 

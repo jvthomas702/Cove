@@ -32,8 +32,16 @@ struct ExpandedView: View {
 
     private var header: some View {
         HStack(spacing: 0) {
-            TabSwitcher(model: model)
-                .frame(maxWidth: .infinity, alignment: .trailing)
+            HStack(spacing: 6) {
+                if model.config.quickTimers {
+                    IconButton(systemImage: "timer", size: 12, hit: 28) { model.toggleTimerPicker() }
+                        .foregroundStyle(Theme.accent)
+                        .help("Quick timer").accessibilityLabel("Quick timer")
+                        .accessibilityIdentifier("timer.open")
+                }
+                TabSwitcher(model: model)
+            }
+            .frame(maxWidth: .infinity, alignment: .trailing)
             Color.clear.frame(width: model.notchSize.width)
             HStack(spacing: 6) {
                 IconButton(systemImage: "sparkles", size: 12, hit: 28) { model.openAIConnections() }
@@ -125,13 +133,12 @@ struct AIWorkspacePane: View {
     @ObservedObject var model: IslandModel
 
     var body: some View {
-        VStack(spacing: 10) {
-            HStack(alignment: .top, spacing: 10) {
-                AIWorkWidget(model: model)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                if !model.aiActivities.isEmpty {
-                    AIWorkOverview(model: model).frame(width: 200)
-                }
+        VStack(spacing: 8) {
+            if !model.aiActivities.isEmpty { AIWorkOverview(model: model) }
+            AIWorkWidget(model: model)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            if model.showsRecap {
+                AgentRecapList(model: model).frame(height: IslandModel.recapHeight)
             }
             AgentComposer(model: model)
         }
@@ -199,45 +206,6 @@ struct MediaCard: View {
             }
         }
         .frame(height: 78)
-    }
-}
-
-struct FocusCard: View {
-    @ObservedObject var model: IslandModel
-
-    var body: some View {
-        HStack(spacing: 8) {
-            if let end = model.focusEnd {
-                TimelineView(.periodic(from: .now, by: 1)) { context in
-                    let remaining = max(0, end.timeIntervalSince(context.date))
-                    ProgressRing(progress: remaining / max(model.focusTotal, 1), color: Palette.amber, size: 22, lineWidth: 2.5)
-                }
-                VStack(alignment: .leading, spacing: 0) {
-                    Text("Focus")
-                        .font(Theme.Font.caption)
-                        .foregroundStyle(Theme.inkSecondary)
-                    Text(timerInterval: Date()...max(end, Date()), countsDown: true)
-                        .font(.system(size: 15, weight: .semibold, design: .rounded).monospacedDigit())
-                }
-                Spacer(minLength: 0)
-                ChipButton(title: "End", systemImage: "stop.fill", tint: Palette.red) { model.stopFocus() }
-            } else {
-                Image(systemName: "timer")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(Palette.amber)
-                Text("Focus").font(Theme.Font.headline).lineLimit(1).fixedSize()
-                Spacer(minLength: 2)
-                HStack(spacing: 4) {
-                    ForEach(model.config.focusMinutes.prefix(3), id: \.self) { minutes in
-                        ChipButton(title: "\(minutes)m") { model.startFocus(minutes: minutes) }
-                    }
-                }
-                .layoutPriority(1)
-            }
-        }
-        .padding(.horizontal, Theme.Space.m)
-        .frame(height: 42)
-        .card()
     }
 }
 
@@ -760,6 +728,14 @@ struct ShelfPane: View {
     @ObservedObject var model: IslandModel
 
     var body: some View {
+        if model.isDropTargeted && model.config.airDropDropZone {
+            DropTargets(hover: model.dropHover)
+        } else {
+            shelf
+        }
+    }
+
+    private var shelf: some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
             HStack {
                 SectionTitle(title: "Shelf", count: model.shelf.count)
@@ -833,6 +809,47 @@ private struct ClipChip: View {
                 Button("Remove") { model.removeClip(text) }
             }
             .animation(Theme.snappy, value: hovering)
+    }
+}
+
+/// Shown while a file is dragged over the island: send it with AirDrop, or keep it on the shelf.
+/// The island's drop handler routes the drop by these tiles' frames (see DropRouting).
+private struct DropTargets: View {
+    let hover: DropTarget?
+
+    var body: some View {
+        HStack(spacing: Theme.Space.s) {
+            tile(.airDrop, symbol: "dot.radiowaves.left.and.right", title: "AirDrop", detail: "Send to a nearby device")
+            tile(.keep, symbol: "tray.and.arrow.down.fill", title: "Keep", detail: "Put it on the shelf")
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .animation(Theme.snappy, value: hover)
+    }
+
+    private func tile(_ target: DropTarget, symbol: String, title: String, detail: String) -> some View {
+        let active = hover == target
+        return VStack(spacing: 6) {
+            Image(systemName: symbol)
+                .font(.system(size: 22, weight: .medium))
+                .foregroundStyle(Palette.blue)
+                .symbolEffect(.bounce, value: active)
+            Text(title).font(Theme.Font.headline).foregroundStyle(active ? Theme.ink : Theme.inkSecondary)
+            Text(detail).font(Theme.Font.caption).foregroundStyle(Theme.inkTertiary).lineLimit(1)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(
+            RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
+                .fill(active ? Palette.blue.opacity(0.16) : Theme.surface)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
+                .strokeBorder(active ? Palette.blue.opacity(0.9) : Palette.blue.opacity(0.25),
+                              style: StrokeStyle(lineWidth: 1.5, dash: active ? [] : [6, 5]))
+        )
+        .scaleEffect(active ? 1.02 : 1)
+        .dropTargetFrame(target)
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("drop.\(target.rawValue)")
     }
 }
 

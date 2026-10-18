@@ -226,7 +226,7 @@ final class ScheduleSetupTests: XCTestCase {
 
     func testAsksToConnectWhenNothingIsSetUp() {
         let model = makeModel()
-        XCTAssertEqual(model.scheduleSetup?.pane, .features)
+        XCTAssertEqual(model.scheduleSetup?.pane, .classes)
 
         model.calendarStatus = CalendarStatus(access: .granted, calendars: ["Home", "Work", "US Holidays"])
         XCTAssertNotNil(model.scheduleSetup, "only the built-in calendars: D2L and Google aren't connected")

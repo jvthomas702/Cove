@@ -340,28 +340,6 @@ final class CalendarClassifierTests: XCTestCase {
     }
 }
 
-// MARK: - Update check
-
-final class UpdateCheckerTests: XCTestCase {
-    func testVersionComparison() {
-        XCTAssertTrue(UpdateChecker.isNewer("1.0.3", than: "1.0.2"))
-        XCTAssertTrue(UpdateChecker.isNewer("1.0.10", than: "1.0.9"))
-        XCTAssertTrue(UpdateChecker.isNewer("1.1", than: "1.0.9"))
-        XCTAssertFalse(UpdateChecker.isNewer("1.0.2", than: "1.0.2"))
-        XCTAssertFalse(UpdateChecker.isNewer("1.0", than: "1.0.0"))
-        XCTAssertFalse(UpdateChecker.isNewer("1.0.1", than: "1.0.2"))
-        XCTAssertFalse(UpdateChecker.isNewer("1.0.3", than: "dev"))
-    }
-
-    func testParsesLatestRelease() {
-        let json = #"{"tag_name": "v1.0.3", "html_url": "https://github.com/jvthomas702/Cove/releases/tag/v1.0.3", "draft": false, "prerelease": false}"#
-        let release = UpdateChecker.parse(Data(json.utf8))
-        XCTAssertEqual(release?.version, "1.0.3")
-        XCTAssertEqual(release?.url.absoluteString, "https://github.com/jvthomas702/Cove/releases/tag/v1.0.3")
-        XCTAssertNil(UpdateChecker.parse(Data(#"{"tag_name": "v2.0.0-beta", "html_url": "https://x", "prerelease": true}"#.utf8)))
-    }
-}
-
 // MARK: - Clipboard history
 
 final class ClipboardTests: XCTestCase {
@@ -470,5 +448,13 @@ final class BluetoothBatteryTests: XCTestCase {
         model.setBluetooth([BluetoothBattery(name: "AirPods", left: 50, right: 50)])
         XCTAssertEqual(model.banner?.title, "AirPods connected")
         XCTAssertEqual(model.banner?.body, "50%")
+    }
+}
+
+final class SettingsPaneTests: XCTestCase {
+    func testSidebarShowsEveryPaneOnce() {
+        let listed = SettingsPane.island + SettingsPane.system
+        XCTAssertEqual(listed.count, Set(listed).count)
+        XCTAssertEqual(Set(listed), Set(SettingsPane.allCases))
     }
 }

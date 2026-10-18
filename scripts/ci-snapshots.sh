@@ -34,8 +34,12 @@ check "web pages are refused" "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -X 
 check "extension origin is allowed" "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Origin: chrome-extension://abc' --data '{\"title\":\"x\",\"kind\":\"clear\",\"id\":\"x\"}' $API/event)\" = 200 ]"
 
 sleep 1.2; island 01-welcome-banner
-sleep 2; full 02-settings-permissions
-debug settings/features; sleep 1; full 03-settings-features
+sleep 2; full 02-welcome
+debug welcome/1; sleep 1; full 02b-welcome-pick
+debug welcome/2; sleep 1; full 02c-welcome-allow
+debug close-welcome; debug settings/permissions; sleep 1; full 02d-settings-permissions
+debug settings/agents; sleep 1; full 03-settings-agents
+debug settings/alerts; sleep 1; full 03a-settings-alerts
 debug settings/connections; sleep 1; full 04-settings-connections
 debug close-settings; debug collapse; sleep 1.5
 island 05-idle-buddy
@@ -112,7 +116,7 @@ curl -s -m 2 "$API/debug/schedule-state"; echo
 check "calendar links load (classes and due dates)" "curl -s -m 2 $API/debug/schedule-state | grep -q '\"events\":2,\"due\":2,\"feeds\":\"ok:2,ok:2\"'"
 debug expand/schedule; sleep 1; island 08c-schedule-from-links
 debug expand/home; sleep 1; island 07b-home-from-links
-debug collapse; debug settings/features; sleep 1.2; full 03b-settings-calendar-links
+debug collapse; debug settings/classes; sleep 1.2; full 03b-settings-calendar-links
 debug close-settings
 debug collapse; sleep 1
 
@@ -136,6 +140,18 @@ ls -la "$HOME/Desktop" | head
 sleep 1.2; island 11-screenshot-banner
 check "screenshot reached the shelf" "defaults read app.cove.island shelf 2>/dev/null | grep -q 'Screenshot 2026-10-12'"
 debug expand/shelf; sleep 1; island 12-shelf
+debug expand/ai; sleep 1; island 12b-ai
+debug sports/collegeFootball; debug expand/sports; sleep 6; island 12c-sports
+for look in outline glow tinted; do
+  debug buttons/$look; debug expand/ai; sleep 1; island 12g-buttons-$look-ai
+  debug expand/home; sleep 1; island 12h-buttons-$look-home
+done
+debug buttons/outline
+debug theme/terminal; sleep 0.5
+debug expand/home; sleep 1; island 12d-terminal-home
+debug expand/ai; sleep 1; island 12e-terminal-ai
+debug expand/sports; sleep 1; island 12f-terminal-sports
+debug theme/darkMatte; sleep 0.5
 debug collapse; sleep 1
 
 debug hud; sleep 0.3; island 13-hud

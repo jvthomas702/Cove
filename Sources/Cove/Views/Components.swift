@@ -328,11 +328,12 @@ struct BatteryGlyph: View {
 
 // MARK: - Buttons
 
-/// Rounded chip button used for small actions (timer presets, Join, Clear).
+/// Small action button (timer presets, Join, Clear), drawn with the island's one button style.
 struct ChipButton: View {
     var title: String
     var systemImage: String? = nil
-    var tint: Color = Theme.ink
+    /// Only for a meaning (green Join, red End); leave nil for the neutral look.
+    var tint: Color? = nil
     var action: () -> Void
 
     var body: some View {
@@ -347,35 +348,72 @@ struct ChipButton: View {
     }
 }
 
-/// The island's one text-button look: a small tinted capsule, like iOS's tinted buttons.
-/// `prominent` fills it with the tint for the main action (Send, Start).
+/// The island's one text-button look. No grey: buttons carry the accent color, drawn as an
+/// outline, a glow or a dark tint (Settings → General → Buttons). `prominent` (Start, Send) is
+/// always a solid accent fill. A `tint` replaces the accent when the color means something
+/// (green Join, red End). In the terminal look buttons become a bracketed `[ label ]`.
+/// `compact` is the smaller size for buttons inside a row (Re-run, Run Deploy).
 struct PillButtonStyle: ButtonStyle {
-    var tint: Color = Theme.accent
+    var tint: Color? = nil
     var prominent = false
+    var compact = false
 
     func makeBody(configuration: Configuration) -> some View {
-        PillButtonBody(configuration: configuration, tint: tint, prominent: prominent)
+        PillButtonBody(configuration: configuration, tint: tint, prominent: prominent, compact: compact)
     }
 }
 
 private struct PillButtonBody: View {
     let configuration: ButtonStyleConfiguration
-    let tint: Color
+    let tint: Color?
     let prominent: Bool
+    var compact = false
     @Environment(\.isEnabled) private var enabled
     @State private var hovered = false
 
+    private var color: Color { tint ?? Theme.accent }
+    private var solid: Bool { prominent && enabled }
+    private var look: ButtonLook { Theme.buttonLook }
+
+    private var fill: Color {
+        if solid { return color.opacity(hovered ? 0.85 : 1) }
+        if Theme.isTerminal { return color.opacity(hovered ? 0.14 : 0) }
+        switch look {
+        case .outline: return color.opacity(hovered ? 0.12 : 0)
+        case .glow: return color.opacity(hovered ? 0.16 : 0.08)
+        case .tinted: return color.opacity(hovered ? 0.30 : 0.20)
+        }
+    }
+
+    private var stroke: Color {
+        if solid { return .clear }
+        if Theme.isTerminal { return color.opacity(0.55) }
+        switch look {
+        case .outline: return color.opacity(hovered ? 0.9 : 0.6)
+        case .glow: return color.opacity(0.25)
+        case .tinted: return .clear
+        }
+    }
+
     var body: some View {
-        configuration.label
-            .font(.system(size: 11, weight: .semibold, design: .rounded))
+        let shape = RoundedRectangle(cornerRadius: Theme.isTerminal ? 3 : 13, style: .continuous)
+        HStack(spacing: 3) {
+            if Theme.isTerminal { Text("[") }
+            configuration.label
+            if Theme.isTerminal { Text("]") }
+        }
+            .font(.system(size: compact ? 10 : 11, weight: .semibold, design: Theme.isTerminal ? .monospaced : .rounded))
             .lineLimit(1)
-            .foregroundStyle(prominent && enabled ? Theme.background : tint)
-            .padding(.horizontal, 10)
-            .frame(height: 24)
-            .background(Capsule().fill(prominent && enabled ? tint : tint.opacity(hovered ? 0.22 : 0.13)))
-            .contentShape(Capsule())
-            .opacity(enabled ? (configuration.isPressed ? 0.8 : 1) : 0.45)
-            .scaleEffect(configuration.isPressed && !Theme.reduceMotion ? 0.96 : 1)
+            .foregroundStyle(solid ? Theme.background : color)
+            .padding(.horizontal, Theme.isTerminal ? 6 : (compact ? 8 : 11))
+            .frame(height: compact ? 20 : 26)
+            .background(shape.fill(fill))
+            .overlay { shape.strokeBorder(stroke, lineWidth: 1) }
+            .shadow(color: look == .glow && !Theme.isTerminal && enabled ? color.opacity(hovered ? 0.55 : 0.35) : .clear,
+                    radius: look == .glow ? 7 : 0)
+            .contentShape(shape)
+            .opacity(enabled ? (configuration.isPressed ? 0.75 : 1) : 0.4)
+            .scaleEffect(configuration.isPressed && !Theme.reduceMotion ? 0.95 : 1)
             .onHover { hovered = $0 }
             .animation(.easeOut(duration: Theme.reduceMotion ? 0.05 : 0.12), value: configuration.isPressed)
             .animation(.easeOut(duration: 0.12), value: hovered)
@@ -395,7 +433,17 @@ struct IconButton: View {
             Image(systemName: systemImage)
                 .font(.system(size: size, weight: .semibold))
                 .frame(width: hit ?? size + 16, height: hit ?? size + 16)
-                .background(Circle().fill(Color.white.opacity(hovering ? 0.16 : 0.07)))
+                .background {
+                    if Theme.isTerminal {
+                        RoundedRectangle(cornerRadius: 3).strokeBorder(Theme.accent.opacity(hovering ? 0.8 : 0.35), lineWidth: 1)
+                    } else {
+                        switch Theme.buttonLook {
+                        case .outline: Circle().strokeBorder(Theme.accent.opacity(hovering ? 0.7 : 0.3), lineWidth: 1)
+                        case .glow: Circle().fill(Theme.accent.opacity(hovering ? 0.16 : 0))
+                        case .tinted: Circle().fill(Theme.accent.opacity(hovering ? 0.26 : 0.14))
+                        }
+                    }
+                }
                 .contentShape(Circle())
         }
         .buttonStyle(PressableStyle())

@@ -11,6 +11,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var nowPlaying: NowPlayingMonitor?
     private var mirror: NotificationMirror?
     private let battery = BatteryMonitor()
+    private var mediaUse: MediaUseMonitor?
     private let desktopAI = DesktopAIActivityMonitor()
     private var bluetooth: BluetoothBatteryMonitor?
     private var calendar: CalendarMonitor?
@@ -32,10 +33,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let updater = CoveUpdater()
     private var settingsController: SettingsController!
     private var settingsWindow: SettingsWindowController?
-    private var updates: UpdateChecker?
+    private var welcomeWindow: WelcomeWindowController?
     private var clipboard: ClipboardMonitor?
     private var actions: GitHubActionsMonitor?
     private var cloud: CloudSessionsMonitor?
+    private var phone: PhoneRelay?
 
     /// Extra routes used by CI to drive the UI for screenshots. Only on with the `--debug-api` launch argument.
     private let debugAPI = CommandLine.arguments.contains("--debug-api")
@@ -89,11 +91,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         hotKeys.onAction = { [weak self] action in self?.model.handleShortcut(action) }
         if config.shortcuts { hotKeys.start() }
         BrowserExtension.syncFromBundle()
-        if config.checkForUpdates { startUpdates() }
         if config.clipboardHistory { startClipboard() }
         if config.ciMonitor { startActions(config) }
         if config.cloudSessions { startCloud(repos: config.cloudRepos) }
         if config.bluetoothBattery { startBluetooth() }
+        if config.phoneRelay { startPhone(config) }
+        settingsController.onPhoneTest = { [weak self] in self?.sendPhoneTest() }
+        if config.privacyIndicator { startMediaUse() }
 
         observers.append(NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didActivateApplicationNotification, object: nil, queue: .main
@@ -117,6 +121,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         buildStatusItem()
         if !debugAPI { updater.start() }
+        if !debugAPI { openAtLoginOnce() }
         welcomeIfNeeded()
     }
 
@@ -132,10 +137,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         desktopAI.stop()
         screenshots?.stop()
         cloud?.stop()
+        phone?.stop()
         actions?.stop()
         clipboard?.stop()
         bluetooth?.stop()
-        updates?.stop()
+        mediaUse?.stop()
         hotKeys.stop()
         volume.stop()
         mediaKeys.stop()
@@ -158,7 +164,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return false
     }
 
-    /// First launch: open Settings on the Permissions page. After an update: a small "updated" banner.
+    /// Turns on "Open Cove when you log in" once, so Cove is still there after a restart.
+    /// Only for an installed copy (not a build folder or a translocated download); Settings can turn it off.
+    private func openAtLoginOnce() {
+        let defaults = UserDefaults.standard
+        guard !defaults.bool(forKey: "openAtLoginDefaulted") else { return }
+        let path = Bundle.main.bundlePath
+        let installed = path.hasPrefix("/Applications/") || path.hasPrefix(NSHomeDirectory() + "/Applications/")
+        guard installed else { return }
+        defaults.set(true, forKey: "openAtLoginDefaulted")
+        guard SMAppService.mainApp.status == .notRegistered else { return }
+        do {
+            try SMAppService.mainApp.register()
+            coveLog.info("Turned on open at login")
+        } catch {
+            coveLog.error("Couldn't turn on open at login: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    /// First launch: the welcome window (pick features, allow what they need). After an update: a small "updated" banner.
     private func welcomeIfNeeded() {
         let defaults = UserDefaults.standard
         let last = defaults.string(forKey: "lastLaunchedVersion")
@@ -166,13 +190,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if last == nil {
             model.show(Banner(
                 title: "Hi, I'm Nori",
-                body: "Hover the notch to open Cove. Let's set up permissions.",
+                body: "Hover the notch any time to open Cove.",
                 style: .success,
                 icon: .buddy(.happy, nil),
                 source: "Welcome to Cove"
             ))
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
-                MainActor.assumeIsolated { self?.openSettings(pane: .permissions) }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
+                MainActor.assumeIsolated { self?.openWelcome() }
             }
         } else if last != version {
             model.show(Banner(
@@ -183,7 +207,47 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 source: "Updated"
             ))
         }
+        warnAboutLostPermissions()
     }
+
+    /// macOS can drop a permission Cove had (for example after an update with a new signature) while
+    /// System Settings still shows it on. Say so once per launch instead of features quietly stopping.
+    private func warnAboutLostPermissions() {
+        guard !debugAPI else { return }
+        let granted = Dictionary(uniqueKeysWithValues: Permission.checkable.map { ($0, $0.isGranted) })
+        let lost = Permission.lost(granted: granted)
+        guard !lost.isEmpty else { return }
+        let names = Permission.checkable.filter(lost.contains).map(\.title).joined(separator: " and ")
+        model.show(Banner(
+            title: "\(names) stopped working",
+            body: "Click to fix it in Settings → Permissions.",
+            style: .attention,
+            icon: .buddy(.alert, nil),
+            sticky: true,
+            showsPermissions: true,
+            source: "Permissions"
+        ))
+    }
+
+    private func openWelcome(step: WelcomeStep = .hello) {
+        if welcomeWindow == nil {
+            let window = WelcomeWindowController(controller: settingsController)
+            window.onFinish = { [weak self] in
+                guard let self, !self.debugAPI else { return }
+                self.model.show(Banner(
+                    title: "Cove is ready",
+                    body: "Hover the notch to open it. Settings are in the menu bar.",
+                    style: .success,
+                    icon: .buddy(.happy, nil),
+                    source: "Welcome to Cove"
+                ))
+            }
+            welcomeWindow = window
+        }
+        welcomeWindow?.show(step: step)
+    }
+
+    @objc private func openWelcomeFromMenu() { openWelcome() }
 
     // MARK: - Settings
 
@@ -222,9 +286,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if new.shortcuts != old.shortcuts {
             if new.shortcuts { hotKeys.start() } else { hotKeys.stop() }
         }
-        if new.checkForUpdates != old.checkForUpdates {
-            if new.checkForUpdates { startUpdates() } else { updates?.stop(); updates = nil }
-        }
         if new.clipboardHistory != old.clipboardHistory {
             if new.clipboardHistory {
                 startClipboard()
@@ -256,8 +317,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         } else if new.cloudRepos != old.cloudRepos {
             cloud?.update(repos: new.cloudRepos)
         }
+        if new.phoneRelay != old.phoneRelay {
+            if new.phoneRelay {
+                startPhone(new)
+            } else {
+                stopPhone()
+            }
+        } else if new.phoneServer != old.phoneServer || new.phoneTopic != old.phoneTopic || new.phoneToken != old.phoneToken {
+            if let phone {
+                phone.update(server: new.phoneServer, topic: new.phoneTopic, token: new.phoneToken)
+            } else if new.phoneRelay {
+                startPhone(new)
+            }
+        }
         if new.bluetoothBattery != old.bluetoothBattery {
             if new.bluetoothBattery { startBluetooth() } else { bluetooth?.stop(); bluetooth = nil }
+        }
+        if new.privacyIndicator != old.privacyIndicator {
+            if new.privacyIndicator { startMediaUse() } else { stopMediaUse() }
         }
         if new.hud != old.hud {
             stopHUD()
@@ -371,26 +448,70 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         calendar = monitor
     }
 
-    /// Calendar links pasted in Settings (D2L, Canvas, Google's secret iCal address). Always running;
-    /// with no links it does nothing.
-    private func startUpdates() {
-        // CI drives the UI for screenshots; an update banner would land in them.
-        guard !debugAPI, updates == nil else { return }
-        let checker = UpdateChecker(currentVersion: version)
-        checker.onNewRelease = { [weak self] release in
-            self?.model.show(Banner(title: "Cove \(release.version) is out", body: "Update from Settings → About",
-                                    style: .info, icon: .symbol("arrow.down.circle.fill", Palette.blue),
-                                    showsUpdates: true, source: "Update"))
-        }
-        checker.start()
-        updates = checker
-    }
     private func startClipboard() {
         guard clipboard == nil else { return }
         let monitor = ClipboardMonitor()
         monitor.onCopy = { [weak self] text in self?.model.addClip(text) }
         monitor.start()
         clipboard = monitor
+    }
+
+    /// Agent pings to your phone through ntfy, and Allow / Deny / Refresh answers back from it.
+    private func startPhone(_ config: CoveConfig) {
+        guard phone == nil else { return }
+        guard !config.phoneTopic.isEmpty else {
+            // First time on: make the private topic, then come back through updateConfig.
+            var next = config
+            next.phoneTopic = PhoneRelay.newTopic()
+            updateConfig(next)
+            return
+        }
+        let relay = PhoneRelay(server: config.phoneServer, topic: config.phoneTopic, token: config.phoneToken)
+        relay.onStatus = { [weak self] status in
+            let text: String
+            switch status {
+            case .connecting: text = "Connecting…"
+            case .listening: text = "Connected. Subscribe to the topic below on your phone."
+            case .error(let message): text = message
+            }
+            if self?.model.phoneStatus != text { self?.model.phoneStatus = text }
+        }
+        relay.onCommand = { [weak self] command in self?.handlePhone(command) }
+        model.phoneNotify = { [weak self, weak relay] note in
+            guard let self, let relay else { return }
+            let config = self.model.config
+            guard !config.phoneOnlyWhenAway || IslandModel.isAway(idleMinutes: config.approvalIdleMinutes) else { return }
+            relay.send(note)
+        }
+        if !debugAPI { relay.start() }
+        phone = relay
+    }
+
+    private func stopPhone() {
+        phone?.stop()
+        phone = nil
+        model.phoneNotify = nil
+        model.phoneStatus = ""
+    }
+
+    private func handlePhone(_ command: PhoneCommand) {
+        switch command {
+        case .status:
+            phone?.send(PhoneMessages.status(model.activities))
+        case .approval(let id, let decision):
+            // Buttons on an old notification point at prompts that were already answered; those do nothing.
+            guard model.config.phoneApprovals, model.approvals.contains(where: { $0.id == id }) else { return }
+            model.resolveApproval(id, decision)
+        }
+    }
+
+    private func sendPhoneTest() {
+        guard let phone else {
+            settingsController.message = "Turn on Your phone first."
+            return
+        }
+        phone.send(PhoneMessages.status(model.activities))
+        settingsController.message = "Sent. If nothing arrives, check that your phone is subscribed to \(phone.topic)."
     }
 
     /// Pull requests from Claude cloud sessions, found on GitHub (those sessions can't reach this Mac directly).
@@ -446,6 +567,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         monitor.start()
         actions = monitor
+        model.refreshCI = { [weak self] in self?.actions?.refreshNow() }
     }
     private func startBluetooth() {
         guard bluetooth == nil else { return }
@@ -453,6 +575,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         monitor.onChange = { [weak self] devices in self?.model.setBluetooth(devices) }
         monitor.start()
         bluetooth = monitor
+    }
+
+    private func startMediaUse() {
+        guard mediaUse == nil else { return }
+        let monitor = MediaUseMonitor()
+        monitor.onChange = { [weak self] use in self?.model.setMediaUse(use) }
+        monitor.start()
+        mediaUse = monitor
+    }
+
+    private func stopMediaUse() {
+        mediaUse?.stop()
+        mediaUse = nil
+        model.setMediaUse(MediaUse())
     }
 
     private func startScreenshots() {
@@ -564,6 +700,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(statusLine)
         menu.addItem(.separator())
         addItem(to: menu, "Settings…", #selector(openSettingsFromMenu), key: ",")
+        addItem(to: menu, "Set Up Cove…", #selector(openWelcomeFromMenu))
         addItem(to: menu, "Check for Updates…", #selector(checkForUpdates))
         addItem(to: menu, "Pin / unpin notch", #selector(togglePinFromMenu))
         addItem(to: menu, "Run demo", #selector(runDemoFromMenu))
@@ -633,7 +770,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         var lines = [
             "Cove \(version) on macOS \(os)",
             "Server: \(model.serverStatus)",
-            "Notch: \(Int(model.notchSize.width))×\(Int(model.notchSize.height)) (hardware: \(model.hasHardwareNotch))",
+            "Notch: \(Int(model.notchSize.width))×\(Int(model.notchSize.height)) (hardware: \(model.hasHardwareNotch)); show on: \(model.config.islandDisplay.title)",
             "Screenshot folder: \(ScreenshotWatcher.screenshotFolder.path) — access \(model.screenshotAccess), floating thumbnail \(ScreenshotWatcher.floatingThumbnail ? "on" : "off")",
             "Claude hooks: \(ClaudeHooks.isInstalled ? "connected" : "not connected"); Codex: \(CodexNotify.state)",
             "CLI tools: \(CLIInstaller.isInstalled ? "installed" : "missing"); extension: \(BrowserExtension.installedVersion ?? "not copied")",
@@ -655,6 +792,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         // Calendar links are private (anyone with one can read the calendar), so they're redacted.
         var config = model.config
+        // The phone topic and token work like passwords.
+        if !config.phoneTopic.isEmpty { config.phoneTopic = "(redacted)" }
+        if !config.phoneToken.isEmpty { config.phoneToken = "(redacted)" }
         config.calendarFeeds = config.calendarFeeds.map { link in
             ICSFeedMonitor.normalize(link).map { "\($0.scheme ?? "https")://\($0.host ?? "")/…(redacted)" } ?? "(redacted)"
         }
@@ -684,6 +824,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             openSettings(pane: SettingsPane(rawValue: arg) ?? .general)
         case "close-settings":
             settingsWindow?.close()
+        case "welcome":
+            openWelcome(step: WelcomeStep(rawValue: Int(arg) ?? 0) ?? .hello)
+        case "close-welcome":
+            welcomeWindow?.close()
+        case "sports":
+            var next = model.config
+            next.sportsEnabled = true
+            next.sportsLeague = SportsLeague(rawValue: arg) ?? .nba
+            model.applyConfig?(next)
+        case "buttons":
+            var next = model.config
+            next.buttonLook = ButtonLook(rawValue: arg) ?? .outline
+            model.applyConfig?(next)
+        case "theme":
+            var next = model.config
+            next.islandTheme = IslandTheme(rawValue: arg) ?? .darkMatte
+            model.applyConfig?(next)
         case "approval":
             let input: [String: Any] = ["file_path": "/Users/you/hdc/eval.py", "old_string": "acc = evaluate(model)", "new_string": "acc = evaluate(model, seeds=3)\nplot_confusion_matrix(model)"]
             let (action, preview) = AgentBridge.describePermission(tool: "Edit", input: input)

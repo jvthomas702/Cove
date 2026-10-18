@@ -21,6 +21,7 @@ enum Palette {
     static let command = Color(hex: 0x8AB4F8)
     static let green = Color(hex: 0x30D158)
     static let amber = Color(hex: 0xFFB340)
+    static let orange = Color(hex: 0xFF9F0A)
     static let red = Color(hex: 0xFF453A)
     static let blue = Color(hex: 0x0A84FF)
     static let spotify = Color(hex: 0x1DB954)
@@ -136,6 +137,8 @@ struct Activity: Identifiable, Equatable {
     var ownerApp: String? = nil
     var phase: String? = nil
     var openURL: URL? = nil
+    /// The CLI session behind this activity, when its done banner can take a reply.
+    var resume: ResumeTarget? = nil
 
     var originLabel: String {
         if id.hasPrefix("web:") { return "Browser tab" }
@@ -217,8 +220,8 @@ struct Banner: Identifiable, Equatable {
     var duration: TimeInterval? = nil
     /// Clicking opens the shelf tab.
     var showsShelf: Bool = false
-    /// Clicking opens the signed in-app updater in Settings → About.
-    var showsUpdates: Bool = false
+    /// Clicking opens Settings → Permissions.
+    var showsPermissions: Bool = false
     /// Whether it's kept in the "Earlier" list after it disappears.
     var logged: Bool = true
     /// Overrides the small label above the title ("Finished", "Needs you", an app name…).
@@ -287,6 +290,13 @@ struct BatteryState: Equatable {
     var percent: Int
     var pluggedIn: Bool
     var charging: Bool
+
+    /// True only when the adapter goes from unplugged to plugged in. The first reading
+    /// (at launch, when `old` is nil) never counts, so opening Cove on power stays quiet.
+    static func justPluggedIn(from old: BatteryState?, to new: BatteryState?) -> Bool {
+        guard let old, let new else { return false }
+        return new.pluggedIn && !old.pluggedIn
+    }
 
     var symbol: String {
         if pluggedIn { return "battery.100.bolt" }

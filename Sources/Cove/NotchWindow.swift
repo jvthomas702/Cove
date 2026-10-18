@@ -84,13 +84,15 @@ final class IslandHostingView: NSHostingView<IslandRootView> {
     private func update(with event: NSEvent) {
         guard let model, let window else { return }
         let island = model.currentSize
+        let inset = model.islandTopInset
         let bounds = window.frame.size
-        // Window coordinates: origin bottom-left, island hugs the top centre.
+        // Window coordinates: origin bottom-left, island hugs the top centre. A floating island's
+        // gap above it counts too, so pushing the pointer against the top edge still opens it.
         let rect = NSRect(
             x: (bounds.width - island.width) / 2,
-            y: bounds.height - island.height,
+            y: bounds.height - island.height - inset,
             width: island.width,
-            height: island.height + 4
+            height: island.height + inset + 4
         )
         model.setHovering(rect.contains(window.mouseLocationOutsideOfEventStream))
     }
@@ -102,6 +104,8 @@ final class NotchWindowController {
     let model: IslandModel
     let panel: NotchPanel
     private var screen: NSScreen?
+    /// In "Active display" mode, checks which screen the pointer is on.
+    private var followTimer: Timer?
     private var shrinkWork: DispatchWorkItem?
     private var cancellables = Set<AnyCancellable>()
     private var observers: [NSObjectProtocol] = []
@@ -134,13 +138,34 @@ final class NotchWindowController {
         host.model = model
         host.sizingOptions = []
         panel.contentView = host
+        // Typing is possible in the open island and in a done banner's reply field.
         panel.acceptsKeyboardInput = model.expanded
-        model.$expanded.sink { [weak panel] expanded in
-            panel?.acceptsKeyboardInput = expanded
-            if !expanded { panel?.resignKey() }
-        }.store(in: &cancellables)
+        model.objectWillChange
+            .receive(on: RunLoop.main)
+            .sink { [weak panel, weak model] _ in
+                MainActor.assumeIsolated {
+                    guard let panel, let model else { return }
+                    let accepts = model.expanded || model.bannerAcceptsReply
+                    guard accepts != panel.acceptsKeyboardInput else { return }
+                    panel.acceptsKeyboardInput = accepts
+                    if !accepts { panel.resignKey() }
+                }
+            }
+            .store(in: &cancellables)
 
         relocate()
+
+        // @Published emits before the new config is stored, so act on the next main-actor turn.
+        model.$config
+            .map(\.islandDisplay)
+            .removeDuplicates()
+            .sink { [weak self] _ in
+                Task { @MainActor [weak self] in
+                    self?.updateFollowing()
+                    self?.relocate()
+                }
+            }
+            .store(in: &cancellables)
 
         observers.append(NotificationCenter.default.addObserver(
             forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main
@@ -169,9 +194,9 @@ final class NotchWindowController {
         panel.orderFrontRegardless()
     }
 
-    /// Picks the screen with a notch (or the main screen) and re-measures.
+    /// Picks the display for the current "Show on" setting (see DisplayPicker) and re-measures.
     func relocate() {
-        guard let s = NSScreen.screens.first(where: { $0.hasNotch }) ?? NSScreen.main ?? NSScreen.screens.first else { return }
+        guard let s = pickScreen() else { return }
         screen = s
         model.availableIslandWidth = max(300, s.frame.width - 48)
         model.hasHardwareNotch = s.hasNotch
@@ -179,10 +204,39 @@ final class NotchWindowController {
         applyFrame(windowSize(for: model.currentSize))
     }
 
+    private func pickScreen() -> NSScreen? {
+        let screens = NSScreen.screens
+        let main = NSScreen.main
+        let descriptors = screens.map { ScreenDescriptor(frame: $0.frame, hasNotch: $0.hasNotch, isMain: $0 == main) }
+        guard let index = DisplayPicker.pick(descriptors, mode: model.config.islandDisplay, mouse: NSEvent.mouseLocation) else { return nil }
+        return screens[index]
+    }
+
+    /// Polls the pointer twice a second while "Active display" is on. Cheap: it only compares
+    /// frames, and moves the island only when the pointer has crossed onto another display.
+    private func updateFollowing() {
+        followTimer?.invalidate()
+        followTimer = nil
+        guard model.config.islandDisplay == .active else { return }
+        let timer = Timer(timeInterval: 0.5, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.followActiveDisplay() }
+        }
+        timer.tolerance = 0.2
+        RunLoop.main.add(timer, forMode: .common)
+        followTimer = timer
+    }
+
+    private func followActiveDisplay() {
+        // Don't pull an open island out from under the user; it follows once it closes.
+        guard !model.expanded, model.presentation != .approval else { return }
+        guard let next = pickScreen(), next.frame != screen?.frame else { return }
+        relocate()
+    }
+
     private func windowSize(for island: CGSize) -> CGSize {
         let p = model.presentation
         let pad = (p == .expanded || p == .banner || p == .approval) ? Self.shadowPad : .zero
-        return CGSize(width: island.width + pad.width, height: island.height + pad.height)
+        return CGSize(width: island.width + pad.width, height: island.height + pad.height + model.islandTopInset)
     }
 
     private func applyFrame(_ size: CGSize) {

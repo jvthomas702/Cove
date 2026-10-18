@@ -12,14 +12,24 @@ struct CompactView: View {
                 .frame(width: wing - 8, alignment: isWide ? .leading : .center)
                 .padding(.leading, 8)
             Color.clear.frame(width: model.notchSize.width)
-            trailing
-                .frame(width: wing - 8, alignment: isWide ? .trailing : .center)
-                .padding(.trailing, 8)
+            // The privacy dot takes the outer edge of the trailing wing, so it never widens the island.
+            HStack(spacing: 0) {
+                trailing
+                    .frame(maxWidth: .infinity, alignment: isWide ? .trailing : .center)
+                if let dot = model.privacyDot {
+                    PrivacyDotView(dot: dot)
+                        .padding(.leading, 4)
+                        .transition(.scale.combined(with: .opacity))
+                }
+            }
+            .frame(width: wing - 8)
+            .padding(.trailing, 8)
         }
         .frame(height: model.notchSize.height)
         .contentShape(Rectangle())
         .onTapGesture { model.openByClick() }
         .animation(Theme.snappy, value: model.compactItem)
+        .animation(Theme.snappy, value: model.privacyDot)
     }
 
     private var isWide: Bool { model.compactWing > IslandModel.wing }
@@ -74,16 +84,25 @@ struct CompactView: View {
             agentIcon(a.agent, mood: .working)
         case .finished(_, let agent, let failed)?:
             agentIcon(agent, mood: failed ? .sad : .happy)
-        case .focus?:
-            Image(systemName: "timer")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(Palette.amber)
+        case .timer(let timer)?:
+            TimelineView(.periodic(from: .now, by: 1)) { context in
+                ProgressRing(progress: timer.fractionLeft(at: context.date),
+                             color: timer.isPaused ? Theme.inkSecondary : Theme.accent, size: 16, lineWidth: 1.5)
+                    .overlay {
+                        Image(systemName: timer.isPaused ? "pause.fill" : "timer")
+                            .font(.system(size: 6.5, weight: .bold))
+                            .foregroundStyle(timer.isPaused ? Theme.inkSecondary : Theme.accent)
+                    }
+            }
+            .accessibilityHidden(true)
         case .music?:
             ArtworkView(model: model, size: 20, matchID: "art")
         case .sports(let game)?:
             compactTeam(game.away)
         case .scoreAndMusic(let game, _)?:
             compactScore(game)
+        case .charging(let percent)?:
+            ChargingBattery(percent: percent)
         case .ai(let activity, let count)?:
             HStack(spacing: 6) {
                 if model.config.buddy { Buddy(mood: activity.buddyMood, size: 26, animating: activity.isLive) }
@@ -91,7 +110,7 @@ struct CompactView: View {
                 Text(activity.agent.displayName).font(Theme.Font.headline).lineLimit(1)
                 if count > 1 { Text("+\(count - 1)").font(Theme.Font.number).foregroundStyle(Theme.inkSecondary) }
             }
-        case nil:
+        case .privacy?, nil:
             EmptyView()
         }
     }
@@ -111,7 +130,7 @@ struct CompactView: View {
         switch model.compactItem {
         case .hud(let hud)?:
             LevelBar(level: hud.muted ? 0 : hud.level, tint: hud.kind == .brightness ? Palette.amber : Theme.ink)
-                .frame(width: 50, height: 5)
+                .frame(width: model.privacyDot == nil ? 50 : 42, height: 5)
         case .napping?:
             if let next = model.nextEventToday {
                 HStack(spacing: 4) {
@@ -173,12 +192,17 @@ struct CompactView: View {
                     Text("\(count)").font(Theme.Font.number).foregroundStyle(Theme.inkSecondary)
                 }
             }
-        case .focus(let end)?:
-            Text(timerInterval: Date()...max(end, Date()), countsDown: true)
-                .font(Theme.Font.number)
-                .foregroundStyle(Palette.amber)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
+        case .timer(let timer)?:
+            TimelineView(.periodic(from: .now, by: 1)) { context in
+                Text(QuickTimer.clock(timer.remaining(at: context.date)))
+                    .font(.system(size: 12, weight: .semibold, design: .rounded).monospacedDigit())
+                    .foregroundStyle(timer.isPaused ? Theme.inkSecondary : Theme.ink)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("\(timer.label), \(timer.isPaused ? "paused" : "counting down")")
+            .accessibilityIdentifier("compact.timer")
         case .music(let np)?:
             EqualizerBars(playing: np.isPlaying, color: model.accent ?? np.appTint)
         case .scoreAndMusic(_, let np)?:
@@ -191,6 +215,13 @@ struct CompactView: View {
                 if game.isLive { Circle().fill(Palette.green).frame(width: 5, height: 5) }
                 compactTeam(game.home)
             }
+        case .charging(let percent)?:
+            Text("\(percent)%")
+                .font(Theme.Font.headline.monospacedDigit())
+                .foregroundStyle(Palette.green)
+                .lineLimit(1)
+                .fixedSize()
+                .accessibilityLabel("Charging, \(percent) percent")
         case .ai(let activity, _)?:
             HStack(spacing: 5) {
                 if activity.isLive { ArcSpinner(color: activity.agent.tint, size: 10) }
@@ -199,7 +230,7 @@ struct CompactView: View {
                 Text(activity.phase ?? (activity.isLive ? "Working…" : "Finished"))
                     .font(Theme.Font.number).foregroundStyle(Theme.inkSecondary).lineLimit(1)
             }
-        case nil:
+        case .privacy?, nil:
             EmptyView()
         }
     }
@@ -226,5 +257,61 @@ struct CompactView: View {
         }
         .font(Theme.Font.headline.monospacedDigit())
         .lineLimit(1)
+    }
+}
+
+/// The iPhone's recording indicator: green for a camera, orange for a microphone.
+struct PrivacyDotView: View {
+    let dot: PrivacyDot
+
+    var body: some View {
+        Circle()
+            .fill(dot == .camera ? Palette.green : Palette.orange)
+            .frame(width: 6, height: 6)
+            .help(dot.label)
+            .accessibilityElement()
+            .accessibilityLabel(dot.label)
+            .accessibilityIdentifier("privacy-dot")
+    }
+}
+
+/// The battery from the iPhone's charging moment: a green fill that rises to the current level.
+/// With Reduce Motion on, the fill simply appears at the level.
+struct ChargingBattery: View {
+    let percent: Int
+    @State private var shown: CGFloat = 0
+
+    private static let shell = CGSize(width: 26, height: 13)
+    private static let inset: CGFloat = 2
+
+    var body: some View {
+        let level = min(max(CGFloat(percent) / 100, 0), 1)
+        HStack(spacing: 1.5) {
+            ZStack(alignment: .leading) {
+                RoundedRectangle(cornerRadius: 4, style: .continuous)
+                    .stroke(Theme.inkSecondary.opacity(0.7), lineWidth: 1)
+                RoundedRectangle(cornerRadius: 2.5, style: .continuous)
+                    .fill(Palette.green)
+                    .frame(width: (Self.shell.width - Self.inset * 2) * shown, height: Self.shell.height - Self.inset * 2)
+                    .padding(.leading, Self.inset)
+                Image(systemName: "bolt.fill")
+                    .font(.system(size: 8, weight: .heavy))
+                    .foregroundStyle(Color.white)
+                    .frame(maxWidth: .infinity)
+            }
+            .frame(width: Self.shell.width, height: Self.shell.height)
+            Capsule()
+                .fill(Theme.inkSecondary.opacity(0.7))
+                .frame(width: 1.5, height: 4)
+        }
+        .accessibilityElement()
+        .accessibilityLabel("Charging")
+        .onAppear {
+            if Theme.reduceMotion {
+                shown = level
+            } else {
+                withAnimation(.easeOut(duration: 1.1).delay(0.15)) { shown = level }
+            }
+        }
     }
 }

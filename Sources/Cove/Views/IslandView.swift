@@ -81,6 +81,7 @@ struct IslandRootView: View {
 
     var body: some View {
         IslandShell(model: model)
+            .padding(.top, model.islandTopInset)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .environment(\.colorScheme, model.presentation == .expanded ? model.config.islandTheme.colorScheme : .dark)
     }
@@ -88,14 +89,15 @@ struct IslandRootView: View {
 
 struct IslandShell: View {
     @ObservedObject var model: IslandModel
-    @State private var dropTargeted = false
     @Namespace private var namespace
 
     var body: some View {
         let p = model.presentation
         let size = model.currentSize
         // Keep the smooth pill silhouette and the expanded panel's rounded top corners.
-        let shape = IslandShape(ear: 0, bottomRadius: radius(for: p), roundedTop: p == .expanded)
+        // Without a hardware notch the island floats below the top edge, so every state is fully rounded.
+        let floating = !model.hasHardwareNotch
+        let shape = IslandShape(ear: 0, bottomRadius: radius(for: p), roundedTop: p == .expanded || floating)
         let isOpen = p == .expanded || p == .banner || p == .approval
 
         ZStack(alignment: .top) {
@@ -111,7 +113,8 @@ struct IslandShell: View {
                 .id(p)
         }
         .overlay(alignment: .top) {
-            if p == .expanded {
+            // Covers the real notch; a display without one gets no fake cutout.
+            if p == .expanded && !floating {
                 UnevenRoundedRectangle(bottomLeadingRadius: 10, bottomTrailingRadius: 10)
                     .fill(Color.black).frame(width: model.notchSize.width, height: model.notchSize.height)
                     .allowsHitTesting(false)
@@ -132,13 +135,12 @@ struct IslandShell: View {
         .frame(width: size.width, height: size.height)
         .contentShape(Rectangle())
         // Hover is handled by IslandHostingView's tracking area (see NotchWindow.swift).
-        .onDrop(of: [UTType.fileURL], isTargeted: $dropTargeted) { providers in
-            model.receiveDrop(providers)
-            return true
+        // One drop handler for the whole island; the AirDrop and Keep targets report their frames to it.
+        .coordinateSpace(name: DropRouting.space)
+        .onPreferenceChange(DropTargetFramesKey.self) { [model] frames in
+            MainActor.assumeIsolated { model.dropFrames = frames }
         }
-        .onChange(of: dropTargeted) { _, targeted in
-            model.setDropTargeted(targeted)
-        }
+        .onDrop(of: [UTType.fileURL], delegate: IslandDropDelegate(model: model))
         .onChange(of: p) { _, next in
             if next == .expanded || next == .approval { Haptics.tap() }
         }
@@ -149,7 +151,7 @@ struct IslandShell: View {
 
     private func radius(for p: IslandModel.Presentation) -> CGFloat {
         switch p {
-        case .idle: return 10
+        case .idle: return model.hasHardwareNotch ? 10 : model.notchSize.height / 2
         case .compact: return model.notchSize.height / 2   // a full pill
         case .banner: return Theme.Radius.islandBanner
         case .expanded, .approval: return Theme.Radius.islandExpanded
@@ -182,7 +184,8 @@ struct IslandShell: View {
             CompactView(model: model)
         case .banner:
             if let banner = model.banner {
-                BannerView(model: model, banner: banner)
+                // A fresh view per banner, so a half-typed reply never carries over to the next one.
+                BannerView(model: model, banner: banner).id(banner.id)
             } else {
                 Color.clear
             }

@@ -2,7 +2,26 @@ import Foundation
 
 enum IslandTheme: String, Codable, CaseIterable {
     case darkMatte
-    var title: String { "Black" }
+    /// Green-on-black monospace, like a terminal.
+    case terminal
+    var title: String { self == .terminal ? "Terminal" : "Black" }
+}
+
+/// How buttons are drawn on the island (the terminal look always uses brackets).
+enum ButtonLook: String, Codable, CaseIterable {
+    /// Thin accent outline, accent text.
+    case outline
+    /// Accent text with a soft accent glow, no frame.
+    case glow
+    /// Filled with a dark accent tint.
+    case tinted
+    var title: String {
+        switch self {
+        case .outline: return "Outline"
+        case .glow: return "Glow"
+        case .tinted: return "Tinted"
+        }
+    }
 }
 
 /// User settings, stored as JSON at ~/.config/cove/config.json.
@@ -20,6 +39,9 @@ struct CoveConfig: Codable {
     var hoverToExpand: Bool = true
     var hoverDelay: Double = 0.25
     var islandTheme: IslandTheme = .darkMatte
+    var buttonLook: ButtonLook = .outline
+    /// Which display the island is on: the notch (falls back to the main display), or the one the pointer is on.
+    var islandDisplay: IslandDisplay = .notch
     /// Mirror macOS notifications into the island (needs Full Disk Access).
     var mirrorNotifications: Bool = true
     /// Bundle IDs whose notifications should never be mirrored.
@@ -28,12 +50,19 @@ struct CoveConfig: Codable {
     var highlightKeywords: [String] = ["interview", "offer", "deadline", "congratulations", "accepted", "action required"]
     /// Show what Claude Code is doing right now (editing a file, running a command…).
     var showToolActivity: Bool = true
+    /// A "Reply…" field on Claude Code and Codex done banners that continues the same session in Terminal.
+    var bannerReplies: Bool = true
     /// Media apps Cove watches for Now Playing, in priority order.
     var mediaApps: [String] = ["com.spotify.client", "com.apple.Music"]
     /// Charging and low-battery banners.
     var batteryAlerts: Bool = true
+    /// A brief green battery filling up in the island when the power adapter is plugged in.
+    var chargingAnimation: Bool = true
     /// Focus timer presets, in minutes.
     var focusMinutes: [Int] = [25, 50, 90]
+    /// Quick timers: a timer button in the island's header, 5 / 10 / 25 minute chips and a field for
+    /// "3", "90s", "1h 15m" or "12:30". The countdown shows beside the notch.
+    var quickTimers: Bool = true
 
     // MARK: Claude Code approvals
     /// "smart": show permission prompts in the notch unless the terminal running Claude is in front,
@@ -82,10 +111,16 @@ struct CoveConfig: Codable {
     /// Move new screenshots from the Desktop into ~/Pictures/Screenshots, keeping the Desktop clean.
     var screenshotsMoveOffDesktop: Bool = false
 
+    // MARK: Drop zone
+    /// Dragging a file onto the island shows two targets: AirDrop and Keep (the shelf).
+    var airDropDropZone: Bool = true
+
     // MARK: Widgets & sports
     var homeWidget: HomeWidget = .auto
     var desktopAIActivity: Bool = true
     var aiWorkInNotch: Bool = true
+    /// A "Today" list of finished Claude Code and Codex runs in the AI tab (kept for the current day).
+    var agentRecap: Bool = true
     var sportsEnabled: Bool = true
     var sportsLeague: SportsLeague = .nfl
     var sportsGameID: String? = nil
@@ -110,16 +145,15 @@ struct CoveConfig: Codable {
     /// ⌃⌥Space opens the island; ⌃⌥Y / N / A / T answer Claude's permission prompts.
     var shortcuts: Bool = true
 
-    // MARK: Updates
-    /// Check GitHub once a day and show a banner when a newer release is out.
-    var checkForUpdates: Bool = true
-
     // MARK: GitHub Actions
     /// Live activity while your GitHub Actions runs work, and a banner when they pass or fail.
     /// Signs in through the GitHub CLI (`gh auth login`).
     var ciMonitor: Bool = false
     /// "owner/repo" to watch every run on. Empty: your own runs on repos you pushed to recently.
     var ciRepos: [String] = []
+    /// Re-run buttons on failed runs and "Run Deploy" on passed ones (repos with a hand-started
+    /// deploy or release workflow). Needs the gh token's repo scope (workflow for some repos).
+    var ciActions: Bool = true
 
     // MARK: Claude in the cloud
     /// Show pull requests from Claude cloud sessions (claude.ai/code, Claude projects) as they open,
@@ -128,9 +162,28 @@ struct CoveConfig: Codable {
     /// Repos to watch ("owner/name"). Empty: the ones you pushed to in the last two days.
     var cloudRepos: [String] = []
 
+    // MARK: Your phone
+    /// Push agent pings to your phone through ntfy (free app for iOS and Android, or ntfy.sh in a browser).
+    var phoneRelay: Bool = false
+    /// The private ntfy topic. Made up randomly the first time you turn this on; treat it like a password.
+    var phoneTopic: String = ""
+    /// ntfy server. The public ntfy.sh works with no account; use your own for privacy.
+    var phoneServer: String = "https://ntfy.sh"
+    /// Access token for a server that needs sign-in (empty for ntfy.sh).
+    var phoneToken: String = ""
+    /// Only buzz the phone when the screen is locked or you've been idle (approvalIdleMinutes).
+    var phoneOnlyWhenAway: Bool = true
+    /// Allow / Deny buttons on Claude's permission prompts. While you're away, prompts wait for the phone
+    /// instead of the terminal.
+    var phoneApprovals: Bool = false
+
     // MARK: Bluetooth
     /// AirPods and other Bluetooth accessories: battery when they connect, and when they run low.
     var bluetoothBattery: Bool = false
+
+    // MARK: Privacy
+    /// A green dot beside the notch while any camera is on, orange while a microphone is, like the iPhone.
+    var privacyIndicator: Bool = true
 
     init() {}
 
@@ -149,13 +202,18 @@ struct CoveConfig: Codable {
         hoverDelay = value(.hoverDelay, d.hoverDelay)
         // Older white-theme values fall back to the consistent black appearance.
         islandTheme = value(.islandTheme, d.islandTheme)
+        buttonLook = value(.buttonLook, d.buttonLook)
+        islandDisplay = value(.islandDisplay, d.islandDisplay)
         mirrorNotifications = value(.mirrorNotifications, d.mirrorNotifications)
         ignoreApps = value(.ignoreApps, d.ignoreApps)
         highlightKeywords = value(.highlightKeywords, d.highlightKeywords)
         showToolActivity = value(.showToolActivity, d.showToolActivity)
+        bannerReplies = value(.bannerReplies, d.bannerReplies)
         mediaApps = value(.mediaApps, d.mediaApps)
         batteryAlerts = value(.batteryAlerts, d.batteryAlerts)
+        chargingAnimation = value(.chargingAnimation, d.chargingAnimation)
         focusMinutes = value(.focusMinutes, d.focusMinutes)
+        quickTimers = value(.quickTimers, d.quickTimers)
         approvals = value(.approvals, d.approvals)
         approvalTimeout = value(.approvalTimeout, d.approvalTimeout)
         approvalIdleMinutes = value(.approvalIdleMinutes, d.approvalIdleMinutes)
@@ -171,9 +229,11 @@ struct CoveConfig: Codable {
         screenshotsToShelf = value(.screenshotsToShelf, d.screenshotsToShelf)
         screenshotBanners = value(.screenshotBanners, d.screenshotBanners)
         screenshotsMoveOffDesktop = value(.screenshotsMoveOffDesktop, d.screenshotsMoveOffDesktop)
+        airDropDropZone = value(.airDropDropZone, d.airDropDropZone)
         homeWidget = value(.homeWidget, d.homeWidget)
         desktopAIActivity = value(.desktopAIActivity, d.desktopAIActivity)
         aiWorkInNotch = value(.aiWorkInNotch, d.aiWorkInNotch)
+        agentRecap = value(.agentRecap, d.agentRecap)
         sportsEnabled = value(.sportsEnabled, d.sportsEnabled)
         sportsLeague = value(.sportsLeague, d.sportsLeague)
         sportsGameID = value(.sportsGameID, d.sportsGameID)
@@ -190,12 +250,19 @@ struct CoveConfig: Codable {
         hud = value(.hud, d.hud)
         hudSeconds = value(.hudSeconds, d.hudSeconds)
         shortcuts = value(.shortcuts, d.shortcuts)
-        checkForUpdates = value(.checkForUpdates, d.checkForUpdates)
         ciMonitor = value(.ciMonitor, d.ciMonitor)
         ciRepos = value(.ciRepos, d.ciRepos)
+        ciActions = value(.ciActions, d.ciActions)
         cloudSessions = value(.cloudSessions, d.cloudSessions)
         cloudRepos = value(.cloudRepos, d.cloudRepos)
         bluetoothBattery = value(.bluetoothBattery, d.bluetoothBattery)
+        phoneRelay = value(.phoneRelay, d.phoneRelay)
+        phoneTopic = value(.phoneTopic, d.phoneTopic)
+        phoneServer = value(.phoneServer, d.phoneServer)
+        phoneToken = value(.phoneToken, d.phoneToken)
+        phoneOnlyWhenAway = value(.phoneOnlyWhenAway, d.phoneOnlyWhenAway)
+        phoneApprovals = value(.phoneApprovals, d.phoneApprovals)
+        privacyIndicator = value(.privacyIndicator, d.privacyIndicator)
     }
 
     static var directory: URL {

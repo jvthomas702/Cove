@@ -62,14 +62,14 @@ final class UIFlowTests: XCTestCase {
 
     func testCollegeFootballRankedFilter() {
         window.buttons["tab.sports"].click()
-        window.radioButtons["College football"].click()
+        window.radioButtons["CFB"].click()
         let ranked = window.buttons["sports.game.401858488"]
         XCTAssertTrue(ranked.waitForExistence(timeout: 8))
         XCTAssertFalse(window.buttons["sports.game.401871067"].exists)
         window.checkBoxes["sports.top25"].click()
         XCTAssertTrue(window.buttons["sports.game.401871067"].waitForExistence(timeout: 5))
         ranked.click()
-        XCTAssertTrue(text("Play-by-play").waitForExistence(timeout: 5))
+        XCTAssertTrue(window.radioButtons["Plays"].waitForExistence(timeout: 5))
         XCTAssertFalse(text("Updates paused.").exists)
     }
 
@@ -368,6 +368,28 @@ final class UIFlowTests: XCTestCase {
         Thread.sleep(forTimeInterval: 0.8)
         XCTAssertTrue(prompt.exists)
         XCTAssertEqual(prompt.value as? String, "Replace this draft")
+    }
+
+    func testQuickTimerStartsPausesAndCancels() {
+        window.buttons["tab.home"].click()
+        window.buttons["timer.open"].click()
+        let field = window.descendants(matching: .any).matching(identifier: "timer.field").firstMatch
+        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        field.click(); field.typeText("1h 15m\r")
+        let pause = window.buttons["timer.pause"]
+        XCTAssertTrue(pause.waitForExistence(timeout: 5))
+        pause.click()
+        XCTAssertTrue(window.buttons["timer.resume"].waitForExistence(timeout: 5))
+        window.buttons["timer.cancel"].click()
+        XCTAssertFalse(window.buttons["timer.cancel"].waitForExistence(timeout: 1))
+
+        window.buttons["timer.open"].click()
+        let five = window.buttons["timer.preset.5"]
+        XCTAssertTrue(five.waitForExistence(timeout: 5)); five.click()
+        XCTAssertTrue(window.buttons["timer.pause"].waitForExistence(timeout: 5))
+        let attachment = XCTAttachment(screenshot: window.screenshot())
+        attachment.name = "Quick timer"; attachment.lifetime = .keepAlways; add(attachment)
+        window.buttons["timer.cancel"].click()
     }
 
 }

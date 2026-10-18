@@ -18,11 +18,13 @@ final class IslandModel: ObservableObject {
         case running(count: Int, agent: AgentKind)
         case progress(Activity)
         case finished(count: Int, agent: AgentKind, failed: Bool)
-        case focus(end: Date)
+        case timer(QuickTimer)    // a quick timer or focus session counting down
         case music(NowPlaying)
         case sports(SportsGame)
         case scoreAndMusic(SportsGame, NowPlaying)   // a live score and what's playing, side by side
         case ai(Activity, count: Int)
+        case privacy              // nothing else to show, but a camera or microphone is on
+        case charging(percent: Int)   // the brief moment after plugging in
     }
 
     // Geometry
@@ -34,11 +36,14 @@ final class IslandModel: ObservableObject {
     /// The island's current size; the window follows this.
     @Published private(set) var currentSize = CGSize(width: 190, height: 32)
     @Published var hasHardwareNotch = true
+    /// On displays without a notch the island floats as a pill this far below the top edge.
+    static let floatingInset: CGFloat = 4
+    var islandTopInset: CGFloat { hasHardwareNotch ? 0 : Self.floatingInset }
     @Published var availableIslandWidth: CGFloat = 1200 { didSet { recompute() } }
 
     // State
     @Published var config: CoveConfig {
-        didSet { recompute() }
+        didSet { Theme.style = config.islandTheme; Theme.buttonLook = config.buttonLook; recompute() }
     }
     /// What Cove can see in Calendar (Settings → Features → Calendar).
     @Published var calendarStatus = CalendarStatus()
@@ -62,6 +67,13 @@ final class IslandModel: ObservableObject {
     @Published var desktopAIStatus = "Checking ChatGPT app…"
     /// GitHub Actions sign-in and what's being watched (Settings → Connections).
     @Published var ciStatus: GitHubActionsMonitor.Status?
+    /// The run behind each CI activity, the deploy workflows it can start, and Re-run / Deploy progress.
+    @Published private(set) var ciRuns: [String: CIRun] = [:]
+    @Published private(set) var ciDeploys: [String: [CIWorkflow]] = [:]
+    @Published private(set) var ciActionStates: [String: CIActionState] = [:]
+    let ciClient: CIActionClient
+    /// Asks the GitHub Actions monitor to poll now (set by AppDelegate), so a re-run shows up promptly.
+    var refreshCI: (() -> Void)?
     @Published private(set) var presentation: Presentation = .idle
     @Published private(set) var expanded = false
     @Published private(set) var isPinnedOpen = false
@@ -69,18 +81,37 @@ final class IslandModel: ObservableObject {
     @Published private(set) var activities: [Activity] = []
     @Published private(set) var aiSteps: [String: [AIActivityStep]] = [:]
     @Published private(set) var banner: Banner?
+    /// The banner on screen is waiting for you (pointer on it, or a reply being typed) instead of timing out.
+    @Published private(set) var bannerHeld = false
+    private var replyEngaged = false
     @Published private(set) var history: [Banner] = []
+    /// Today's finished Claude Code and Codex runs (AI tab → Today), kept across restarts for the day.
+    @Published private(set) var recap: AgentRecap
+    private let recapStore: AgentRecapStore
+    private var fileChanges = FileChangeTracker()
     @Published private(set) var nowPlaying: NowPlaying?
     /// Album art for the current track and the color pulled from it (tints the music UI).
     @Published private(set) var artwork: NSImage?
     @Published private(set) var accent: Color?
     /// A file drag is hovering over the island.
     @Published private(set) var isDropTargeted = false
+    /// Which drop target (AirDrop or Keep) the dragged file is over.
+    @Published private(set) var dropHover: DropTarget?
+    /// Where the drop targets are, in the island's coordinate space (reported by the views).
+    var dropFrames: [DropTarget: CGRect] = [:]
     @Published private(set) var battery: BatteryState?
+    /// Whether another app is using a camera or microphone (drives the privacy dot).
+    @Published private(set) var mediaUse = MediaUse()
+    /// Set for a couple of seconds after the adapter is plugged in, while the charging animation plays.
+    @Published private(set) var chargingMoment: BatteryState?
+    private var chargingTimer: Timer?
+    static let chargingMomentSeconds: TimeInterval = 2.5
     /// Connected AirPods and other Bluetooth accessories that report a battery; nil until first read.
     @Published private(set) var bluetooth: [BluetoothBattery]?
-    @Published private(set) var focusEnd: Date?
-    @Published private(set) var focusTotal: TimeInterval = 0
+    /// The one running (or paused) quick timer / focus session. Survives a restart.
+    @Published private(set) var timer: QuickTimer?
+    /// The timer picker is showing in Home (opened with the timer button in the header).
+    @Published var timerPickerOpen = false
     @Published private(set) var shelf: [URL] = []
     /// Recently copied text, newest first (memory only; see ClipboardMonitor).
     @Published private(set) var clips: [String] = []
@@ -93,13 +124,19 @@ final class IslandModel: ObservableObject {
     @Published var serverStatus = "Starting…"
     /// What the cloud-session watcher is doing, for Settings.
     @Published var cloudStatus = ""
+    /// Whether the phone relay is connected, for Settings.
+    @Published var phoneStatus = ""
+
+    /// Set by the app delegate: pushes a ping to your phone when Settings → Connections → Your phone is on.
+    var phoneNotify: ((PhoneNote) -> Void)?
 
     /// Set by the app delegate: (command, bundleID) → sends play/pause/next to Music or Spotify.
     var mediaControl: ((String, String) -> Void)?
 
     private var queue: [Banner] = []
     private var bannerTimer: Timer?
-    private var focusTimer: Timer?
+    private var countdown: Timer?
+    private let timerStore: QuickTimerStore
     private var pruneTimer: Timer?
     private var hoverWork: DispatchWorkItem?
     private var isHovering = false
@@ -118,9 +155,17 @@ final class IslandModel: ObservableObject {
         "net.kovidgoyal.kitty", "org.alacritty", "com.microsoft.VSCode", "com.todesktop.230313mzl4w4u92",
     ]
 
-    init(config: CoveConfig, sports: SportsMonitor? = nil, shelfStore: ShelfStore? = nil) {
+    init(config: CoveConfig, sports: SportsMonitor? = nil, shelfStore: ShelfStore? = nil, ciClient: CIActionClient? = nil,
+         recapStore: AgentRecapStore? = nil, timerStore: QuickTimerStore? = nil) {
         self.shelfStore = shelfStore ?? ShelfStore()
+        self.ciClient = ciClient ?? CIActionClient()
+        self.timerStore = timerStore ?? QuickTimerStore()
+        let recapStore = recapStore ?? AgentRecapStore()
+        self.recapStore = recapStore
+        self.recap = recapStore.load()
         self.config = config
+        Theme.style = config.islandTheme
+        Theme.buttonLook = config.buttonLook
         self.sports = sports ?? SportsMonitor()
         // Relay changes from the nested monitor after its published values have changed.
         sportsChanges = self.sports.objectWillChange.sink { [weak self] _ in
@@ -160,6 +205,7 @@ final class IslandModel: ObservableObject {
             }
         }
         loadShelf()
+        restoreTimer()
         pruneTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.prune() }
         }
@@ -178,12 +224,12 @@ final class IslandModel: ObservableObject {
         switch p {
         case .idle: return n
         case .compact: return CGSize(width: n.width + compactWing * 2, height: n.height)
-        case .banner: return CGSize(width: max(n.width + 200, 390), height: n.height + 60)
+        case .banner: return CGSize(width: max(n.width + 200, 390), height: n.height + (bannerAcceptsReply ? 96 : 60))
         case .expanded:
             // Narrow and short, like the iPhone island opened: just wide enough for the tabs and buttons.
             let width = min(max(n.width + 440, 620), availableIslandWidth)
             if tab == .home { return CGSize(width: width, height: n.height + 150) }
-            if tab == .ai { return CGSize(width: width, height: n.height + 330) }
+            if tab == .ai { return CGSize(width: width, height: n.height + 346 + (showsRecap ? Self.recapHeight + 8 : 0)) }
             if tab == .sports { return CGSize(width: width, height: n.height + 280) }
             if tab == .shelf { return CGSize(width: width, height: n.height + (shelf.count <= 4 ? 150 : 220)) }
             return CGSize(width: width, height: n.height + 220)
@@ -207,7 +253,10 @@ final class IslandModel: ObservableObject {
         case .sports?: return 104
         case .scoreAndMusic?: return 116
         case .ai?: return 92
+        case .timer?: return 60   // room for "12:34"
         case .hud?: return 64
+        case .privacy?: return 28   // just the dot
+        case .charging?: return 64
         case .napping? where nextEventToday != nil:
             return 60   // napping Nori plus the next class time
         case .napping?, .attention?, .running?, .progress?, .finished?:
@@ -235,7 +284,10 @@ final class IslandModel: ObservableObject {
 
     var compactItem: CompactItem? {
         if let hud { return .hud(hud) }
+        if let moment = chargingMoment { return .charging(percent: moment.percent) }
         if let a = activities.first(where: { $0.state == .attention }) { return .attention(a.agent) }
+        // A timer you started is the thing you're watching.
+        if let timer { return .timer(timer) }
         let workingAI = aiActivities.filter(\.isLive)
         if config.aiWorkInNotch, let work = workingAI.first { return .ai(work, count: workingAI.count) }
         if config.homeWidget == .ai, let work = aiActivities.first { return .ai(work, count: workingAI.count) }
@@ -258,17 +310,26 @@ final class IslandModel: ObservableObject {
         }
         if config.calendar, let now = schedule.currentEvent() { return .ongoing(now) }
         if let event = countdownEvent { return .event(event) }
-        if let end = focusEnd { return .focus(end: end) }
         if let np = nowPlaying, np.isPlaying { return .music(np) }
         if config.buddy && config.buddyAlwaysVisible { return .napping }
+        if privacyDot != nil { return .privacy }
         return nil
+    }
+
+    /// The green (camera) or orange (microphone) dot shown in the trailing wing, whatever else is there.
+    var privacyDot: PrivacyDot? { config.privacyIndicator ? mediaUse.dot : nil }
+
+    func setMediaUse(_ use: MediaUse) {
+        guard use != mediaUse else { return }
+        mediaUse = use
+        recompute()
     }
 
     private func recompute() {
         let next: Presentation
         if !approvals.isEmpty { next = .approval }
         else if expanded { next = .expanded }
-        else if hud != nil { next = .compact }
+        else if hud != nil || chargingMoment != nil { next = .compact }
         else if banner != nil { next = .banner }
         else if compactItem != nil { next = .compact }
         else { next = .idle }
@@ -283,6 +344,11 @@ final class IslandModel: ObservableObject {
     func setHovering(_ hovering: Bool) {
         let changed = hovering != isHovering
         isHovering = hovering
+        // A banner you can reply to stays put under the pointer, so it can be clicked and typed into.
+        if hovering, presentation == .banner, bannerAcceptsReply {
+            holdBanner()
+            return
+        }
         if hovering {
             guard config.hoverToExpand, !expanded, !suppressHoverUntilExit else { return }
             guard changed || hoverWork == nil else { return }
@@ -298,6 +364,7 @@ final class IslandModel: ObservableObject {
             DispatchQueue.main.asyncAfter(deadline: .now() + max(config.hoverDelay, 0.20), execute: work)
         } else if changed {
             suppressHoverUntilExit = false
+            if !replyEngaged { releaseBanner() }
             scheduleCollapse(after: 0.65)
         }
     }
@@ -424,6 +491,7 @@ final class IslandModel: ObservableObject {
 
     func setDropTargeted(_ targeted: Bool) {
         isDropTargeted = targeted
+        if !targeted { dropHover = nil }
         if targeted {
             tab = .shelf
             setExpanded(true)
@@ -461,6 +529,8 @@ final class IslandModel: ObservableObject {
 
     private func present(_ b: Banner) {
         banner = b
+        bannerHeld = false
+        replyEngaged = false
         recompute()
         bannerTimer?.invalidate()
         bannerTimer = nil
@@ -483,8 +553,8 @@ final class IslandModel: ObservableObject {
     }
 
     func tapBanner(_ b: Banner) {
-        if b.showsUpdates {
-            openSettings?(.about)
+        if b.showsPermissions {
+            openSettings?(.permissions)
         } else if b.showsShelf {
             tab = .shelf
             setExpanded(true)
@@ -496,6 +566,67 @@ final class IslandModel: ObservableObject {
             activateApp(app)
         }
         if banner?.id == b.id { dismissBanner() } else { queue.removeAll { $0.id == b.id } }
+    }
+
+    // MARK: - Replying from a banner
+
+    /// The session a banner's reply would continue, if replies are on and the session is resumable.
+    func replyTarget(for b: Banner) -> ResumeTarget? {
+        guard config.bannerReplies, b.style == .success || b.style == .failure,
+              let id = b.activityID, let a = activity(id), !a.isLive else { return nil }
+        return a.resume
+    }
+
+    var bannerAcceptsReply: Bool { banner.map { replyTarget(for: $0) != nil } ?? false }
+
+    /// Stops the current banner's countdown until `releaseBanner`.
+    func holdBanner() {
+        guard banner != nil else { return }
+        bannerTimer?.invalidate()
+        bannerTimer = nil
+        if !bannerHeld { bannerHeld = true }
+    }
+
+    /// Restarts the full countdown once the pointer leaves and nothing is being typed.
+    private func releaseBanner() {
+        guard bannerHeld, let b = banner else { return }
+        bannerHeld = false
+        guard !b.sticky else { return }
+        bannerTimer = Timer.scheduledTimer(withTimeInterval: b.duration ?? config.bannerSeconds, repeats: false) { [weak self] _ in
+            MainActor.assumeIsolated { self?.dismissBanner() }
+        }
+    }
+
+    /// The reply field gained focus or text (true), or was emptied and left (false).
+    func setBannerReplyEngaged(_ engaged: Bool) {
+        replyEngaged = engaged
+        if engaged { holdBanner() } else if !isHovering { releaseBanner() }
+    }
+
+    /// Continues the banner's session in Terminal with `text` as the next prompt.
+    /// Returns a short error to show in the banner, or nil once Terminal has been asked to open it.
+    @discardableResult
+    func sendBannerReply(_ text: String, for b: Banner) -> String? {
+        guard let target = replyTarget(for: b) else { return "This session can’t take a reply." }
+        guard let executable = agentLauncher.resolveExecutable(target.agent) else {
+            return "Install \(target.agent.rawValue) and sign in from Terminal first."
+        }
+        let script: URL
+        do { script = try ResumeCommand.prepare(target, text: text, executable: executable) }
+        catch { return error.localizedDescription }
+        let name = target.agent.rawValue
+        agentLauncher.openCommand(script) { [weak self] error in
+            Task { @MainActor in
+                guard let error else { return }
+                try? FileManager.default.removeItem(at: script.deletingLastPathComponent())
+                self?.show(Banner(title: "Couldn’t open \(name)", body: error.localizedDescription, style: .failure,
+                                  icon: .symbol("xmark.circle.fill", Palette.red), logged: false))
+            }
+        }
+        if let id = b.activityID { markSeen(id) }
+        replyEngaged = false
+        if banner?.id == b.id { dismissBanner() } else { queue.removeAll { $0.id == b.id } }
+        return nil
     }
 
     private func dropBanners(forActivity id: String) {
@@ -555,7 +686,7 @@ final class IslandModel: ObservableObject {
         let now = Date()
         dropBanners(forActivity: id)
         var a = activity(id) ?? Activity(id: id, agent: agent, title: title, detail: detail, state: .running, startedAt: now, updatedAt: now)
-        if !a.isLive { a.startedAt = now }
+        if !a.isLive { a.startedAt = now; fileChanges.reset(id) }
         a.title = title
         a.detail = detail
         a.state = .running
@@ -597,6 +728,7 @@ final class IslandModel: ObservableObject {
         lastAgentSignal = now
         guard !alreadyWaiting else { return }
         dropBanners(forActivity: id)
+        phoneNotify?(PhoneMessages.attention(agent: agent, title: title, message: message))
         show(Banner(
             title: "\(agent.displayName) needs you · \(title)",
             body: message,
@@ -624,8 +756,18 @@ final class IslandModel: ObservableObject {
         a.seen = expanded
         a.detail = summaryText ?? took.map { "Finished in \(formatDuration($0))" } ?? "Finished"
         put(a)
+        recordRun(a, took: took)
         lastAgentSignal = now
         guard notify else { return }
+        if phoneNotify != nil {
+            // Claude's summary is read from its transcript just after Stop; give it a moment so the phone gets it.
+            let wait: UInt64 = summaryText == nil && agent == .claude ? 1_500_000_000 : 0
+            Task { @MainActor [weak self] in
+                if wait > 0 { try? await Task.sleep(nanoseconds: wait) }
+                guard let self, let done = self.activity(id), !done.isLive else { return }
+                self.phoneNotify?(PhoneMessages.finished(agent: agent, title: title, summary: done.detail, failed: done.state == .failed))
+            }
+        }
         show(Banner(
             title: failed ? "\(agent.displayName) failed · \(title)" : "\(agent.doneTitle) · \(title)",
             body: a.detail,
@@ -637,9 +779,64 @@ final class IslandModel: ObservableObject {
         ))
     }
 
+    // MARK: - Today's recap
+
+    static let recapHeight: CGFloat = 92
+
+    var showsRecap: Bool { config.agentRecap && !recap.runs.isEmpty }
+
+    /// Claude Code / Codex tool use that edits a file (counted toward "files changed").
+    func noteToolUse(id: String, tool: String, input: [String: Any]) {
+        fileChanges.note(activityID: id, tool: tool, input: input)
+    }
+
+    private func recordRun(_ a: Activity, took: TimeInterval?) {
+        let files = fileChanges.take(a.id)
+        guard config.agentRecap, a.agent == .claude || a.agent == .codex, !a.id.hasPrefix("cloud:") else { return }
+        let finished = a.finishedAt ?? Date()
+        let run = RecapRun(
+            id: "\(a.id)@\(Int(a.startedAt.timeIntervalSince1970))", activityID: a.id, agent: a.agent.rawValue,
+            title: a.title, startedAt: a.startedAt, finishedAt: finished, duration: took,
+            filesChanged: a.agent == .claude ? files : nil, failed: a.state == .failed,
+            ownerApp: a.ownerApp, openURL: a.openURL
+        )
+        // A failure reported right after "done" replaces that run instead of adding another; keep its numbers.
+        var merged = run
+        if let previous = recap.runs.first(where: { $0.id == run.id }) {
+            merged.duration = run.duration ?? previous.duration
+            merged.filesChanged = run.filesChanged ?? previous.filesChanged
+        }
+        recap.record(merged)
+        recapStore.save(recap)
+        recompute()
+    }
+
+    /// Jumps back to where a finished run happened, like clicking its banner.
+    func openRecap(_ run: RecapRun) {
+        if let a = activity(run.activityID) { open(a); return }
+        var a = Activity(id: run.activityID, agent: run.kind, title: run.title, detail: "", state: run.failed ? .failed : .done,
+                         startedAt: run.startedAt, updatedAt: run.finishedAt)
+        a.ownerApp = run.ownerApp
+        a.openURL = run.openURL
+        open(a)
+    }
+
+    private func rollRecap(now: Date) {
+        guard recap.roll(to: now) else { return }
+        recapStore.save(recap)
+        recompute()
+    }
+
     func updateFinishedSummary(id: String, summary: String) {
         guard let index = activities.firstIndex(where: { $0.id == id }), activities[index].state == .done else { return }
         activities[index].detail = summary
+    }
+
+    /// Remembers which CLI session an activity belongs to, so its done banner can take a reply.
+    func setResumeTarget(id: String, _ target: ResumeTarget) {
+        guard let index = activities.firstIndex(where: { $0.id == id }), activities[index].resume != target else { return }
+        activities[index].resume = target
+        recompute()
     }
 
     func setUsage(id: String, _ usage: TokenUsage) {
@@ -651,6 +848,7 @@ final class IslandModel: ObservableObject {
     func removeActivity(_ id: String) {
         activities.removeAll { $0.id == id }
         aiSteps.removeValue(forKey: id)
+        forgetCIRun(id)
         dropBanners(forActivity: id)
         recompute()
     }
@@ -723,6 +921,7 @@ final class IslandModel: ObservableObject {
         if activities.count > 12 { activities = Array(activities.prefix(12)) }
         let retained = Set(activities.map(\.id))
         aiSteps = aiSteps.filter { retained.contains($0.key) }
+        for id in ciRuns.keys where !retained.contains(id) { forgetCIRun(id) }
         recompute()
     }
 
@@ -749,6 +948,81 @@ final class IslandModel: ObservableObject {
             a.openURL = run.url
             put(a)
         }
+        ciRuns[id] = run
+        if run.state == .running, ciActionStates[id]?.isWorking == false { ciActionStates[id] = nil }
+        if run.state != .running { loadDeployWorkflows(for: run) }
+    }
+
+    /// Re-run (failed runs) or Run <deploy> (passed runs), when turned on and the run supports it.
+    func ciActionsAvailable(_ activityID: String) -> Bool {
+        config.ciMonitor && config.ciActions && ciRuns[activityID] != nil
+    }
+
+    /// Re-runs the failed jobs of a failed run (or the whole run when none can be retried).
+    func ciRerun(_ activityID: String) {
+        guard let run = ciRuns[activityID], ciActionStates[activityID]?.isWorking != true else { return }
+        ciActionStates[activityID] = .working("Re-running…")
+        Task { [weak self] in
+            guard let self else { return }
+            do {
+                try await self.ciClient.rerun(repo: run.repo, runID: run.id)
+                self.finishCIAction(activityID, .done("Re-run started"))
+            } catch {
+                self.finishCIAction(activityID, .failed(error.localizedDescription), title: "Couldn't re-run · \(run.repoName)")
+            }
+        }
+    }
+
+    /// Starts a deploy or release workflow on the run's branch.
+    func ciDeploy(_ activityID: String, workflow: CIWorkflow) {
+        guard let run = ciRuns[activityID], !run.branch.isEmpty, ciActionStates[activityID]?.isWorking != true else { return }
+        ciActionStates[activityID] = .working("Starting \(workflow.name)…")
+        Task { [weak self] in
+            guard let self else { return }
+            do {
+                try await self.ciClient.dispatch(repo: run.repo, workflow: workflow, branch: run.branch)
+                self.finishCIAction(activityID, .done("\(workflow.name) started"))
+            } catch {
+                self.finishCIAction(activityID, .failed(error.localizedDescription), title: "Couldn't start \(workflow.name)")
+            }
+        }
+    }
+
+    private func finishCIAction(_ activityID: String, _ state: CIActionState, title: String? = nil) {
+        ciActionStates[activityID] = state
+        if case .failed(let message) = state, let title {
+            show(Banner(title: title, body: message, style: .failure,
+                        icon: config.buddy ? .buddy(.sad, .ci) : .symbol("xmark.octagon.fill", Palette.red),
+                        source: "GitHub Actions"))
+        } else {
+            refreshCI?()
+        }
+        // The status stays inline for a moment, then the buttons come back.
+        DispatchQueue.main.asyncAfter(deadline: .now() + (state.isFailure ? 12 : 6)) { [weak self] in
+            MainActor.assumeIsolated {
+                guard let self, self.ciActionStates[activityID] == state else { return }
+                self.ciActionStates[activityID] = nil
+            }
+        }
+    }
+
+    private func loadDeployWorkflows(for run: CIRun) {
+        let id = "ci:\(run.id)"
+        guard config.ciMonitor, config.ciActions, run.state == .passed, !run.branch.isEmpty, ciDeploys[id] == nil else { return }
+        ciDeploys[id] = []
+        Task { [weak self] in
+            guard let self else { return }
+            let found = (try? await self.ciClient.deployWorkflows(repo: run.repo, branch: run.branch)) ?? []
+            guard self.ciRuns[id] != nil else { return }
+            // The deploy workflow's own run doesn't offer to deploy again.
+            self.ciDeploys[id] = found.filter { $0.name != run.workflow }
+        }
+    }
+
+    private func forgetCIRun(_ id: String) {
+        ciRuns.removeValue(forKey: id)
+        ciDeploys.removeValue(forKey: id)
+        ciActionStates.removeValue(forKey: id)
     }
 
     // MARK: - Claude in the cloud
@@ -990,14 +1264,33 @@ final class IslandModel: ObservableObject {
     func setBattery(_ state: BatteryState?) {
         let old = battery
         battery = state
+        let pluggedIn = BatteryState.justPluggedIn(from: old, to: state)
+        if pluggedIn, config.chargingAnimation, let state { playChargingMoment(state) }
         guard config.batteryAlerts, let state, let old else { return }
-        if state.pluggedIn && !old.pluggedIn {
+        if pluggedIn {
+            // The charging animation already says it; don't stack a banner on top.
+            guard !config.chargingAnimation else { return }
             show(Banner(title: "Charging", body: "\(state.percent)%", style: .info, icon: .symbol("bolt.fill", Palette.green)))
         } else if !state.pluggedIn {
             for threshold in [10, 20] where state.percent <= threshold && old.percent > threshold {
                 show(Banner(title: "Battery low", body: "\(state.percent)% remaining", style: .attention,
                             icon: .symbol("battery.25", Palette.red), sticky: threshold == 10))
                 break
+            }
+        }
+    }
+
+    /// The iPhone-style "plugged in" moment: a green battery fills to the current level beside the notch, then folds away.
+    private func playChargingMoment(_ state: BatteryState) {
+        chargingMoment = state
+        recompute()
+        chargingTimer?.invalidate()
+        chargingTimer = Timer.scheduledTimer(withTimeInterval: Self.chargingMomentSeconds, repeats: false) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                self.chargingTimer = nil
+                self.chargingMoment = nil
+                self.recompute()
             }
         }
     }
@@ -1022,31 +1315,101 @@ final class IslandModel: ObservableObject {
         }
     }
 
-    // MARK: - Focus timer
+    // MARK: - Quick timers & focus
+
+    /// Starts the one timer (replacing any running one).
+    func startTimer(seconds: TimeInterval, label: String = "Timer") {
+        guard seconds >= 1 else { return }
+        setTimer(QuickTimer.start(seconds: seconds, label: label))
+        timerPickerOpen = false
+    }
+
+    /// Starts a timer from what was typed ("3", "90s", "1h 15m", "12:30"). False when it can't be read.
+    @discardableResult
+    func startTimer(text: String) -> Bool {
+        guard let seconds = QuickTimer.parse(text) else { return false }
+        startTimer(seconds: seconds)
+        return true
+    }
 
     func startFocus(minutes: Int) {
-        focusTimer?.invalidate()
-        let total = TimeInterval(minutes * 60)
-        focusTotal = total
-        focusEnd = Date().addingTimeInterval(total)
-        focusTimer = Timer.scheduledTimer(withTimeInterval: total, repeats: false) { [weak self] _ in
-            MainActor.assumeIsolated { self?.finishFocus() }
+        startTimer(seconds: TimeInterval(minutes * 60), label: "Focus")
+    }
+
+    func pauseTimer() {
+        guard let timer, !timer.isPaused else { return }
+        setTimer(timer.paused())
+    }
+
+    func resumeTimer() {
+        guard let timer, timer.isPaused else { return }
+        setTimer(timer.resumed())
+    }
+
+    func cancelTimer() { setTimer(nil) }
+
+    func stopFocus() { cancelTimer() }
+
+    func toggleTimerPicker() {
+        if tab != .home { navigate(to: .home); timerPickerOpen = true; return }
+        timerPickerOpen.toggle()
+    }
+
+    /// Whether Home's second tile is the timer: a timer is going, the picker is open, or Focus is the Home widget.
+    var showsTimerTile: Bool {
+        config.quickTimers && (timer != nil || timerPickerOpen || config.homeWidget == .focus)
+    }
+
+    private func setTimer(_ next: QuickTimer?) {
+        countdown?.invalidate()
+        countdown = nil
+        timer = next
+        timerStore.save(next)
+        if let next, let end = next.endDate {
+            countdown = Timer.scheduledTimer(withTimeInterval: max(end.timeIntervalSinceNow, 0.1), repeats: false) { [weak self] _ in
+                MainActor.assumeIsolated { self?.finishTimer() }
+            }
         }
         recompute()
     }
 
-    func stopFocus() {
-        focusTimer?.invalidate()
-        focusTimer = nil
-        focusEnd = nil
-        recompute()
+    /// Picks up a timer that was running when Cove quit. One that ran out meanwhile rings now,
+    /// if it ended in the last hour.
+    private func restoreTimer() {
+        guard let saved = timerStore.load() else { return }
+        if let end = saved.endDate, end <= Date() {
+            timerStore.save(nil)
+            if Date().timeIntervalSince(end) < 3600 { ringTimer(saved, late: end) }
+            return
+        }
+        setTimer(saved)
     }
 
-    private func finishFocus() {
-        let minutes = Int(focusTotal / 60)
-        stopFocus()
-        show(Banner(title: "Focus session done", body: "\(minutes) minutes — take a break.", style: .success,
-                    icon: .symbol("timer", Palette.green), sticky: true))
+    private func finishTimer() {
+        guard let done = timer else { return }
+        // Fired early (the clock changed)? Wait for the real end.
+        if let end = done.endDate, end.timeIntervalSinceNow > 0.5 { setTimer(done); return }
+        setTimer(nil)
+        ringTimer(done, late: nil)
+    }
+
+    private func ringTimer(_ done: QuickTimer, late end: Date?) {
+        if config.sounds, let sound = NSSound(named: NSSound.Name("Glass")) {
+            sound.stop()
+            sound.play()
+        }
+        let length = QuickTimer.name(done.total)
+        let body: String
+        if let end {
+            body = "\(length) · ended at \(end.formatted(date: .omitted, time: .shortened))"
+        } else {
+            body = done.label == "Focus" ? "\(length) — take a break." : "\(length) is up."
+        }
+        // An info banner, so the only sound is the Glass chime above.
+        show(Banner(title: done.label == "Focus" ? "Focus session done" : "Time's up",
+                    body: body, style: .info,
+                    icon: config.buddy ? .buddy(.happy, nil) : .symbol("timer", Palette.green),
+                    sticky: true, source: done.label))
     }
 
     // MARK: - Volume / brightness HUD
@@ -1076,7 +1439,7 @@ final class IslandModel: ObservableObject {
     var scheduleSetup: ScheduleSetup? {
         for feed in feedStatuses {
             if case .failed(let reason) = feed.state {
-                return ScheduleSetup(title: "\(feed.name) link didn't load", detail: reason, action: "Fix", pane: .features)
+                return ScheduleSetup(title: "\(feed.name) link didn't load", detail: reason, action: "Fix", pane: .classes)
             }
         }
         if !schedule.events.isEmpty || !schedule.due.isEmpty { return nil }
@@ -1092,7 +1455,7 @@ final class IslandModel: ObservableObject {
         if config.calendar && calendarStatus.access == .granted && !onlyBuiltIn { return nil }
         return ScheduleSetup(title: "Connect D2L and Google Calendar",
                              detail: "Paste your calendar links in Settings and your classes and due dates show up here.",
-                             action: "Add links", pane: .features)
+                             action: "Add links", pane: .classes)
     }
 
     /// Upcoming due items within the lookahead window (overdue ones from the last 3 days included).
@@ -1106,6 +1469,7 @@ final class IslandModel: ObservableObject {
         let now = Date()
         let since = lastAlertCheck
         lastAlertCheck = now
+        rollRecap(now: now)
         guard config.calendar else { return }
 
         if config.eventStartAlert {
@@ -1185,11 +1549,18 @@ final class IslandModel: ObservableObject {
     // MARK: - Claude Code approvals
 
     /// "smart" mode: use the notch only when you're at the Mac but not looking at Claude's terminal.
+    /// The screen is locked or nobody has touched the keyboard or mouse for a while.
+    static func isAway(idleMinutes: Double) -> Bool {
+        SystemState.screenLocked || SystemState.idleSeconds > idleMinutes * 60
+    }
+
     func shouldRouteApproval(activityID: String) -> Bool {
         switch config.approvals.lowercased() {
         case "off": return false
         case "always": return true
         default:
+            // Away from the Mac with phone answers on: send it to the phone instead of a terminal nobody sees.
+            if config.phoneRelay && config.phoneApprovals && Self.isAway(idleMinutes: config.approvalIdleMinutes) { return true }
             if SystemState.screenLocked { return false }
             if SystemState.idleSeconds > config.approvalIdleMinutes * 60 { return false }
             let front = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
@@ -1213,6 +1584,7 @@ final class IslandModel: ObservableObject {
         a.updatedAt = now
         put(a)
         lastAgentSignal = Date()
+        phoneNotify?(PhoneMessages.approval(request, buttons: config.phoneRelay && config.phoneApprovals))
         if config.sounds, let sound = NSSound(named: NSSound.Name(config.attentionSound)) {
             sound.stop()
             sound.play()
@@ -1276,13 +1648,42 @@ final class IslandModel: ObservableObject {
 
     // MARK: - Shelf
 
-    func receiveDrop(_ providers: [NSItemProvider]) {
-        for provider in providers {
-            _ = provider.loadObject(ofClass: URL.self) { [weak self] url, _ in
-                guard let url, url.isFileURL else { return }
-                Task { @MainActor in self?.addToShelf([url]) }
+    func setDropHover(_ target: DropTarget?) {
+        if dropHover != target { dropHover = target }
+    }
+
+    /// Files dropped on the island go to the shelf, or to AirDrop when dropped on its target.
+    func receiveDrop(_ providers: [NSItemProvider], target: DropTarget = .keep) {
+        Task { @MainActor [weak self] in
+            var urls: [URL] = []
+            for provider in providers {
+                if let url = await Self.loadFileURL(provider) { urls.append(url) }
+            }
+            let files = DropRouting.acceptedFiles(urls)
+            guard let self, !files.isEmpty else { return }
+            switch target {
+            case .keep: self.addToShelf(files)
+            case .airDrop: self.airDrop(files)
             }
         }
+    }
+
+    private nonisolated static func loadFileURL(_ provider: NSItemProvider) async -> URL? {
+        await withCheckedContinuation { continuation in
+            _ = provider.loadObject(ofClass: URL.self) { url, _ in continuation.resume(returning: url) }
+        }
+    }
+
+    /// Opens the AirDrop picker for the files. The island closes so the picker isn't hidden behind it.
+    func airDrop(_ urls: [URL]) {
+        guard let service = NSSharingService(named: .sendViaAirDrop), service.canPerform(withItems: urls) else {
+            show(Banner(title: "AirDrop isn't available", body: "Turn on Wi-Fi and Bluetooth, then try again. The file wasn't moved.",
+                        style: .failure, icon: .symbol("dot.radiowaves.left.and.right", Palette.red), logged: false, source: "AirDrop"))
+            return
+        }
+        setExpanded(false)
+        NSApp.activate(ignoringOtherApps: true)
+        service.perform(withItems: urls)
     }
 
     func addToShelf(_ urls: [URL], atFront: Bool = false) {

@@ -23,25 +23,27 @@ private struct SportsGamecastDetail: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             SportsScoreHeader(game: game)
-            if let situation = sports.situation {
-                HStack(spacing: 6) {
-                    if let team = game.team(situation.teamID) { TeamLogo(team: team, size: 16); Text(team.abbreviation).foregroundStyle(team.tint) }
-                    Text(situation.text).foregroundStyle(Theme.inkSecondary)
-                }.font(Theme.Font.number)
-            }
             if let error = sports.detailError {
                 Text(error).font(Theme.Font.caption).foregroundStyle(Palette.amber)
             }
-            HStack {
+            // Mode, the ball situation and the ESPN link share one row.
+            HStack(spacing: 8) {
                 Picker("Game detail", selection: $mode) {
                     ForEach(GamecastMode.allCases.filter { game.league != .nba || $0 != .drives }, id: \.self) { Text($0.rawValue).tag($0) }
                 }
-                .pickerStyle(.segmented).labelsHidden().frame(width: game.league == .nba ? 150 : 210)
+                .pickerStyle(.segmented).labelsHidden().frame(width: game.league == .nba ? 130 : 190)
                 .accessibilityIdentifier("sports.mode")
+                if let situation = sports.situation {
+                    HStack(spacing: 5) {
+                        if let team = game.team(situation.teamID) { TeamLogo(team: team, size: 14) }
+                        Text(situation.text).foregroundStyle(Theme.inkSecondary).lineLimit(1)
+                    }.font(Theme.Font.number).help(situation.text)
+                }
                 Spacer(minLength: 0)
                 if let url = game.gamecastURL {
-                    Link("ESPN ↗", destination: url).font(Theme.Font.caption).foregroundStyle(Theme.inkSecondary)
-                        .help("Open the full ESPN Gamecast")
+                    Link(destination: url) { Image(systemName: "arrow.up.right.square") }
+                        .font(.system(size: 12)).foregroundStyle(Theme.inkSecondary)
+                        .help("Open the full ESPN Gamecast").accessibilityLabel("Open on ESPN")
                 }
             }
             Group {
@@ -116,7 +118,7 @@ private struct SportsTimeline: View {
         ScrollViewReader { proxy in
             VStack(alignment: .leading, spacing: 7) {
                 HStack(spacing: 8) {
-                    SectionTitle(title: "Play-by-play", count: visible.count)
+                    Text("\(visible.count) plays").font(Theme.Font.number).foregroundStyle(Theme.inkTertiary)
                     Spacer(minLength: 0)
                     Picker("Quarter", selection: $period) {
                         Text("All quarters").tag(Int?.none)
