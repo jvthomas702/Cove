@@ -1,0 +1,88 @@
+ok bin/cove-claude-hook
+ok bin/cove-claude-permission
+ok bin/cove-codex-live.py
+ok bin/cove-codex-notify
+ok bin/cove-notify
+ok bin/cove-run
+ok scripts/build-app.sh
+ok scripts/ci-snapshots.sh
+ok scripts/import-release-identity.sh
+ok scripts/install-hooks.sh
+ok scripts/install.sh
+ok scripts/make-release-certificate.sh
+ok scripts/make-signing-identity.sh
+ok scripts/publish-updates.sh
+ok scripts/test-release-signing.sh
+ok scripts/test-update-signatures.sh
+ok scripts/ui-test-host.sh
+ok scripts/uninstall.sh
+ok extension/background.js
+ok extension/content.js
+ok extension/popup.js
+TAP version 13
+# Subtest: shows live reply updates and keeps watched completions quietly
+ok 1 - shows live reply updates and keeps watched completions quietly
+  ---
+  duration_ms: 6.504959
+  type: 'test'
+  ...
+# Subtest: long replies keep updating the live preview after the first 160 characters
+ok 2 - long replies keep updating the live preview after the first 160 characters
+  ---
+  duration_ms: 0.870042
+  type: 'test'
+  ...
+# Subtest: background completion can notify and opt-out keeps content private
+ok 3 - background completion can notify and opt-out keeps content private
+  ---
+  duration_ms: 0.60025
+  type: 'test'
+  ...
+# Subtest: turning off tracking clears live work and does not restart accidentally
+ok 4 - turning off tracking clears live work and does not restart accidentally
+  ---
+  duration_ms: 0.927708
+  type: 'test'
+  ...
+# Subtest: navigation clears the previous conversation without a fake completion
+ok 5 - navigation clears the previous conversation without a fake completion
+  ---
+  duration_ms: 1.197792
+  type: 'test'
+  ...
+# Subtest: brief disappearance of stop control does not finish the reply
+ok 6 - brief disappearance of stop control does not finish the reply
+  ---
+  duration_ms: 1.147958
+  type: 'test'
+  ...
+# Subtest: service worker isolates tabs and orders start/update/finish with delayed storage
+ok 7 - service worker isolates tabs and orders start/update/finish with delayed storage
+  ---
+  duration_ms: 18.833084
+  type: 'test'
+  ...
+1..7
+# tests 7
+# suites 0
+# pass 7
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 162.600667
+test_enable_feature_preserves_existing_configuration (test_live_hooks.LiveHookTests.test_enable_feature_preserves_existing_configuration) ... ok
+test_full_lifecycle_uses_one_activity (test_live_hooks.LiveHookTests.test_full_lifecycle_uses_one_activity) ... ok
+test_helper_posts_to_loopback_and_exits_quietly (test_live_hooks.LiveHookTests.test_helper_posts_to_loopback_and_exits_quietly) ... ok
+test_install_preserves_custom_hooks_and_backs_up_configuration (test_live_hooks.LiveHookTests.test_install_preserves_custom_hooks_and_backs_up_configuration) ... ok
+test_interrupt_and_close_do_not_stay_running (test_live_hooks.LiveHookTests.test_interrupt_and_close_do_not_stay_running) ... ok
+test_invalid_configs_fail_before_install (test_live_hooks.LiveHookTests.test_invalid_configs_fail_before_install) ... ok
+test_merge_preserves_other_hooks_and_is_idempotent (test_live_hooks.LiveHookTests.test_merge_preserves_other_hooks_and_is_idempotent) ... ok
+test_missing_or_unknown_events_are_ignored (test_live_hooks.LiveHookTests.test_missing_or_unknown_events_are_ignored) ... ok
+test_private_contents_are_not_forwarded (test_live_hooks.LiveHookTests.test_private_contents_are_not_forwarded) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 35.806s
+
+OK
+ok manifest.json

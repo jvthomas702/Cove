@@ -1,0 +1,28 @@
+build/Cove.app/Contents/Info.plist: OK
+--prepared:/Users/runner/work/Cove/Cove/build/Cove.app/Contents/Frameworks/Sparkle.framework/Versions/Current/.
+--prepared:/Users/runner/work/Cove/Cove/build/Cove.app/Contents/Frameworks/Sparkle.framework/Versions/Current/Autoupdate
+--validated:/Users/runner/work/Cove/Cove/build/Cove.app/Contents/Frameworks/Sparkle.framework/Versions/Current/Autoupdate
+--prepared:/Users/runner/work/Cove/Cove/build/Cove.app/Contents/Frameworks/Sparkle.framework/Versions/Current/Updater.app
+--validated:/Users/runner/work/Cove/Cove/build/Cove.app/Contents/Frameworks/Sparkle.framework/Versions/Current/Updater.app
+--prepared:/Users/runner/work/Cove/Cove/build/Cove.app/Contents/Frameworks/Sparkle.framework/Versions/Current/XPCServices/Installer.xpc
+--validated:/Users/runner/work/Cove/Cove/build/Cove.app/Contents/Frameworks/Sparkle.framework/Versions/Current/XPCServices/Installer.xpc
+--prepared:/Users/runner/work/Cove/Cove/build/Cove.app/Contents/Frameworks/Sparkle.framework/Versions/Current/XPCServices/Downloader.xpc
+--validated:/Users/runner/work/Cove/Cove/build/Cove.app/Contents/Frameworks/Sparkle.framework/Versions/Current/XPCServices/Downloader.xpc
+--validated:/Users/runner/work/Cove/Cove/build/Cove.app/Contents/Frameworks/Sparkle.framework/Versions/Current/.
+build/Cove.app: valid on disk
+build/Cove.app: satisfies its Designated Requirement
+build/Cove.app/Contents/Resources:
+AppIcon.icns
+bin
+extension
+Sparkle-LICENSE
+TeamLogos
+
+build/Cove.app/Contents/Resources/bin:
+cove-claude-hook
+cove-claude-permission
+cove-codex-live.py
+cove-codex-notify
+cove-notify
+cove-run
+bundle ok

@@ -1,0 +1,37 @@
+identities (all):
+
+Policy: Code Signing
+  Matching identities
+  1) 9F82D3A3A772C17D3F6D8E18F175D1E2361311C2 "Cove Local Signing" (CSSMERR_TP_NOT_TRUSTED)
+     1 identities found
+
+  Valid identities only
+     0 valid identities found
+/var/folders/nj/vtw8zd2j31d1gdrtntc5y4600000gn/T/tmp.vcYhpSlgvs/ls-copy: replacing existing signature
+Identifier=ls-copy
+Authority=Cove Local Signing
+TeamIdentifier=not set
+signing identity self-test ok
+imported: Cove Release Signing Test
+/var/folders/nj/vtw8zd2j31d1gdrtntc5y4600000gn/T/tmp.j8zfARx3zJ/one.app/Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices/Installer.xpc/Contents/MacOS/Installer: replacing existing signature
+/var/folders/nj/vtw8zd2j31d1gdrtntc5y4600000gn/T/tmp.j8zfARx3zJ/one.app/Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices/Downloader.xpc/Contents/MacOS/Downloader: replacing existing signature
+/var/folders/nj/vtw8zd2j31d1gdrtntc5y4600000gn/T/tmp.j8zfARx3zJ/one.app/Contents/Frameworks/Sparkle.framework/Versions/B/Updater.app/Contents/MacOS/Updater: replacing existing signature
+/var/folders/nj/vtw8zd2j31d1gdrtntc5y4600000gn/T/tmp.j8zfARx3zJ/one.app/Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices/Downloader.xpc: replacing existing signature
+/var/folders/nj/vtw8zd2j31d1gdrtntc5y4600000gn/T/tmp.j8zfARx3zJ/one.app/Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices/Installer.xpc: replacing existing signature
+/var/folders/nj/vtw8zd2j31d1gdrtntc5y4600000gn/T/tmp.j8zfARx3zJ/one.app/Contents/Frameworks/Sparkle.framework/Versions/B/Autoupdate: replacing existing signature
+/var/folders/nj/vtw8zd2j31d1gdrtntc5y4600000gn/T/tmp.j8zfARx3zJ/one.app/Contents/Frameworks/Sparkle.framework/Versions/B/Updater.app: replacing existing signature
+/var/folders/nj/vtw8zd2j31d1gdrtntc5y4600000gn/T/tmp.j8zfARx3zJ/one.app/Contents/Frameworks/Sparkle.framework/Versions/B/Sparkle: replacing existing signature
+/var/folders/nj/vtw8zd2j31d1gdrtntc5y4600000gn/T/tmp.j8zfARx3zJ/one.app/Contents/Frameworks/Sparkle.framework: replacing existing signature
+/var/folders/nj/vtw8zd2j31d1gdrtntc5y4600000gn/T/tmp.j8zfARx3zJ/one.app: replacing existing signature
+/var/folders/nj/vtw8zd2j31d1gdrtntc5y4600000gn/T/tmp.j8zfARx3zJ/two.app/Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices/Installer.xpc/Contents/MacOS/Installer: replacing existing signature
+/var/folders/nj/vtw8zd2j31d1gdrtntc5y4600000gn/T/tmp.j8zfARx3zJ/two.app/Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices/Downloader.xpc/Contents/MacOS/Downloader: replacing existing signature
+/var/folders/nj/vtw8zd2j31d1gdrtntc5y4600000gn/T/tmp.j8zfARx3zJ/two.app/Contents/Frameworks/Sparkle.framework/Versions/B/Updater.app/Contents/MacOS/Updater: replacing existing signature
+/var/folders/nj/vtw8zd2j31d1gdrtntc5y4600000gn/T/tmp.j8zfARx3zJ/two.app/Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices/Downloader.xpc: replacing existing signature
+/var/folders/nj/vtw8zd2j31d1gdrtntc5y4600000gn/T/tmp.j8zfARx3zJ/two.app/Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices/Installer.xpc: replacing existing signature
+/var/folders/nj/vtw8zd2j31d1gdrtntc5y4600000gn/T/tmp.j8zfARx3zJ/two.app/Contents/Frameworks/Sparkle.framework/Versions/B/Autoupdate: replacing existing signature
+/var/folders/nj/vtw8zd2j31d1gdrtntc5y4600000gn/T/tmp.j8zfARx3zJ/two.app/Contents/Frameworks/Sparkle.framework/Versions/B/Updater.app: replacing existing signature
+/var/folders/nj/vtw8zd2j31d1gdrtntc5y4600000gn/T/tmp.j8zfARx3zJ/two.app/Contents/Frameworks/Sparkle.framework/Versions/B/Sparkle: replacing existing signature
+/var/folders/nj/vtw8zd2j31d1gdrtntc5y4600000gn/T/tmp.j8zfARx3zJ/two.app/Contents/Frameworks/Sparkle.framework: replacing existing signature
+/var/folders/nj/vtw8zd2j31d1gdrtntc5y4600000gn/T/tmp.j8zfARx3zJ/two.app: replacing existing signature
+designated => identifier "app.cove.island" and certificate leaf = H"3150cbf8cb162ca3970a564939ff3dd30fae57b9"
+release signing self-test ok: two builds share one designated requirement

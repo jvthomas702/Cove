@@ -1,0 +1,34 @@
+→ Building Cove (release)…
+Fetching binary artifact https://github.com/sparkle-project/Sparkle/releases/download/2.10.0/Sparkle-for-Swift-Package-Manager.zip from cache
+Fetched https://github.com/sparkle-project/Sparkle/releases/download/2.10.0/Sparkle-for-Swift-Package-Manager.zip from cache (0.57s)
+Building for production...
+[0/5] Write sources
+[1/5] Copying Sparkle.framework
+[2/5] Write swift-version--79AA4F9932D1E87A.txt
+[4/6] Compiling Cove AppDelegate.swift
+[4/6] Write Objects.LinkFileList
+[5/6] Linking Cove
+Build complete! (66.95s)
+Fetching binary artifact https://github.com/sparkle-project/Sparkle/releases/download/2.10.0/Sparkle-for-Swift-Package-Manager.zip from cache
+Fetched https://github.com/sparkle-project/Sparkle/releases/download/2.10.0/Sparkle-for-Swift-Package-Manager.zip from cache (0.51s)
+Building for production...
+[0/5] Write sources
+[1/5] Copying Sparkle.framework
+[2/5] Write swift-version--79AA4F9932D1E87A.txt
+[4/6] Compiling Cove AppDelegate.swift
+[4/6] Write Objects.LinkFileList
+[5/6] Linking Cove
+Build complete! (65.02s)
+/Users/runner/work/Cove/Cove/build/Cove.app/Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices/Installer.xpc/Contents/MacOS/Installer: replacing existing signature
+/Users/runner/work/Cove/Cove/build/Cove.app/Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices/Downloader.xpc/Contents/MacOS/Downloader: replacing existing signature
+/Users/runner/work/Cove/Cove/build/Cove.app/Contents/Frameworks/Sparkle.framework/Versions/B/Updater.app/Contents/MacOS/Updater: replacing existing signature
+/Users/runner/work/Cove/Cove/build/Cove.app/Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices/Downloader.xpc: replacing existing signature
+/Users/runner/work/Cove/Cove/build/Cove.app/Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices/Installer.xpc: replacing existing signature
+/Users/runner/work/Cove/Cove/build/Cove.app/Contents/Frameworks/Sparkle.framework/Versions/B/Autoupdate: replacing existing signature
+/Users/runner/work/Cove/Cove/build/Cove.app/Contents/Frameworks/Sparkle.framework/Versions/B/Updater.app: replacing existing signature
+/Users/runner/work/Cove/Cove/build/Cove.app/Contents/Frameworks/Sparkle.framework/Versions/B/Sparkle: replacing existing signature
+/Users/runner/work/Cove/Cove/build/Cove.app/Contents/Frameworks/Sparkle.framework: replacing existing signature
+→ Signing with: Cove Release Signing
+✓ Built /Users/runner/work/Cove/Cove/build/Cove.app
+Executable=/Users/runner/work/Cove/Cove/build/Cove.app/Contents/MacOS/Cove
+designated => identifier "app.cove.island" and certificate leaf = H"12b76e4fe88648fd7e5f89fc5802a0992d5d0b0e"
