@@ -84,7 +84,7 @@ private struct MatteMusicTile: View {
 
     private func mediaButton(_ symbol: String, label: String, command: String) -> some View {
         IconButton(systemImage: symbol, size: 11, hit: 24) { model.media(command) }
-            .accessibilityLabel(label).disabled(model.nowPlaying == nil)
+            .help(label).accessibilityLabel(label).disabled(model.nowPlaying == nil)
     }
 }
 

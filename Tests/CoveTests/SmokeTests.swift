@@ -238,6 +238,22 @@ final class IslandModelTests: XCTestCase {
         XCTAssertEqual(IslandModel.relative(now.addingTimeInterval(3 * 3600), from: now), "in 3h")
         XCTAssertEqual(IslandModel.relative(now.addingTimeInterval(-30 * 60), from: now), "30m ago")
     }
+
+    func testTimeLeftAndLookaheadWording() {
+        XCTAssertEqual(formatTimeLeft(minutes: 50), "50 min left")
+        XCTAssertEqual(formatTimeLeft(minutes: 60), "1h left")
+        XCTAssertEqual(formatTimeLeft(minutes: 80), "1h 20m left")
+        XCTAssertEqual(formatTimeLeft(minutes: -3), "0 min left")
+        XCTAssertEqual(PlaybackBar.clock(754), "12:34")
+        XCTAssertEqual(PlaybackBar.clock(4500), "1:15:00")
+
+        var config = CoveConfig()
+        XCTAssertEqual(config.dueLookaheadPhrase, "week")
+        config.dueLookaheadDays = 14
+        XCTAssertEqual(config.dueLookaheadPhrase, "two weeks")
+        config.dueLookaheadDays = 3
+        XCTAssertEqual(config.dueLookaheadPhrase, "3 days")
+    }
 }
 
 // MARK: - Calendar

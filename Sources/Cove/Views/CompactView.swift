@@ -152,7 +152,7 @@ struct CompactView: View {
             TimelineView(.periodic(from: .now, by: 15)) { context in
                 let left = max(Int((event.end.timeIntervalSince(context.date) / 60).rounded(.up)), 0)
                 HStack(spacing: 5) {
-                    Text(left >= 60 ? "\(left / 60)h \(left % 60)m left" : "\(left) min left")
+                    Text(formatTimeLeft(minutes: left))
                         .font(Theme.Font.headline.monospacedDigit())
                         .foregroundStyle(Theme.inkSecondary)
                         .lineLimit(1)
@@ -165,7 +165,7 @@ struct CompactView: View {
         case .event(let event)?:
             TimelineView(.periodic(from: .now, by: 15)) { context in
                 let minutes = Int((event.start.timeIntervalSince(context.date) / 60).rounded(.up))
-                Text(minutes <= 0 ? "Now" : "in \(minutes) min")
+                Text(minutes <= 0 ? "Now" : minutes < 60 ? "in \(minutes) min" : IslandModel.relative(event.start, from: context.date))
                     .font(Theme.Font.headline.monospacedDigit())
                     .foregroundStyle(minutes <= 5 ? Palette.amber : Theme.inkSecondary)
                     .lineLimit(1)

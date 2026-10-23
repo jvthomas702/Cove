@@ -447,6 +447,13 @@ extension String {
     }
 }
 
+/// "50 min left", "1h left", "1h 20m left": how long is left of a class or meeting.
+func formatTimeLeft(minutes: Int) -> String {
+    let m = max(minutes, 0)
+    if m < 60 { return "\(m) min left" }
+    return m % 60 == 0 ? "\(m / 60)h left" : "\(m / 60)h \(m % 60)m left"
+}
+
 func formatDuration(_ interval: TimeInterval) -> String {
     let s = Int(interval.rounded())
     if s >= 3600 { return "\(s / 3600)h \((s % 3600) / 60)m" }

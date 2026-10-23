@@ -168,9 +168,12 @@ struct MediaCard: View {
                         Spacer(minLength: 0)
                         HStack(spacing: 0) {
                             IconButton(systemImage: "backward.fill", size: 10, hit: 22) { model.media("previous track") }
+                                .help("Previous track").accessibilityLabel("Previous track")
                             IconButton(systemImage: np.isPlaying ? "pause.fill" : "play.fill", size: 15, hit: 26) { model.media("playpause") }
                                 .contentTransition(.symbolEffect(.replace))
+                                .help(np.isPlaying ? "Pause" : "Play").accessibilityLabel(np.isPlaying ? "Pause" : "Play")
                             IconButton(systemImage: "forward.fill", size: 10, hit: 22) { model.media("next track") }
+                                .help("Next track").accessibilityLabel("Next track")
                         }
                         .padding(.trailing, -4)
                         .layoutPriority(1)
@@ -250,9 +253,11 @@ struct UpNextCard: View {
                         .foregroundStyle(Theme.inkSecondary)
                 } else {
                     Text("Nothing else today").font(Theme.Font.headline)
-                    Text(dueCount == 0 ? "No deadlines this week" : "\(dueCount) due this week")
+                    Text(dueCount == 0 ? "Nothing due in the next \(model.config.dueLookaheadPhrase)"
+                                       : "\(dueCount) due in the next \(model.config.dueLookaheadPhrase)")
                         .font(Theme.Font.caption)
                         .foregroundStyle(Theme.inkSecondary)
+                        .lineLimit(1)
                 }
             }
             Spacer(minLength: 0)
@@ -323,7 +328,7 @@ private struct NowCard: View {
     }
 
     private func subtitle(minutesLeft: Int) -> String {
-        var parts = ["\(minutesLeft) min left"]
+        var parts = [formatTimeLeft(minutes: minutesLeft)]
         if let location = event.location { parts.append(location) }
         if let next, next.start.timeIntervalSince(event.end) < 3 * 3600 {
             parts.append("then \(next.title)")
@@ -334,11 +339,6 @@ private struct NowCard: View {
 
 struct SchedulePane: View {
     @ObservedObject var model: IslandModel
-
-    private var lookahead: String {
-        let days = model.config.dueLookaheadDays
-        return days == 7 ? "week" : days == 14 ? "two weeks" : "\(days) days"
-    }
 
     /// " · from D2L and Google Calendar"
     private var sourceSuffix: String {
@@ -375,7 +375,7 @@ struct SchedulePane: View {
                     VStack(spacing: 6) {
                         if due.isEmpty {
                             EmptyNote(symbol: "checklist",
-                                      text: model.scheduleSetup == nil ? "Nothing due in the next \(lookahead)" : "Due dates from D2L show up here")
+                                      text: model.scheduleSetup == nil ? "Nothing due in the next \(model.config.dueLookaheadPhrase)" : "Due dates from D2L show up here")
                         }
                         ForEach(due) { DueRow(item: $0) }
                     }
