@@ -112,6 +112,8 @@ final class NotchWindowController {
 
     /// Extra room around large states so the drop shadow isn't clipped.
     private static let shadowPad = CGSize(width: 48, height: 28)
+    /// Room for the compact pill's spring to overshoot sideways without being cut off by the window edge.
+    private static let springPad = CGSize(width: 20, height: 0)
 
     init(model: IslandModel) {
         self.model = model
@@ -235,7 +237,7 @@ final class NotchWindowController {
 
     private func windowSize(for island: CGSize) -> CGSize {
         let p = model.presentation
-        let pad = (p == .expanded || p == .banner || p == .approval) ? Self.shadowPad : .zero
+        let pad = (p == .expanded || p == .banner || p == .approval) ? Self.shadowPad : (p == .compact ? Self.springPad : .zero)
         return CGSize(width: island.width + pad.width, height: island.height + pad.height + model.islandTopInset)
     }
 
@@ -251,7 +253,7 @@ final class NotchWindowController {
         panel.setFrame(rect, display: true)
     }
 
-    /// Grow immediately; shrink only after the spring animation has finished.
+    /// Grow immediately; shrink only after the spring animation has settled (`Theme.morph`, about half a second).
     private func resize(to island: CGSize) {
         shrinkWork?.cancel()
         let target = windowSize(for: island)
@@ -263,6 +265,6 @@ final class NotchWindowController {
             MainActor.assumeIsolated { self?.applyFrame(target) }
         }
         shrinkWork = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.40, execute: work)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.60, execute: work)
     }
 }

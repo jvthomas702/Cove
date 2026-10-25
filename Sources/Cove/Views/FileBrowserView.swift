@@ -137,8 +137,9 @@ struct FileBrowserView: View {
                 } else if entries.isEmpty && !browser.loading && !browser.isSearching {
                     note(symbol: "folder", text: browser.query.isEmpty ? "This folder is empty" : "Nothing here matches “\(browser.query)”")
                 }
-                ForEach(entries) { entry in
+                ForEach(Array(entries.enumerated()), id: \.element.id) { index, entry in
                     FileRow(url: entry.url, isFolder: entry.isFolder, detail: detail(for: entry), model: model, browser: browser)
+                        .entrance(index)
                 }
                 if browser.isSearching {
                     HStack {
@@ -149,10 +150,11 @@ struct FileBrowserView: View {
                     if browser.searchResults.isEmpty && !browser.searching {
                         note(symbol: "magnifyingglass", text: "Spotlight found nothing named “\(browser.query)”")
                     }
-                    ForEach(browser.searchResults, id: \.self) { url in
+                    ForEach(Array(browser.searchResults.enumerated()), id: \.element) { index, url in
                         FileRow(url: url, isFolder: FileBrowser.isBrowsableFolder(url),
                                 detail: FileManager.default.displayName(atPath: url.deletingLastPathComponent().path),
                                 model: model, browser: browser)
+                            .entrance(index)
                     }
                 }
             }

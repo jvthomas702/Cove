@@ -17,8 +17,8 @@ struct AgentRecapList: View {
             }
             ScrollView {
                 LazyVStack(spacing: 1) {
-                    ForEach(model.recap.runs) { run in
-                        Button { model.openRecap(run) } label: { row(run) }
+                    ForEach(Array(model.recap.runs.enumerated()), id: \.element.id) { index, run in
+                        Button { model.openRecap(run) } label: { row(run).entrance(index) }
                             .buttonStyle(PressableStyle())
                             .help("Open \(run.kind.displayName) · \(run.title)")
                             .accessibilityIdentifier("recap.run.\(run.id)")

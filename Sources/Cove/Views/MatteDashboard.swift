@@ -15,14 +15,18 @@ struct HomePane: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            MatteMusicTile(model: model).frame(maxWidth: .infinity)
-            if model.showsTimerTile {
-                QuickTimerTile(model: model).frame(maxWidth: .infinity)
-            } else if showsGame {
-                MatteSportsTile(model: model).frame(maxWidth: .infinity)
-            } else {
-                MatteContextTile(model: model).frame(maxWidth: .infinity)
+            MatteMusicTile(model: model).frame(maxWidth: .infinity).entrance(0)
+            Group {
+                if model.showsTimerTile {
+                    QuickTimerTile(model: model).frame(maxWidth: .infinity)
+                } else if showsGame {
+                    MatteSportsTile(model: model).frame(maxWidth: .infinity)
+                } else {
+                    MatteContextTile(model: model).frame(maxWidth: .infinity)
+                }
             }
+            .transition(.materialize)
+            .entrance(1)
         }
         .frame(height: 128)
         .accessibilityElement(children: .contain)

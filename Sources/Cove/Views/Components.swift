@@ -413,11 +413,11 @@ private struct PillButtonBody: View {
             .shadow(color: look == .glow && !Theme.isTerminal && enabled ? color.opacity(hovered ? 0.55 : 0.35) : .clear,
                     radius: look == .glow ? 7 : 0)
             .contentShape(shape)
-            .opacity(enabled ? (configuration.isPressed ? 0.75 : 1) : 0.4)
-            .scaleEffect(configuration.isPressed && !Theme.reduceMotion ? 0.95 : 1)
+            .opacity(enabled ? (configuration.isPressed ? 0.8 : 1) : 0.4)
+            .scaleEffect(configuration.isPressed && !Theme.reduceMotion ? 0.94 : 1)
             .onHover { hovered = $0 }
-            .animation(.easeOut(duration: Theme.reduceMotion ? 0.05 : 0.12), value: configuration.isPressed)
-            .animation(.easeOut(duration: 0.12), value: hovered)
+            .animation(Theme.press, value: configuration.isPressed)
+            .animation(Theme.snappy, value: hovered)
     }
 }
 
@@ -466,11 +466,11 @@ private struct PressableContent<Content: View>: View {
 
     var body: some View {
         label
-            .scaleEffect(pressed && !Theme.reduceMotion ? 0.98 : 1)
+            .scaleEffect(pressed && !Theme.reduceMotion ? 0.96 : 1)
             .opacity(pressed ? 0.85 : 1)
             .brightness(hovered && !pressed ? 0.035 : 0)
             .onHover { hovered = $0 }
-            .animation(.easeOut(duration: Theme.reduceMotion ? 0.05 : 0.12), value: pressed)
-            .animation(.easeOut(duration: 0.12), value: hovered)
+            .animation(Theme.press, value: pressed)
+            .animation(Theme.snappy, value: hovered)
     }
 }

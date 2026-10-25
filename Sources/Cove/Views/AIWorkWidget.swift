@@ -155,7 +155,7 @@ struct AIWorkOverview: View {
             .animation(Theme.snappy, value: model.aiActivityFilter)
             ScrollView(.horizontal) {
                 HStack(spacing: 6) {
-                    ForEach(visible) { activity in
+                    ForEach(Array(visible.enumerated()), id: \.element.id) { index, activity in
                         Button { model.selectAIActivity(activity) } label: {
                             HStack(spacing: 6) {
                                 AIAgentAvatar(activity: activity, showBuddy: model.config.buddy, size: 20)
@@ -175,6 +175,7 @@ struct AIWorkOverview: View {
                         .help("\(activity.agent.displayName) · \(activity.title) · \(activity.phase ?? (activity.isLive ? "Working" : "Finished"))")
                         .accessibilityIdentifier("ai.task.\(activity.id)")
                         .accessibilityAddTraits(activity.id == selectedID ? .isSelected : [])
+                        .entrance(index)
                     }
                     if visible.isEmpty {
                         Text(model.aiActivityFilter == .live ? "No agents are working" : model.aiActivityFilter == .finished ? "No recent finished tasks" : "Connect an agent to see it here")

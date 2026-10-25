@@ -18,7 +18,7 @@ struct ExpandedView: View {
                 }
             }
             .id(model.tab)
-            .transition(.opacity)
+            .transition(.tabSlide(forward: model.tabMovesForward))
             .padding(.horizontal, 14)
             .padding(.top, Theme.Space.s)
             .padding(.bottom, 14)
@@ -363,7 +363,9 @@ struct SchedulePane: View {
                         if events.isEmpty && (model.scheduleSetup == nil || !due.isEmpty) {
                             EmptyNote(symbol: "calendar", text: "Nothing in the next two days\(sourceSuffix)")
                         }
-                        ForEach(events) { EventRow(event: $0) }
+                        ForEach(Array(events.enumerated()), id: \.element.id) { index, event in
+                            EventRow(event: event).entrance(index)
+                        }
                     }
                 }
             }
@@ -377,7 +379,9 @@ struct SchedulePane: View {
                             EmptyNote(symbol: "checklist",
                                       text: model.scheduleSetup == nil ? "Nothing due in the next \(model.config.dueLookaheadPhrase)" : "Due dates from D2L show up here")
                         }
-                        ForEach(due) { DueRow(item: $0) }
+                        ForEach(Array(due.enumerated()), id: \.element.id) { index, item in
+                            DueRow(item: item).entrance(index + 1)
+                        }
                     }
                 }
             }
@@ -554,8 +558,8 @@ struct ActivityList: View {
             } else {
                 ScrollView(.vertical, showsIndicators: false) {
                     LazyVStack(spacing: 6) {
-                        ForEach(model.activities) { activity in
-                            ActivityRow(activity: activity) { model.open(activity) }
+                        ForEach(Array(model.activities.enumerated()), id: \.element.id) { index, activity in
+                            ActivityRow(activity: activity) { model.open(activity) }.entrance(index)
                         }
                         if !model.history.isEmpty {
                             HStack {
@@ -763,7 +767,9 @@ struct ShelfPane: View {
             else {
                 ScrollView {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 96), spacing: 8)], spacing: 8) {
-                        ForEach(model.shelf, id: \.self) { url in ShelfItem(url: url, model: model) }
+                        ForEach(Array(model.shelf.enumerated()), id: \.element) { index, url in
+                            ShelfItem(url: url, model: model).entrance(index)
+                        }
                     }.padding(.vertical, 6).padding(.horizontal, 2)
                 }.frame(maxHeight: .infinity).accessibilityIdentifier("shelf.items")
             }

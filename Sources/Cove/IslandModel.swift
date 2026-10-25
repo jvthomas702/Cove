@@ -27,6 +27,28 @@ final class IslandModel: ObservableObject {
         case ai(Activity, count: Int)
         case privacy              // nothing else to show, but a camera or microphone is on
         case charging(percent: Int)   // the brief moment after plugging in
+
+        /// Which kind of thing a wing shows. A new kind materializes in; the same kind updating in place
+        /// (a volume step, a score) animates its values instead.
+        var kind: String {
+            switch self {
+            case .hud: return "hud"
+            case .attention: return "attention"
+            case .napping: return "napping"
+            case .event: return "event"
+            case .ongoing: return "ongoing"
+            case .running: return "running"
+            case .progress: return "progress"
+            case .finished: return "finished"
+            case .timer: return "timer"
+            case .music: return "music"
+            case .sports: return "sports"
+            case .scoreAndMusic: return "scoreAndMusic"
+            case .ai: return "ai"
+            case .privacy: return "privacy"
+            case .charging: return "charging"
+            }
+        }
     }
 
     // Geometry
@@ -86,7 +108,16 @@ final class IslandModel: ObservableObject {
     @Published private(set) var presentation: Presentation = .idle
     @Published private(set) var expanded = false
     @Published private(set) var isPinnedOpen = false
-    @Published var tab: Tab = .home { didSet { recompute() } }
+    @Published var tab: Tab = .home {
+        didSet {
+            if let from = Tab.allCases.firstIndex(of: oldValue), let to = Tab.allCases.firstIndex(of: tab), from != to {
+                tabMovesForward = to > from
+            }
+            recompute()
+        }
+    }
+    /// Whether the last tab change went right (content slides in from the right) or left.
+    @Published private(set) var tabMovesForward = true
     @Published private(set) var activities: [Activity] = []
     @Published private(set) var aiSteps: [String: [AIActivityStep]] = [:]
     @Published private(set) var banner: Banner?

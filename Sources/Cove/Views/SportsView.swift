@@ -89,12 +89,13 @@ struct SportsPane: View {
             } else {
                 ScrollView(.horizontal) {
                     LazyHStack(spacing: 6) {
-                        ForEach(model.visibleSportsGames) { game in
+                        ForEach(Array(model.visibleSportsGames.enumerated()), id: \.element.id) { index, game in
                             GameCard(game: game,
                                      pinned: game.id == model.config.sportsGameID,
                                      followed: model.config.sportsWatchedGames.contains(game.key),
                                      choose: { model.chooseSportsGame(game); showingGames = false },
                                      toggleFollow: { model.toggleWatchedGame(game) })
+                                .entrance(index)
                         }
                     }.padding(.vertical, 2)
                 }
