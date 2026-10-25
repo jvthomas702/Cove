@@ -730,6 +730,8 @@ struct ShelfPane: View {
     var body: some View {
         if model.isDropTargeted && model.config.airDropDropZone {
             DropTargets(hover: model.dropHover)
+        } else if model.filesMode == .browse {
+            FileBrowserView(model: model)
         } else {
             shelf
         }
@@ -738,8 +740,16 @@ struct ShelfPane: View {
     private var shelf: some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
             HStack {
-                SectionTitle(title: "Shelf", count: model.shelf.count)
+                FilesModePicker(model: model)
+                if !model.shelf.isEmpty {
+                    Text("\(model.shelf.count)").font(Theme.Font.number).foregroundStyle(Theme.inkTertiary)
+                }
                 Spacer()
+                let convertible = model.shelf.filter { FileKind.of($0) != .other }
+                if convertible.count > 1 {
+                    ConvertMenu(model: model, urls: convertible, title: "Convert all")
+                        .help("Combine the shelf’s images and PDFs into one PDF, or change their format")
+                }
                 if model.canUndoShelf {
                     ChipButton(title: "Undo", systemImage: "arrow.uturn.backward") { model.undoShelfRemoval() }
                         .accessibilityIdentifier("shelf.undo")
@@ -934,6 +944,7 @@ struct ShelfItem: View {
             Button("Open in default app") { NSWorkspace.shared.open(url) }
             Button("Copy") { model.copyToPasteboard(url) }
             Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([url]) }
+            ConvertMenuItems(model: model, urls: [url])
             Divider()
             Button("Remove from Shelf") { model.removeFromShelf(url) }
         }

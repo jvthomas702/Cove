@@ -13,11 +13,12 @@ Native Swift and SwiftUI, MIT licensed, macOS 14 or later.
 | | |
 |---|---|
 | **Agents** | Claude Code and Codex sessions show live beside the notch ("Editing eval.py", "$ pytest"), then a banner with the final message. Reply from the banner to keep the conversation going. The AI tab lists today's finished runs. |
+| **Cloud agents** | Message your Claude sessions on claude.ai/code from the AI tab, or start a new one for a repo. |
 | **Approvals** | When Claude Code asks permission, the island drops down with the command or a red and green diff, plus **Allow**, **Always allow** and **Deny**. ⌃⌥Y and ⌃⌥N work too. |
 | **Cloud and CI** | Claude sessions on claude.ai show up through the pull requests they open. Your GitHub Actions runs show live, with **Re-run** on a failure and **Run Deploy** on a pass. |
 | **Your phone** | Optional pushes to your phone (through ntfy) when an agent finishes or needs you while you're away, with Allow and Deny buttons. |
 | **Classes** | "CPE 3000 Lecture, 50 min left" beside the notch, a heads-up with a Join button before each class, and a Due soon list from D2L, Canvas or Google Calendar. |
-| **Shelf** | Every new screenshot lands on a shelf you can drag from. Drop any file on the notch to AirDrop it or keep it. |
+| **Files** | Every new screenshot lands on a shelf you can drag from. Drop any file on the notch to AirDrop it or keep it. Browse and search your Mac's files from the notch, and turn JPEGs into a PDF, PDFs into images, or images into another format. |
 | **Sports** | Pin an NBA, NFL or college football game's score beside the notch, with play-by-play in the Sports tab. |
 | **iPhone touches** | Quick timers, a charging animation, the green and orange camera and mic dot, AirPods battery, Now Playing, and the volume and brightness meter. It works on external displays too. |
 

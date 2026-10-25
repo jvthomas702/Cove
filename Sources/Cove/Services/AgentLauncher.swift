@@ -2,8 +2,10 @@ import AppKit
 import Combine
 
 enum LaunchAgent: String, CaseIterable {
-    case codex = "Codex", claude = "Claude Code"
+    case codex = "Codex", claude = "Claude Code", claudeCloud = "Claude (cloud)"
     var executable: String { self == .codex ? "codex" : "claude" }
+    /// Runs on claude.ai's machines (`claude --cloud`) instead of in the folder on this Mac.
+    var isCloud: Bool { self == .claudeCloud }
 }
 
 /// Starts the installed interactive CLI. Prompts stay literal arguments; agent permissions remain intact.
@@ -59,7 +61,8 @@ enum LaunchAgent: String, CaseIterable {
         }
         let text = prompt
         do {
-            let script = try Self.prepareCommand(executable: executable, folder: folder, prompt: text)
+            let cloud = agent.isCloud
+            let script = try Self.prepareCommand(executable: executable, folder: folder, prompt: text, cloud: cloud)
             launching = true
             let name = agent.rawValue
             openCommand(script) { [weak self] error in
@@ -71,16 +74,26 @@ enum LaunchAgent: String, CaseIterable {
                         self.status = "Couldn’t open \(name): \(error.localizedDescription)"
                     } else {
                         if self.prompt == text { self.prompt = "" }
-                        self.status = "Opened \(name) in Terminal. Connected activity appears above."
+                        self.status = cloud
+                            ? "Starting a cloud session from Terminal. Its link appears there; message it from Cloud."
+                            : "Opened \(name) in Terminal. Connected activity appears above."
                     }
                 }
             }
         } catch { status = error.localizedDescription }
     }
 
+    /// `--cloud` reads the task as its value, so a task that starts with "-" would read as a flag.
+    nonisolated static func cloudTask(_ prompt: String) -> String {
+        let task = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
+        return task.hasPrefix("-") ? "Task: " + task : task
+    }
+
     nonisolated static func quote(_ text: String) -> String { "'" + text.replacingOccurrences(of: "'", with: "'\\''") + "'" }
 
-    static func prepareCommand(executable: URL, folder: URL, prompt: String) throws -> URL {
+    /// `cloud` starts a claude.ai cloud session for the folder's GitHub repo (`claude --cloud <task>`)
+    /// instead of an interactive session on this Mac.
+    static func prepareCommand(executable: URL, folder: URL, prompt: String, cloud: Bool = false) throws -> URL {
         guard !prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, !prompt.contains("\0") else {
             throw LaunchError.message("Enter a task without null characters.")
         }
@@ -91,10 +104,13 @@ enum LaunchAgent: String, CaseIterable {
         guard FileManager.default.isExecutableFile(atPath: executable.path) else {
             throw LaunchError.message("The selected agent is no longer installed.")
         }
+        let run = cloud
+            ? "exec \(quote(executable.path)) --cloud \(quote(cloudTask(prompt)))"
+            : "exec \(quote(executable.path)) -- \(quote(prompt))"
         return try writeScript(named: "Start agent.command") { _ in
             """
             cd -- \(quote(folder.path)) || exit 1
-            exec \(quote(executable.path)) -- \(quote(prompt))
+            \(run)
             """
         }
     }

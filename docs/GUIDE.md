@@ -18,7 +18,7 @@ College football shows games with at least one **Top 25** team by default; turn 
 
 Open the **AI** tab. Live AI work can temporarily replace a sports score beside the notch, then return to it when the work finishes; turn this off with **Show live AI work beside the notch**. The AI workspace shows a large Nori beside the selected session, observed phases down the left, live detail in the main card, and colored agent pills on the right. Click a pill to inspect that session; Open returns to its app or terminal. Clicking an AI activity in the matte dashboard opens this workspace. Phase history stays in memory, is bounded to 24 phases per session, and coalesces streaming reply updates. Only reported steps are shown. Turn off **Show Nori** to use agent glyphs instead.
 
-Use the prompt box at the bottom of **AI** to start a new task. Choose **Codex** or **Claude Code**, choose a project folder and type the request. **Start** opens that installed agent’s interactive session in Terminal, preserving its login, project context and approval controls. Connected hooks report activity back to Cove. Drafts stay in memory while you switch tabs. This starts a new session; it does not send a message into an existing tracked chat. Codex follows the [official interactive CLI workflow](https://learn.chatgpt.com/docs/codex/cli).
+Use the prompt box at the bottom of **AI** to start a new task. Choose **Codex**, **Claude Code** or **Claude (cloud)**, choose a project folder and type the request. **Claude (cloud)** runs `claude --cloud <task>` in that folder, which starts a session on claude.ai for the folder's GitHub repo (push first: the cloud clones GitHub, not your checkout). **Start** opens that installed agent’s interactive session in Terminal, preserving its login, project context and approval controls. Connected hooks report activity back to Cove. Drafts stay in memory while you switch tabs. This starts a new session; it does not send a message into an existing tracked chat. Codex follows the [official interactive CLI workflow](https://learn.chatgpt.com/docs/codex/cli).
 
 - **ChatGPT desktop app:** turn on **Settings → Connections → ChatGPT desktop → Follow ChatGPT**, and grant Cove **Accessibility** in Permissions. Keep the chat window open. Cove reads only window titles and generation/composer button metadata; it does not read the app’s chat database, text-field contents, screenshots or hidden reasoning. Two consistent observations are required to start or finish work. If controls cannot be read, Cove reports that status rather than claiming a reply finished. Desktop tracking is a best-effort observer of visible windows; it cannot follow chats whose generation controls are not exposed, and UI updates may change those controls. Desktop completion opens the app to read the response rather than copying its contents.
 - **Browser tabs:** use **Settings → Connections → Browser chat tabs → Set up** to install the bundled Cove extension in Chrome, Arc, Brave or Edge. After a Cove update, reload the unpacked extension and refresh already-open chat tabs. The extension reports ChatGPT, Claude and Gemini generation status, live visible reply excerpts and completion. Turn off **Include reply previews** in its popup to send status and character counts instead. These events go only to Cove’s loopback server. A reply you watched finish stays in the widget quietly; the popup’s notification toggle controls whether it also shows a banner.
@@ -41,6 +41,12 @@ Sessions on claude.ai/code, in Claude projects and in routines run on Anthropic'
 
 It signs in with the GitHub CLI (`brew install gh`, then `gh auth login`) and watches the repos you pushed to in the last two days, or the ones you list as `cloudRepos` in `~/.config/cove/config.json`. Turn it off in Settings → Connections. Cloud work that never opens a pull request (a question, a document) doesn't show up.
 
+### Talking to a cloud session
+
+Pick **Cloud** in the AI tab's composer to send a cloud session a follow-up. Sessions whose pull requests Cove has seen are listed already; add any other with the link button and a claude.ai/code link (or a bare `session_…` id). **Message** on a cloud activity in the AI tab picks its session for you. **Send** runs `claude -p --cloud <session> --output-format json` with your message on stdin. The message waits in the session until Claude reads it; Claude's reply shows on claude.ai and in the Claude app, and any new commits show up here through the pull request. The open button takes you to the session.
+
+This needs Claude Code signed in to your claude.ai account (`claude auth login`) and your organization's cloud sessions turned on. Cove stores no token: it keeps the session list and your last few sent messages on this Mac. If the send fails (an archived session, a disabled policy), the composer says why and keeps your draft.
+
 ## Your agents on your phone
 
 Turn on **Your phone** in Settings → Connections. Cove makes a private topic on [ntfy](https://ntfy.sh), a free push service, and shows it with a QR code. Install the free ntfy app on your phone (iOS or Android), tap +, and subscribe to that topic; or scan the code to open it in the phone's browser. No account, no server to run, and it works anywhere your phone has signal.
@@ -62,6 +68,19 @@ Turn on **Settings → Connections → Watch my CI runs** to see your workflow r
 ## Dropping files on the notch
 
 Drag any file onto the notch, open or closed. It opens with two targets: drop on **AirDrop** to pick a nearby device in the AirDrop window, or on **Keep** to put the file on the shelf. Dropping anywhere else on the island keeps it. Turn the targets off in Settings → Shelf → **AirDrop drop zone** to go back to dropping straight onto the shelf.
+
+## Browsing and converting files
+
+The **Files** tab has two views: **Shelf** and **Browse**. Browse shows the files on your Mac: Home, Desktop, Documents, Downloads, iCloud Drive and Applications on the left, the folder's contents on the right, a path bar to go back up, and **⋯** to sort by date, show hidden files or open the folder in Finder. Double-click a folder to go in and a file to open it in its default app. Click to select, ⌘- or ⇧-click to select more, and drag any row into another app. Type in **Search files** to filter the folder; two letters or more also search your home folder with Spotlight. Right-click a file to show it in Finder, keep it on the shelf, copy it or its path.
+
+**Convert** (in the selection bar, on a file's right-click menu, or **Convert all** on the shelf) turns:
+
+- images (JPEG, PNG, HEIC, TIFF…) into one PDF, a page per image in the order they're listed, upright even for phone photos;
+- images and PDFs together into one combined PDF;
+- an image into JPEG, PNG, HEIC or TIFF (transparent areas turn white in JPEG);
+- each page of a PDF into a PNG or JPEG.
+
+The result is saved next to the original with a new name, so nothing is overwritten (files kept inside Cove's own storage, like shelf screenshots, go to Downloads instead). It also lands on the shelf, and the banner opens it. Everything happens on your Mac.
 
 ## Quick timers
 
