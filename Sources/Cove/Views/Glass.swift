@@ -63,33 +63,41 @@ private struct LiquidLayer: View {
 
     var body: some View {
         TimelineView(.animation(minimumInterval: 1.0 / 24, paused: !flowing)) { timeline in
-            let t = flowing ? timeline.date.timeIntervalSinceReferenceDate : 0
             Canvas { context, size in
-                let w = size.width, h = size.height
-                if let artwork, artwork.size.width > 0, artwork.size.height > 0 {
-                    var art = context
-                    art.opacity = 0.62
-                    art.addFilter(.saturation(1.5))
-                    art.addFilter(.blur(radius: 26))
-                    let scale = max(w / artwork.size.width, h / artwork.size.height) * 1.6
-                    let drawn = CGSize(width: artwork.size.width * scale, height: artwork.size.height * scale)
-                    art.draw(Image(nsImage: artwork),
-                             in: CGRect(x: (w - drawn.width) / 2, y: (h - drawn.height) / 2, width: drawn.width, height: drawn.height))
-                }
-                var blobs = context
-                blobs.opacity = artwork == nil ? 0.55 : 0.35
-                blobs.addFilter(.blur(radius: 30))
-                let first = w * 0.8, second = w * 0.6
-                blobs.fill(Path(ellipseIn: CGRect(x: w * (0.25 + 0.12 * sin(t * 0.35)) - first / 2,
-                                                  y: h * (0.3 + 0.15 * cos(t * 0.27)) - first / 2,
-                                                  width: first, height: first)),
-                           with: .color(tint))
-                blobs.fill(Path(ellipseIn: CGRect(x: w * (0.8 + 0.1 * cos(t * 0.31)) - second / 2,
-                                                  y: h * (0.75 + 0.12 * sin(t * 0.4)) - second / 2,
-                                                  width: second, height: second)),
-                           with: .color(tint.opacity(0.7)))
+                Self.draw(in: &context, size: size, artwork: artwork, tint: tint,
+                          time: flowing ? timeline.date.timeIntervalSinceReferenceDate : 0)
             }
         }
+    }
+
+    // Kept out of the view builder, with every value typed, so the compiler checks it quickly.
+    private static func draw(in context: inout GraphicsContext, size: CGSize, artwork: NSImage?, tint: Color, time t: Double) {
+        let w: CGFloat = size.width
+        let h: CGFloat = size.height
+        if let artwork, artwork.size.width > 0, artwork.size.height > 0 {
+            var art = context
+            art.opacity = 0.62
+            art.addFilter(.saturation(1.5))
+            art.addFilter(.blur(radius: 26))
+            let fill: CGFloat = max(w / artwork.size.width, h / artwork.size.height) * 1.6
+            let drawnWidth: CGFloat = artwork.size.width * fill
+            let drawnHeight: CGFloat = artwork.size.height * fill
+            let rect = CGRect(x: (w - drawnWidth) / 2, y: (h - drawnHeight) / 2, width: drawnWidth, height: drawnHeight)
+            art.draw(Image(nsImage: artwork), in: rect)
+        }
+        var blobs = context
+        blobs.opacity = artwork == nil ? 0.55 : 0.35
+        blobs.addFilter(.blur(radius: 30))
+        let firstX: Double = 0.25 + 0.12 * sin(t * 0.35)
+        let firstY: Double = 0.30 + 0.15 * cos(t * 0.27)
+        let secondX: Double = 0.80 + 0.10 * cos(t * 0.31)
+        let secondY: Double = 0.75 + 0.12 * sin(t * 0.40)
+        blobs.fill(circle(at: CGPoint(x: w * CGFloat(firstX), y: h * CGFloat(firstY)), diameter: w * 0.8), with: .color(tint))
+        blobs.fill(circle(at: CGPoint(x: w * CGFloat(secondX), y: h * CGFloat(secondY)), diameter: w * 0.6), with: .color(tint.opacity(0.7)))
+    }
+
+    private static func circle(at center: CGPoint, diameter: CGFloat) -> Path {
+        Path(ellipseIn: CGRect(x: center.x - diameter / 2, y: center.y - diameter / 2, width: diameter, height: diameter))
     }
 }
 
