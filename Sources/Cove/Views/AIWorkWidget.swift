@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 /// Selected session: companion and observed steps on the left, live detail on the right.
@@ -56,9 +57,24 @@ struct AIWorkWidget: View {
                                 .textSelection(.enabled)
                                 .frame(maxWidth: .infinity, alignment: .topLeading)
                         }.accessibilityIdentifier("ai.detail")
-                        HStack {
-                            Button("Open \(activity.agent.displayName)") { model.open(activity) }
+                        HStack(spacing: 6) {
+                            let cloudSession = model.cloudSessionID(for: activity)
+                            Button(cloudSession == nil ? "Open \(activity.agent.displayName)" : "Open on claude.ai") { model.open(activity) }
                                 .buttonStyle(PillButtonStyle())
+                                .accessibilityIdentifier("ai.open")
+                            if cloudSession != nil {
+                                Button { model.messageCloudSession(for: activity) } label: { Label("Message", systemImage: "bubble.left") }
+                                    .buttonStyle(PillButtonStyle())
+                                    .help("Send this cloud session a follow-up from the composer below")
+                                    .accessibilityIdentifier("ai.message")
+                            }
+                            if !activity.detail.isEmpty {
+                                IconButton(systemImage: "doc.on.doc", size: 10, hit: 24) {
+                                    NSPasteboard.general.clearContents()
+                                    NSPasteboard.general.setString(activity.detail, forType: .string)
+                                }
+                                .help("Copy this update").accessibilityLabel("Copy update").accessibilityIdentifier("ai.copy")
+                            }
                             Spacer()
                             TimelineView(.periodic(from: .now, by: 1)) { context in
                                 Text(formatDuration((activity.finishedAt ?? context.date).timeIntervalSince(activity.startedAt)))
@@ -139,12 +155,13 @@ struct AIWorkOverview: View {
             .animation(Theme.snappy, value: model.aiActivityFilter)
             ScrollView(.horizontal) {
                 HStack(spacing: 6) {
-                    ForEach(visible) { activity in
+                    ForEach(Array(visible.enumerated()), id: \.element.id) { index, activity in
                         Button { model.selectAIActivity(activity) } label: {
                             HStack(spacing: 6) {
                                 AIAgentAvatar(activity: activity, showBuddy: model.config.buddy, size: 20)
-                                Text(activity.agent.displayName).font(Theme.Font.caption.weight(.semibold))
-                                    .foregroundStyle(Theme.ink)
+                                // The task, not just the agent: three Claude Code sessions shouldn't read alike.
+                                Text(activity.title).font(Theme.Font.caption.weight(.semibold))
+                                    .foregroundStyle(Theme.ink).lineLimit(1).frame(maxWidth: 120, alignment: .leading)
                                 Circle().fill(statusColor(activity)).frame(width: 5, height: 5)
                             }
                             .padding(.leading, 3).padding(.trailing, 9).frame(height: 28)
@@ -155,9 +172,10 @@ struct AIWorkOverview: View {
                             .contentShape(Rectangle())
                         }
                         .buttonStyle(PressableStyle())
-                        .help("\(activity.title) · \(activity.phase ?? (activity.isLive ? "Working" : "Finished"))")
+                        .help("\(activity.agent.displayName) · \(activity.title) · \(activity.phase ?? (activity.isLive ? "Working" : "Finished"))")
                         .accessibilityIdentifier("ai.task.\(activity.id)")
                         .accessibilityAddTraits(activity.id == selectedID ? .isSelected : [])
+                        .entrance(index)
                     }
                     if visible.isEmpty {
                         Text(model.aiActivityFilter == .live ? "No agents are working" : model.aiActivityFilter == .finished ? "No recent finished tasks" : "Connect an agent to see it here")

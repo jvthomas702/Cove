@@ -15,6 +15,8 @@ struct CompactView: View {
             // The privacy dot takes the outer edge of the trailing wing, so it never widens the island.
             HStack(spacing: 0) {
                 trailing
+                    .id(kind)
+                    .transition(.materialize)
                     .frame(maxWidth: .infinity, alignment: isWide ? .trailing : .center)
                 if let dot = model.privacyDot {
                     PrivacyDotView(dot: dot)
@@ -33,6 +35,7 @@ struct CompactView: View {
     }
 
     private var isWide: Bool { model.compactWing > IslandModel.wing }
+    private var kind: String { model.compactItem?.kind ?? "none" }
 
     /// Nori's mood when the leading wing shows Nori. One `Buddy` for all of these keeps it the same view
     /// as the state changes, so it springs from one face to the next instead of being swapped out.
@@ -53,6 +56,8 @@ struct CompactView: View {
             Buddy(mood: mood, size: model.compactBuddySize)
         } else {
             otherLeading
+                .id(kind)
+                .transition(.materialize)
         }
     }
 
@@ -152,7 +157,7 @@ struct CompactView: View {
             TimelineView(.periodic(from: .now, by: 15)) { context in
                 let left = max(Int((event.end.timeIntervalSince(context.date) / 60).rounded(.up)), 0)
                 HStack(spacing: 5) {
-                    Text(left >= 60 ? "\(left / 60)h \(left % 60)m left" : "\(left) min left")
+                    Text(formatTimeLeft(minutes: left))
                         .font(Theme.Font.headline.monospacedDigit())
                         .foregroundStyle(Theme.inkSecondary)
                         .lineLimit(1)
@@ -165,7 +170,7 @@ struct CompactView: View {
         case .event(let event)?:
             TimelineView(.periodic(from: .now, by: 15)) { context in
                 let minutes = Int((event.start.timeIntervalSince(context.date) / 60).rounded(.up))
-                Text(minutes <= 0 ? "Now" : "in \(minutes) min")
+                Text(minutes <= 0 ? "Now" : minutes < 60 ? "in \(minutes) min" : IslandModel.relative(event.start, from: context.date))
                     .font(Theme.Font.headline.monospacedDigit())
                     .foregroundStyle(minutes <= 5 ? Palette.amber : Theme.inkSecondary)
                     .lineLimit(1)
@@ -199,6 +204,8 @@ struct CompactView: View {
                     .foregroundStyle(timer.isPaused ? Theme.inkSecondary : Theme.ink)
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
+                    .contentTransition(.numericText(countsDown: true))
+                    .animation(Theme.snappy, value: Int(timer.remaining(at: context.date).rounded(.up)))
             }
             .accessibilityElement(children: .combine)
             .accessibilityLabel("\(timer.label), \(timer.isPaused ? "paused" : "counting down")")
@@ -219,6 +226,7 @@ struct CompactView: View {
             Text("\(percent)%")
                 .font(Theme.Font.headline.monospacedDigit())
                 .foregroundStyle(Palette.green)
+                .contentTransition(.numericText())
                 .lineLimit(1)
                 .fixedSize()
                 .accessibilityLabel("Charging, \(percent) percent")
@@ -241,6 +249,7 @@ struct CompactView: View {
             if game.isLive { Circle().fill(Palette.green).frame(width: 5, height: 5) }
             Text(game.away.abbreviation).foregroundStyle(game.away.tint)
             Text("\(game.away.score)–\(game.home.score)").foregroundStyle(Theme.ink)
+                .contentTransition(.numericText())
             Text(game.home.abbreviation).foregroundStyle(game.home.tint)
         }
         .font(Theme.Font.headline.monospacedDigit())
@@ -254,6 +263,7 @@ struct CompactView: View {
             TeamLogo(team: team, size: 18)
             Text(team.abbreviation).foregroundStyle(team.tint)
             Text(team.score).foregroundStyle(Theme.ink)
+                .contentTransition(.numericText())
         }
         .font(Theme.Font.headline.monospacedDigit())
         .lineLimit(1)

@@ -7,6 +7,8 @@ import Combine
 final class IslandModel: ObservableObject {
     enum Presentation: Equatable { case idle, compact, banner, expanded, approval }
     enum Tab: String, CaseIterable { case home, ai, schedule, sports, shelf }
+    /// The Files tab shows the shelf or a browser for the whole Mac.
+    enum FilesMode: String, CaseIterable { case shelf = "Shelf", browse = "Browse" }
 
     /// What the two "wings" beside the notch show in compact mode, in priority order.
     enum CompactItem: Equatable {
@@ -25,6 +27,28 @@ final class IslandModel: ObservableObject {
         case ai(Activity, count: Int)
         case privacy              // nothing else to show, but a camera or microphone is on
         case charging(percent: Int)   // the brief moment after plugging in
+
+        /// Which kind of thing a wing shows. A new kind materializes in; the same kind updating in place
+        /// (a volume step, a score) animates its values instead.
+        var kind: String {
+            switch self {
+            case .hud: return "hud"
+            case .attention: return "attention"
+            case .napping: return "napping"
+            case .event: return "event"
+            case .ongoing: return "ongoing"
+            case .running: return "running"
+            case .progress: return "progress"
+            case .finished: return "finished"
+            case .timer: return "timer"
+            case .music: return "music"
+            case .sports: return "sports"
+            case .scoreAndMusic: return "scoreAndMusic"
+            case .ai: return "ai"
+            case .privacy: return "privacy"
+            case .charging: return "charging"
+            }
+        }
     }
 
     // Geometry
@@ -55,7 +79,14 @@ final class IslandModel: ObservableObject {
     let sports: SportsMonitor
     let agentLauncher = AgentLauncher()
     let codexChats = CodexChats()
-    @Published var composeNewTask = false
+    /// Where the AI tab's composer sends: a Codex chat, a Claude cloud session, or a new task.
+    enum ComposeTarget: String, CaseIterable { case chat = "Chat", cloud = "Cloud", newTask = "New task" }
+    @Published var composeTarget: ComposeTarget = .chat
+    let cloudAgents = CloudAgents()
+    let fileBrowser = FileBrowser()
+    @Published var filesMode: FilesMode = .shelf { didSet { recompute() } }
+    /// A conversion is running (the Convert menus show a spinner and stay disabled).
+    @Published private(set) var converting = false
     private let shelfStore: ShelfStore
     private let shelfEditor = ShelfEditorController()
     @Published private(set) var canUndoShelf = false
@@ -77,7 +108,16 @@ final class IslandModel: ObservableObject {
     @Published private(set) var presentation: Presentation = .idle
     @Published private(set) var expanded = false
     @Published private(set) var isPinnedOpen = false
-    @Published var tab: Tab = .home { didSet { recompute() } }
+    @Published var tab: Tab = .home {
+        didSet {
+            if let from = Tab.allCases.firstIndex(of: oldValue), let to = Tab.allCases.firstIndex(of: tab), from != to {
+                tabMovesForward = to > from
+            }
+            recompute()
+        }
+    }
+    /// Whether the last tab change went right (content slides in from the right) or left.
+    @Published private(set) var tabMovesForward = true
     @Published private(set) var activities: [Activity] = []
     @Published private(set) var aiSteps: [String: [AIActivityStep]] = [:]
     @Published private(set) var banner: Banner?
@@ -231,6 +271,7 @@ final class IslandModel: ObservableObject {
             if tab == .home { return CGSize(width: width, height: n.height + 150) }
             if tab == .ai { return CGSize(width: width, height: n.height + 346 + (showsRecap ? Self.recapHeight + 8 : 0)) }
             if tab == .sports { return CGSize(width: width, height: n.height + 280) }
+            if tab == .shelf, filesMode == .browse { return CGSize(width: width, height: n.height + 280) }
             if tab == .shelf { return CGSize(width: width, height: n.height + (shelf.count <= 4 ? 150 : 220)) }
             return CGSize(width: width, height: n.height + 220)
         case .approval:
@@ -557,6 +598,7 @@ final class IslandModel: ObservableObject {
             openSettings?(.permissions)
         } else if b.showsShelf {
             tab = .shelf
+            filesMode = .shelf
             setExpanded(true)
         } else if let id = b.activityID, let a = activity(id) {
             open(a)
@@ -1042,6 +1084,9 @@ final class IslandModel: ObservableObject {
         a.openURL = pr.link
         a.updatedAt = now
         a.progress = nil
+        if let session = CloudAgents.sessionID(in: pr.link.absoluteString) {
+            cloudAgents.note(id: session, title: "\(pr.repoName): \(pr.title)", repo: pr.repo, at: pr.updatedAt)
+        }
         switch phase {
         case .draft, .ciRunning:
             a.state = .running
@@ -1146,6 +1191,21 @@ final class IslandModel: ObservableObject {
     var selectedAIActivity: Activity? {
         let visible = filteredAIActivities
         return visible.first { $0.id == selectedAIActivityID } ?? visible.first
+    }
+
+    /// The claude.ai cloud session behind an activity (a cloud PR, or a web session), if Cove can message it.
+    func cloudSessionID(for activity: Activity) -> String? {
+        activity.openURL.flatMap { CloudAgents.sessionID(in: $0.absoluteString) }
+    }
+
+    /// Points the composer at the activity's cloud session, ready to type a follow-up.
+    func messageCloudSession(for activity: Activity) {
+        guard let id = cloudSessionID(for: activity) else { return }
+        if !cloudAgents.sessions.contains(where: { $0.id == id }) {
+            cloudAgents.note(id: id, title: activity.title, repo: nil)
+        }
+        cloudAgents.selectedID = id
+        composeTarget = .cloud
     }
 
     func selectAIActivity(_ activity: Activity) {
@@ -1773,6 +1833,36 @@ final class IslandModel: ObservableObject {
     }
 
     func previewShelfItem(_ url: URL) { shelfEditor.show(url: url, model: self) }
+
+    // MARK: - Converting files
+
+    /// Converts `urls` off the main thread, puts the results on the shelf and says where they went.
+    func convert(_ urls: [URL], to conversion: FileConversion) {
+        guard !converting, !urls.isEmpty else { return }
+        converting = true
+        Task { [weak self] in
+            let result = await Task.detached(priority: .userInitiated) { () -> Result<[URL], Error> in
+                Result { try FileConverter.convert(urls, to: conversion) }
+            }.value
+            guard let self else { return }
+            self.converting = false
+            switch result {
+            case .success(let outputs):
+                self.addToShelf(outputs, atFront: true)
+                if self.filesMode == .browse { self.fileBrowser.reload() }
+                let first = outputs.first
+                let folder = first.map { FileManager.default.displayName(atPath: $0.deletingLastPathComponent().path) } ?? ""
+                let name = outputs.count == 1 ? (first?.lastPathComponent ?? "") : "\(outputs.count) files"
+                self.show(Banner(title: conversion.done, body: "\(name) · in \(folder) and on the shelf",
+                                 style: .success, icon: first.map { BannerIcon.file($0) } ?? BannerIcon.symbol("doc.fill", Palette.blue),
+                                 openURL: outputs.count == 1 ? first : first?.deletingLastPathComponent(),
+                                 source: "Files"))
+            case .failure(let error):
+                self.show(Banner(title: "Couldn’t convert", body: error.localizedDescription, style: .failure,
+                                 icon: .symbol("xmark.circle.fill", Palette.red), logged: false))
+            }
+        }
+    }
 
     func renameShelfItem(_ url: URL, baseName: String) throws -> URL {
         let renamed = try shelfStore.rename(url, baseName: baseName)

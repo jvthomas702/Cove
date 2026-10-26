@@ -39,6 +39,23 @@ import XCTest
         XCTAssertEqual(editor.selectedRange(), NSRange(location: 0, length: editor.string.utf16.count))
     }
 
+    func testCloudTaskRunsClaudeCloudWithTheTaskAsItsValue() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("cove-cloud-launch-\(UUID())")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let folder = root.appendingPathComponent("repo")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let executable = root.appendingPathComponent("claude")
+        try Data("#!/bin/sh\nprintf '%s\\0' \"$@\" > received-arguments\n".utf8).write(to: executable)
+        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: executable.path)
+        let command = try AgentLauncher.prepareCommand(executable: executable, folder: folder, prompt: "  --help me fix 'auth'  ", cloud: true)
+        let process = Process(); process.executableURL = URL(fileURLWithPath: "/bin/zsh"); process.arguments = [command.path]
+        try process.run(); process.waitUntilExit()
+        let values = try Data(contentsOf: folder.appendingPathComponent("received-arguments"))
+        XCTAssertEqual(String(decoding: values, as: UTF8.self), "--cloud\0Task: --help me fix 'auth'\0")
+        XCTAssertTrue(LaunchAgent.claudeCloud.isCloud)
+        XCTAssertEqual(LaunchAgent.claudeCloud.executable, "claude")
+    }
+
     func testInvalidInputsDoNotCreateCommands() {
         let executable = URL(fileURLWithPath: "/usr/bin/true")
         let folder = FileManager.default.temporaryDirectory

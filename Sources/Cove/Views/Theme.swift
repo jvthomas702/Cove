@@ -55,17 +55,35 @@ enum Theme {
     }
 
     // MARK: Motion
+    //
+    // Springs, never curves, the way the iPhone's Dynamic Island moves: the shell stretches with a
+    // little overshoot, content resolves out of a blur, and lists build in one row after another
+    // (each row its own spring, offset by a few frames, like a Remotion sequence). Reduce Motion
+    // turns all of it into short cross-fades.
     static var reduceMotion: Bool { NSWorkspace.shared.accessibilityDisplayShouldReduceMotion }
 
-    /// A quick, well-damped spring keeps the panel anchored without overshoot.
+    /// The island changing shape: elastic, settles in about half a second.
     static var morph: Animation {
-        reduceMotion ? .easeInOut(duration: 0.18) : .spring(response: 0.34, dampingFraction: 0.90, blendDuration: 0.1)
+        reduceMotion ? .easeInOut(duration: 0.18) : .spring(duration: 0.5, bounce: 0.2)
     }
 
-    /// Small state changes inside the island.
+    /// Small state changes inside the island (a pill sliding, a row highlighting).
     static var snappy: Animation {
-        reduceMotion ? .easeInOut(duration: 0.15) : .spring(response: 0.25, dampingFraction: 0.92)
+        reduceMotion ? .easeInOut(duration: 0.15) : .spring(duration: 0.3, bounce: 0.12)
     }
+
+    /// Content arriving: no overshoot, so text never wobbles.
+    static var settle: Animation {
+        reduceMotion ? .easeOut(duration: 0.15) : .spring(duration: 0.45, bounce: 0)
+    }
+
+    /// Buttons dipping under a click and springing back.
+    static var press: Animation {
+        reduceMotion ? .easeOut(duration: 0.05) : .spring(duration: 0.22, bounce: 0.35)
+    }
+
+    /// How far apart rows start when a list builds in: two frames at 60 fps, capped so long lists stay quick.
+    static func stagger(_ index: Int) -> Double { reduceMotion ? 0 : Double(min(max(index, 0), 12)) * 0.035 }
 }
 
 extension IslandTheme {
@@ -83,13 +101,92 @@ enum Haptics {
     }
 }
 
-// MARK: - Morph transition
+// MARK: - Transitions
 
-/// Content fades while the shell moves; text and controls keep their scale.
-extension AnyTransition {
-    static var islandMorph: AnyTransition {
-        .opacity.animation(.easeOut(duration: Theme.reduceMotion ? 0.10 : 0.16))
+/// Blur, scale and fade together: content looks like it comes into focus rather than popping in.
+private struct Materialize: ViewModifier {
+    var progress: Double   // 0 = hidden, 1 = shown
+    var scale: CGFloat
+    var blur: CGFloat
+    var anchor: UnitPoint
+
+    func body(content: Content) -> some View {
+        content
+            .opacity(progress)
+            .scaleEffect(1 - (1 - scale) * (1 - progress), anchor: anchor)
+            .blur(radius: blur * (1 - progress))
     }
+}
+
+/// Slides in from the side you're heading to, the way pages move in Apple's segmented views.
+private struct Slide: ViewModifier {
+    var progress: Double
+    var dx: CGFloat
+
+    func body(content: Content) -> some View {
+        content
+            .opacity(progress)
+            .offset(x: dx * (1 - progress))
+            .blur(radius: 6 * (1 - progress))
+    }
+}
+
+extension AnyTransition {
+    /// The island's content while the shell changes shape: it resolves out of a blur from the notch
+    /// a beat after the shell starts moving, and blurs away quickly when the shell closes.
+    static var islandMorph: AnyTransition {
+        if Theme.reduceMotion { return .opacity.animation(.easeOut(duration: 0.10)) }
+        return .asymmetric(
+            insertion: .modifier(active: Materialize(progress: 0, scale: 0.92, blur: 10, anchor: .top),
+                                 identity: Materialize(progress: 1, scale: 0.92, blur: 10, anchor: .top))
+                .animation(.spring(duration: 0.42, bounce: 0).delay(0.06)),
+            removal: .modifier(active: Materialize(progress: 0, scale: 0.96, blur: 6, anchor: .top),
+                               identity: Materialize(progress: 1, scale: 0.96, blur: 6, anchor: .top))
+                .animation(.easeOut(duration: 0.12))
+        )
+    }
+
+    /// One thing swapping for another in place (a wing's icon, a status line).
+    static var materialize: AnyTransition {
+        if Theme.reduceMotion { return .opacity }
+        return .modifier(active: Materialize(progress: 0, scale: 0.8, blur: 4, anchor: .center),
+                         identity: Materialize(progress: 1, scale: 0.8, blur: 4, anchor: .center))
+    }
+
+    /// A tab's content arriving from the direction of the tab you picked.
+    static func tabSlide(forward: Bool) -> AnyTransition {
+        if Theme.reduceMotion { return .opacity }
+        return .asymmetric(
+            insertion: .modifier(active: Slide(progress: 0, dx: forward ? 28 : -28), identity: Slide(progress: 1, dx: forward ? 28 : -28)),
+            removal: .modifier(active: Materialize(progress: 0, scale: 0.98, blur: 6, anchor: .center),
+                               identity: Materialize(progress: 1, scale: 0.98, blur: 6, anchor: .center))
+                .animation(.easeOut(duration: 0.12))
+        )
+    }
+}
+
+/// Builds a row in on first appearance: up from a few points below, out of a blur, on its own
+/// spring that starts `Theme.stagger(index)` after the first row's.
+private struct Entrance: ViewModifier {
+    let index: Int
+    @State private var shown = Theme.reduceMotion
+
+    func body(content: Content) -> some View {
+        content
+            .opacity(shown ? 1 : 0)
+            .offset(y: shown ? 0 : 10)
+            .scaleEffect(shown ? 1 : 0.97, anchor: .top)
+            .blur(radius: shown ? 0 : 5)
+            .onAppear {
+                guard !shown else { return }
+                withAnimation(Theme.settle.delay(Theme.stagger(index))) { shown = true }
+            }
+    }
+}
+
+extension View {
+    /// Staggered entrance for the `index`th row of a list or grid (see `Entrance`).
+    func entrance(_ index: Int) -> some View { modifier(Entrance(index: index)) }
 }
 
 // MARK: - Shared building blocks

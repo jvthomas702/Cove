@@ -89,6 +89,15 @@ struct CoveConfig: Codable {
     var reminderLists: [String] = []
     /// How far ahead the "Due soon" list looks.
     var dueLookaheadDays: Int = 7
+    /// "week", "two weeks", "3 days": the lookahead as words, for "Nothing due in the next …".
+    var dueLookaheadPhrase: String {
+        switch dueLookaheadDays {
+        case 1: return "day"
+        case 7: return "week"
+        case 14: return "two weeks"
+        default: return "\(dueLookaheadDays) days"
+        }
+    }
     /// Banners when something is due in this many hours.
     var dueAlertHours: [Double] = [24, 1]
     /// Calendars to ignore entirely (e.g. "Birthdays", "US Holidays").

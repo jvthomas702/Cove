@@ -1,31 +1,63 @@
+import AppKit
 import SwiftUI
 
 struct AgentComposer: View {
     @ObservedObject var model: IslandModel
     @ObservedObject var launcher: AgentLauncher
     @ObservedObject var chats: CodexChats
+    @ObservedObject var cloud: CloudAgents
     @FocusState private var focused: Bool
+    @State private var addingLink = false
 
     init(model: IslandModel) {
         self.model = model
         self.launcher = model.agentLauncher
         self.chats = model.codexChats
+        self.cloud = model.cloudAgents
+    }
+
+    private var status: String {
+        switch model.composeTarget {
+        case .chat: return chats.status
+        case .cloud: return cloud.status
+        case .newTask: return launcher.status
+        }
+    }
+
+    private var statusID: String {
+        switch model.composeTarget {
+        case .chat: return "chat.status"
+        case .cloud: return "cloud.status"
+        case .newTask: return "agent.status"
+        }
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
-                Picker("Send to", selection: $model.composeNewTask) {
-                    Text("Chat").tag(false)
-                    Text("New task").tag(true)
-                }.pickerStyle(.segmented).labelsHidden().frame(width: 150).accessibilityIdentifier("agent.destination")
-                Text(model.composeNewTask ? launcher.status : chats.status)
+                Picker("Send to", selection: $model.composeTarget) {
+                    ForEach(IslandModel.ComposeTarget.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                }.pickerStyle(.segmented).labelsHidden().frame(width: 210).accessibilityIdentifier("agent.destination")
+                Text(status)
                     .font(.system(size: 10, design: Theme.isTerminal ? .monospaced : .default))
                     .foregroundStyle(Theme.inkTertiary).lineLimit(1).truncationMode(.middle)
-                    .help(model.composeNewTask ? launcher.status : chats.status)
-                    .accessibilityIdentifier(model.composeNewTask ? "agent.status" : "chat.status")
+                    .help(status)
+                    .accessibilityIdentifier(statusID)
                 Spacer(minLength: 0)
-                if !model.composeNewTask {
+                if model.composeTarget == .cloud {
+                    IconButton(systemImage: addingLink ? "xmark" : "link.badge.plus", size: 11, hit: 24) {
+                        model.openByClick(); addingLink.toggle()
+                    }
+                    .help(addingLink ? "Cancel" : "Add a cloud session by its claude.ai/code link")
+                    .accessibilityLabel(addingLink ? "Cancel adding a session" : "Add cloud session")
+                    .accessibilityIdentifier("cloud.add")
+                    IconButton(systemImage: "arrow.up.forward.app", size: 11, hit: 24) {
+                        if let url = cloud.selected?.url { NSWorkspace.shared.open(url) }
+                    }
+                    .help("Open this session on claude.ai").accessibilityLabel("Open session on claude.ai")
+                    .disabled(cloud.selected == nil).accessibilityIdentifier("cloud.open")
+                }
+                if model.composeTarget == .chat {
                     IconButton(systemImage: "arrow.up.forward.app", size: 11, hit: 24) { model.openByClick(); chats.openSelected() }
                         .help("Open this chat in Codex").accessibilityLabel("Open chat")
                         .disabled(chats.selectedChat == nil).accessibilityIdentifier("chat.open")
@@ -33,7 +65,11 @@ struct AgentComposer: View {
                         .help("Refresh chats").accessibilityLabel("Refresh chats").accessibilityIdentifier("chat.refresh")
                 }
             }
-            if model.composeNewTask { newTaskComposer } else { chatComposer }
+            switch model.composeTarget {
+            case .chat: chatComposer
+            case .cloud: if addingLink || cloud.sessions.isEmpty { cloudLinkField } else { cloudComposer }
+            case .newTask: newTaskComposer
+            }
         }
         .padding(10)
         .background(RoundedRectangle(cornerRadius: Theme.Radius.card).fill(Theme.surface))
@@ -99,6 +135,61 @@ struct AgentComposer: View {
         }.font(Theme.Font.caption)
     }
 
+    // MARK: Cloud sessions
+
+    private var cloudComposer: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 8) {
+                Picker("Session", selection: $cloud.selectedID) {
+                    ForEach(cloud.sessions) { session in Text(shortTitle(session.title)).tag(session.id) }
+                }.labelsHidden().frame(maxWidth: 170).accessibilityIdentifier("cloud.choice")
+                    .help(cloud.selected.map { [$0.title, $0.repo].compactMap { $0 }.joined(separator: " · ") } ?? "Choose a cloud session")
+                    .contextMenu {
+                        if let selected = cloud.selected {
+                            Button("Forget \(shortTitle(selected.title))") { cloud.remove(selected.id) }
+                        }
+                    }
+                promptGlyph("›")
+                TextField("Message the cloud session…", text: $cloud.prompt, axis: .vertical)
+                    .textFieldStyle(.plain).font(Theme.isTerminal ? Theme.Font.code : Theme.Font.body).lineLimit(1...2)
+                    .focused($focused).accessibilityIdentifier("cloud.prompt")
+                    .onSubmit { sendCloud() }
+                Button(action: sendCloud) { Label(cloud.sending ? "Sending…" : "Send", systemImage: "arrow.up") }
+                    .buttonStyle(PillButtonStyle(prominent: true)).disabled(!cloud.canSend).accessibilityIdentifier("cloud.send")
+            }
+            if let last = cloud.selectedMessages.last {
+                HStack(spacing: 4) {
+                    Image(systemName: "arrow.turn.down.right").font(.system(size: 8, weight: .bold))
+                    Text("You: \(last.text.oneLine(max: 80))").lineLimit(1)
+                    Text(last.sentAt.formatted(.relative(presentation: .named)))
+                }
+                .font(.system(size: 9.5)).foregroundStyle(Theme.inkTertiary)
+                .help(last.text)
+                .accessibilityIdentifier("cloud.lastSent")
+            }
+        }.font(Theme.Font.caption)
+    }
+
+    private var cloudLinkField: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "link").font(.system(size: 11, weight: .semibold)).foregroundStyle(Theme.accent)
+            TextField("Paste a claude.ai/code session link", text: $cloud.linkDraft)
+                .textFieldStyle(.plain).font(Theme.isTerminal ? Theme.Font.code : Theme.Font.body)
+                .focused($focused).accessibilityIdentifier("cloud.link")
+                .onSubmit { addLink() }
+            Button(action: addLink) { Label("Add", systemImage: "plus") }
+                .buttonStyle(PillButtonStyle(prominent: true))
+                .disabled(CloudAgents.sessionID(in: cloud.linkDraft) == nil)
+                .accessibilityIdentifier("cloud.addLink")
+        }.font(Theme.Font.caption)
+    }
+
+    private func addLink() {
+        model.openByClick()
+        if cloud.addFromDraft() { addingLink = false }
+    }
+
+    private func sendCloud() { model.openByClick(); cloud.send() }
     private func send() { model.openByClick(); chats.send() }
     private func start() { model.openByClick(); launcher.launch() }
 }

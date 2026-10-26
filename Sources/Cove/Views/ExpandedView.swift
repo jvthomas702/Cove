@@ -18,7 +18,7 @@ struct ExpandedView: View {
                 }
             }
             .id(model.tab)
-            .transition(.opacity)
+            .transition(.tabSlide(forward: model.tabMovesForward))
             .padding(.horizontal, 14)
             .padding(.top, Theme.Space.s)
             .padding(.bottom, 14)
@@ -168,9 +168,12 @@ struct MediaCard: View {
                         Spacer(minLength: 0)
                         HStack(spacing: 0) {
                             IconButton(systemImage: "backward.fill", size: 10, hit: 22) { model.media("previous track") }
+                                .help("Previous track").accessibilityLabel("Previous track")
                             IconButton(systemImage: np.isPlaying ? "pause.fill" : "play.fill", size: 15, hit: 26) { model.media("playpause") }
                                 .contentTransition(.symbolEffect(.replace))
+                                .help(np.isPlaying ? "Pause" : "Play").accessibilityLabel(np.isPlaying ? "Pause" : "Play")
                             IconButton(systemImage: "forward.fill", size: 10, hit: 22) { model.media("next track") }
+                                .help("Next track").accessibilityLabel("Next track")
                         }
                         .padding(.trailing, -4)
                         .layoutPriority(1)
@@ -250,9 +253,11 @@ struct UpNextCard: View {
                         .foregroundStyle(Theme.inkSecondary)
                 } else {
                     Text("Nothing else today").font(Theme.Font.headline)
-                    Text(dueCount == 0 ? "No deadlines this week" : "\(dueCount) due this week")
+                    Text(dueCount == 0 ? "Nothing due in the next \(model.config.dueLookaheadPhrase)"
+                                       : "\(dueCount) due in the next \(model.config.dueLookaheadPhrase)")
                         .font(Theme.Font.caption)
                         .foregroundStyle(Theme.inkSecondary)
+                        .lineLimit(1)
                 }
             }
             Spacer(minLength: 0)
@@ -323,7 +328,7 @@ private struct NowCard: View {
     }
 
     private func subtitle(minutesLeft: Int) -> String {
-        var parts = ["\(minutesLeft) min left"]
+        var parts = [formatTimeLeft(minutes: minutesLeft)]
         if let location = event.location { parts.append(location) }
         if let next, next.start.timeIntervalSince(event.end) < 3 * 3600 {
             parts.append("then \(next.title)")
@@ -334,11 +339,6 @@ private struct NowCard: View {
 
 struct SchedulePane: View {
     @ObservedObject var model: IslandModel
-
-    private var lookahead: String {
-        let days = model.config.dueLookaheadDays
-        return days == 7 ? "week" : days == 14 ? "two weeks" : "\(days) days"
-    }
 
     /// " · from D2L and Google Calendar"
     private var sourceSuffix: String {
@@ -363,7 +363,9 @@ struct SchedulePane: View {
                         if events.isEmpty && (model.scheduleSetup == nil || !due.isEmpty) {
                             EmptyNote(symbol: "calendar", text: "Nothing in the next two days\(sourceSuffix)")
                         }
-                        ForEach(events) { EventRow(event: $0) }
+                        ForEach(Array(events.enumerated()), id: \.element.id) { index, event in
+                            EventRow(event: event).entrance(index)
+                        }
                     }
                 }
             }
@@ -375,9 +377,11 @@ struct SchedulePane: View {
                     VStack(spacing: 6) {
                         if due.isEmpty {
                             EmptyNote(symbol: "checklist",
-                                      text: model.scheduleSetup == nil ? "Nothing due in the next \(lookahead)" : "Due dates from D2L show up here")
+                                      text: model.scheduleSetup == nil ? "Nothing due in the next \(model.config.dueLookaheadPhrase)" : "Due dates from D2L show up here")
                         }
-                        ForEach(due) { DueRow(item: $0) }
+                        ForEach(Array(due.enumerated()), id: \.element.id) { index, item in
+                            DueRow(item: item).entrance(index + 1)
+                        }
                     }
                 }
             }
@@ -554,8 +558,8 @@ struct ActivityList: View {
             } else {
                 ScrollView(.vertical, showsIndicators: false) {
                     LazyVStack(spacing: 6) {
-                        ForEach(model.activities) { activity in
-                            ActivityRow(activity: activity) { model.open(activity) }
+                        ForEach(Array(model.activities.enumerated()), id: \.element.id) { index, activity in
+                            ActivityRow(activity: activity) { model.open(activity) }.entrance(index)
                         }
                         if !model.history.isEmpty {
                             HStack {
@@ -730,6 +734,8 @@ struct ShelfPane: View {
     var body: some View {
         if model.isDropTargeted && model.config.airDropDropZone {
             DropTargets(hover: model.dropHover)
+        } else if model.filesMode == .browse {
+            FileBrowserView(model: model)
         } else {
             shelf
         }
@@ -738,8 +744,16 @@ struct ShelfPane: View {
     private var shelf: some View {
         VStack(alignment: .leading, spacing: Theme.Space.s) {
             HStack {
-                SectionTitle(title: "Shelf", count: model.shelf.count)
+                FilesModePicker(model: model)
+                if !model.shelf.isEmpty {
+                    Text("\(model.shelf.count)").font(Theme.Font.number).foregroundStyle(Theme.inkTertiary)
+                }
                 Spacer()
+                let convertible = model.shelf.filter { FileKind.of($0) != .other }
+                if convertible.count > 1 {
+                    ConvertMenu(model: model, urls: convertible, title: "Convert all")
+                        .help("Combine the shelf’s images and PDFs into one PDF, or change their format")
+                }
                 if model.canUndoShelf {
                     ChipButton(title: "Undo", systemImage: "arrow.uturn.backward") { model.undoShelfRemoval() }
                         .accessibilityIdentifier("shelf.undo")
@@ -753,7 +767,9 @@ struct ShelfPane: View {
             else {
                 ScrollView {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 96), spacing: 8)], spacing: 8) {
-                        ForEach(model.shelf, id: \.self) { url in ShelfItem(url: url, model: model) }
+                        ForEach(Array(model.shelf.enumerated()), id: \.element) { index, url in
+                            ShelfItem(url: url, model: model).entrance(index)
+                        }
                     }.padding(.vertical, 6).padding(.horizontal, 2)
                 }.frame(maxHeight: .infinity).accessibilityIdentifier("shelf.items")
             }
@@ -934,6 +950,7 @@ struct ShelfItem: View {
             Button("Open in default app") { NSWorkspace.shared.open(url) }
             Button("Copy") { model.copyToPasteboard(url) }
             Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([url]) }
+            ConvertMenuItems(model: model, urls: [url])
             Divider()
             Button("Remove from Shelf") { model.removeFromShelf(url) }
         }
