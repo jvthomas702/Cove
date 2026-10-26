@@ -48,47 +48,75 @@ private struct MatteTile: ViewModifier {
 private struct MatteMusicTile: View {
     @ObservedObject var model: IslandModel
 
+    private var tint: Color { model.accent ?? model.nowPlaying?.appTint ?? Theme.accent }
+    private var playing: Bool { model.nowPlaying?.isPlaying == true }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 9) {
-            HStack(spacing: 12) {
-                ZStack(alignment: .leading) {
-                    Circle().fill(Color(hex: 0x0D0E12)).frame(width: 62, height: 62).offset(x: 16)
-                        .overlay { Circle().stroke(Color.white.opacity(0.12), lineWidth: 1).frame(width: 44, height: 44).offset(x: 16) }
-                    if let image = model.artwork {
-                        Image(nsImage: image).resizable().scaledToFill()
-                            .frame(width: 56, height: 66).clipShape(RoundedRectangle(cornerRadius: 9))
-                    } else {
-                        RoundedRectangle(cornerRadius: 9).fill(Theme.surfaceRaised)
-                            .frame(width: 56, height: 66)
-                            .overlay { Image(systemName: "music.note").font(.system(size: 22)).foregroundStyle(Theme.accent) }
-                    }
-                }.frame(width: 78, height: 66)
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(model.nowPlaying?.title ?? "Nothing playing").font(Theme.Font.headline).lineLimit(2)
-                    Text(model.nowPlaying?.artist ?? "Music · Spotify")
-                        .font(Theme.Font.caption).foregroundStyle(Theme.inkSecondary).lineLimit(1)
-                    HStack(spacing: 2) {
-                        mediaButton("backward.fill", label: "Previous track", command: "previous track")
-                        mediaButton(model.nowPlaying?.isPlaying == true ? "pause.fill" : "play.fill",
-                                    label: "Play or pause", command: "playpause")
-                        mediaButton("forward.fill", label: "Next track", command: "next track")
-                    }
-                }
+        let np = model.nowPlaying
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 5) {
+                EqualizerBars(playing: playing, color: .white.opacity(0.85))
+                    .scaleEffect(0.55, anchor: .leading).frame(width: 12, height: 9, alignment: .leading)
+                Text(np == nil ? "Not playing" : (np?.bundleID == "com.spotify.client" ? "Spotify" : "Music"))
+                    .font(.system(size: 9.5, weight: .semibold, design: .rounded))
+                    .foregroundStyle(Color.white.opacity(0.6))
+                    .textCase(.uppercase)
+                Spacer(minLength: 0)
             }
-            if let playing = model.nowPlaying {
-                PlaybackBar(nowPlaying: playing, tint: Theme.accent)
-            } else {
-                Text("Start playback in your music app")
-                    .font(.system(size: 10)).foregroundStyle(Theme.inkTertiary).lineLimit(1)
+            HStack(spacing: 10) {
+                artwork
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(np?.title ?? "Nothing playing")
+                        .font(.system(size: 12.5, weight: .semibold, design: Theme.isTerminal ? .monospaced : .default))
+                        .foregroundStyle(.white).lineLimit(1)
+                    Text(np?.artist ?? "Play something in Music or Spotify")
+                        .font(Theme.Font.caption).foregroundStyle(Color.white.opacity(0.62)).lineLimit(1)
+                }
+                .help(np.map { "\($0.title) — \($0.artist)" } ?? "")
+                Spacer(minLength: 4)
+                HStack(spacing: 6) {
+                    GlassIconButton(systemImage: "backward.fill", size: 9, diameter: 24) { model.media("previous track") }
+                        .help("Previous track").accessibilityLabel("Previous track")
+                    GlassIconButton(systemImage: playing ? "pause.fill" : "play.fill", size: 12, diameter: 32, prominent: true) {
+                        model.media("playpause")
+                    }
+                    .help(playing ? "Pause" : "Play").accessibilityLabel("Play or pause")
+                    GlassIconButton(systemImage: "forward.fill", size: 9, diameter: 24) { model.media("next track") }
+                        .help("Next track").accessibilityLabel("Next track")
+                }
+                .disabled(np == nil)
+                .layoutPriority(1)
+            }
+            if let np {
+                PlaybackBar(nowPlaying: np, tint: .white.opacity(0.9), track: .white.opacity(0.16))
             }
         }
-        .modifier(MatteTile())
+        .padding(12)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(LiquidGlassBackground(artwork: model.artwork, tint: tint, cornerRadius: 18, flowing: playing))
+        .animation(.easeInOut(duration: 0.6), value: model.accent)
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("home.musicTile")
     }
 
-    private func mediaButton(_ symbol: String, label: String, command: String) -> some View {
-        IconButton(systemImage: symbol, size: 11, hit: 24) { model.media(command) }
-            .help(label).accessibilityLabel(label).disabled(model.nowPlaying == nil)
+    private var artwork: some View {
+        let shape = RoundedRectangle(cornerRadius: 10, style: .continuous)
+        return Group {
+            if let image = model.artwork {
+                Image(nsImage: image).resizable().scaledToFill()
+            } else {
+                ZStack {
+                    Color.white.opacity(0.06)
+                    Image(systemName: "music.note").font(.system(size: 18, weight: .semibold)).foregroundStyle(.white.opacity(0.7))
+                }
+            }
+        }
+        .frame(width: 50, height: 50)
+        .clipShape(shape)
+        .overlay { shape.strokeBorder(Color.white.opacity(0.14), lineWidth: 0.5) }
+        .shadow(color: .black.opacity(0.45), radius: 8, y: 4)
+        .scaleEffect(playing || model.nowPlaying == nil ? 1 : 0.92)
+        .animation(Theme.morph, value: playing)
     }
 }
 
@@ -422,6 +450,7 @@ struct DeviceSettingsMenu: View {
         .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
         .frame(width: 28, height: 28)
         .background(Circle().strokeBorder(Theme.accent.opacity(Theme.buttonLook == .outline ? 0.3 : 0), lineWidth: 1).background(Circle().fill(Theme.accent.opacity(Theme.buttonLook == .tinted ? 0.14 : 0))))
+        .background { if Theme.buttonLook == .glass && !Theme.isTerminal { Circle().fill(Color.white.opacity(0.06)).overlay(Circle().strokeBorder(Theme.glassRim, lineWidth: 0.75)) } }
         .help("Device settings").accessibilityLabel("Device settings").accessibilityIdentifier("device.settings")
     }
     private func settings(_ pane: String) {

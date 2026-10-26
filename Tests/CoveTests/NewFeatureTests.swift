@@ -29,8 +29,8 @@ import XCTest
         config.sportsAutoFollow = false
         XCTAssertNil(SportsFollowRules.automaticGame([live], current: nil, config: config))
     }
-    func testButtonLookDefaultsToOutlineAndRoundTrips() throws {
-        XCTAssertEqual(try JSONDecoder().decode(CoveConfig.self, from: Data("{}".utf8)).buttonLook, .outline)
+    func testButtonLookDefaultsToGlassAndRoundTrips() throws {
+        XCTAssertEqual(try JSONDecoder().decode(CoveConfig.self, from: Data("{}".utf8)).buttonLook, .glass)
         var config = CoveConfig(); config.buttonLook = .glow
         let restored = try JSONDecoder().decode(CoveConfig.self, from: JSONEncoder().encode(config))
         XCTAssertEqual(restored.buttonLook, .glow)

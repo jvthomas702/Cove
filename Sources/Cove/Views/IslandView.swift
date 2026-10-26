@@ -94,10 +94,11 @@ struct IslandShell: View {
     var body: some View {
         let p = model.presentation
         let size = model.currentSize
-        // Keep the smooth pill silhouette and the expanded panel's rounded top corners.
-        // Without a hardware notch the island floats below the top edge, so every state is fully rounded.
+        // Square at the top, flush with the screen edge like the notch it grows out of; only the bottom
+        // corners curve. Without a hardware notch the island floats below the top edge as a free pill,
+        // so there every state is rounded all round.
         let floating = !model.hasHardwareNotch
-        let shape = IslandShape(ear: 0, bottomRadius: radius(for: p), roundedTop: p == .expanded || floating)
+        let shape = IslandShape(ear: 0, bottomRadius: radius(for: p), roundedTop: floating)
         let isOpen = p == .expanded || p == .banner || p == .approval
 
         ZStack(alignment: .top) {
@@ -124,12 +125,16 @@ struct IslandShell: View {
         .overlay {
             if isOpen {
                 shape.stroke(Theme.hairline, lineWidth: 1)
-                .allowsHitTesting(false)
+                    // Fade out toward the top so no line runs along the screen edge.
+                    .mask(LinearGradient(stops: [.init(color: .clear, location: 0),
+                                                 .init(color: .white, location: min(1, 28 / max(size.height, 1)))],
+                                         startPoint: .top, endPoint: .bottom))
+                    .allowsHitTesting(false)
             }
         }
         .overlay {
             if let glow = glowColor(for: p) {
-                GlowRim(shape: shape, color: glow)
+                GlowRim(shape: shape, color: glow, fadeTop: !floating)
             }
         }
         .frame(width: size.width, height: size.height)
@@ -205,12 +210,19 @@ struct IslandShell: View {
 private struct GlowRim: View {
     let shape: IslandShape
     let color: Color
+    /// The top edge is the screen edge, so the glow fades out there instead of drawing a line.
+    var fadeTop = false
     @State private var bright = false
 
     var body: some View {
         shape
             .stroke(color.opacity(bright ? 0.75 : 0.3), lineWidth: 1.2)
             .shadow(color: color.opacity(bright ? 0.45 : 0.15), radius: bright ? 8 : 4)
+            .mask(LinearGradient(stops: [.init(color: fadeTop ? .clear : .white, location: 0),
+                                         .init(color: .white, location: 0.35)],
+                                 startPoint: .top, endPoint: .bottom)
+                // Reach past the island so the glow's soft outer shadow isn't cut off.
+                .padding(-16))
             .allowsHitTesting(false)
             .onAppear {
                 guard !Theme.reduceMotion else { bright = true; return }

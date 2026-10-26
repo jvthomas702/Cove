@@ -9,6 +9,8 @@ enum IslandTheme: String, Codable, CaseIterable {
 
 /// How buttons are drawn on the island (the terminal look always uses brackets).
 enum ButtonLook: String, Codable, CaseIterable {
+    /// Frosted glass with a bright rim and white text (the default).
+    case glass
     /// Thin accent outline, accent text.
     case outline
     /// Accent text with a soft accent glow, no frame.
@@ -17,6 +19,7 @@ enum ButtonLook: String, Codable, CaseIterable {
     case tinted
     var title: String {
         switch self {
+        case .glass: return "Glass"
         case .outline: return "Outline"
         case .glow: return "Glow"
         case .tinted: return "Tinted"
@@ -39,7 +42,7 @@ struct CoveConfig: Codable {
     var hoverToExpand: Bool = true
     var hoverDelay: Double = 0.25
     var islandTheme: IslandTheme = .darkMatte
-    var buttonLook: ButtonLook = .outline
+    var buttonLook: ButtonLook = .glass
     /// Which display the island is on: the notch (falls back to the main display), or the one the pointer is on.
     var islandDisplay: IslandDisplay = .notch
     /// Mirror macOS notifications into the island (needs Full Disk Access).
