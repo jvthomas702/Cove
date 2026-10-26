@@ -8,19 +8,20 @@ enum Theme {
     /// The look in use. Set from the config on the main thread; views re-render when the config changes.
     static var style: IslandTheme = .darkMatte
     static var isTerminal: Bool { style == .terminal }
-    static var buttonLook: ButtonLook = .outline
+    static var buttonLook: ButtonLook = .glass
 
     // MARK: Ink (text and icons on black)
     static var ink: Color { isTerminal ? Color(hex: 0xA6F5B8) : Color(hex: 0xE3E7EF) }
-    static var inkSecondary: Color { isTerminal ? Color(hex: 0x5FB574) : Color(hex: 0xA4ABBA) }
+    static var inkSecondary: Color { isTerminal ? Color(hex: 0x5FB574) : Color(hex: 0x9A9BA3) }
     static var inkTertiary: Color { inkSecondary.opacity(0.72) }
 
     // MARK: Surfaces (layered on the black island)
     static let background = Color(hex: 0x000000)
-    static var surface: Color { isTerminal ? Color(hex: 0x050D07) : Color(hex: 0x111216) }
-    static var surfaceRaised: Color { isTerminal ? Color(hex: 0x0C1C10) : Color(hex: 0x222329) }
-    static var hairline: Color { isTerminal ? Color(hex: 0x3BE36A).opacity(0.22) : Color(hex: 0xE3E7EF).opacity(0.10) }
-    static var accent: Color { isTerminal ? Color(hex: 0x3BE36A) : Color(hex: 0x8FC7FF) }
+    // Near-black, a step apart, so cards read as layers without turning grey.
+    static var surface: Color { isTerminal ? Color(hex: 0x050D07) : Color(hex: 0x0A0A0C) }
+    static var surfaceRaised: Color { isTerminal ? Color(hex: 0x0C1C10) : Color(hex: 0x17171B) }
+    static var hairline: Color { isTerminal ? Color(hex: 0x3BE36A).opacity(0.22) : Color.white.opacity(0.07) }
+    static var accent: Color { isTerminal ? Color(hex: 0x3BE36A) : Color(hex: 0x7AB6FF) }
 
     // MARK: Spacing (4-pt grid)
     enum Space {

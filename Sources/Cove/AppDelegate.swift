@@ -835,7 +835,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             model.applyConfig?(next)
         case "buttons":
             var next = model.config
-            next.buttonLook = ButtonLook(rawValue: arg) ?? .outline
+            next.buttonLook = ButtonLook(rawValue: arg) ?? .glass
             model.applyConfig?(next)
         case "theme":
             var next = model.config

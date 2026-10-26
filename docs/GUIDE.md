@@ -6,6 +6,8 @@ Everything Cove does, in more detail than the [README](../README.md).
 
 Cove uses a consistent **black theme** across the island, AI workspace, Settings and image editor, including when macOS uses Light appearance. Older white-theme preferences fall back to black. Home keeps music, sports, activity and AI setup side by side; on smaller displays the tile row scrolls horizontally. Click **Play-by-play →** to open Gamecast with plays, drives, stats and followed games. **Devices** opens Sound, Displays, Wi-Fi and AirDrop settings. **Connect AI**, available on every tab, opens the connection screen for Claude Code, Codex, ChatGPT desktop and browser chats. The AI tile shows observed task status, including work that needs your attention.
 
+The island is near-black and square along the top, flush with the screen edge like the notch it grows from; only its bottom corners curve (on a display without a notch it floats as a rounded pill). The Home music tile is liquid glass: the album art, blurred, glows through a frosted pane whose color drifts while music plays, with round glass controls and a solid white play button. Buttons everywhere default to the matching **Glass** look; **Settings → General → Buttons** still offers Outline, Glow and Tinted.
+
 Everything moves on springs, like the iPhone's Dynamic Island: the island stretches open with a little give, its content comes into focus out of a soft blur, lists and tiles build in one row after another, tabs slide toward the one you picked, and scores, timers and battery levels roll to their new numbers. Turn on **Reduce motion** in System Settings → Accessibility → Display and Cove switches to short cross-fades.
 
 ## Simple navigation

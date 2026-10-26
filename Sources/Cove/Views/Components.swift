@@ -134,6 +134,7 @@ struct ArtworkView: View {
 struct PlaybackBar: View {
     let nowPlaying: NowPlaying
     var tint: Color
+    var track: Color = Theme.surfaceRaised
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 1)) { context in
@@ -142,7 +143,7 @@ struct PlaybackBar: View {
             VStack(spacing: 3) {
                 GeometryReader { geo in
                     ZStack(alignment: .leading) {
-                        Capsule().fill(Theme.surfaceRaised)
+                        Capsule().fill(track)
                         Capsule()
                             .fill(tint)
                             .frame(width: duration > 0 ? geo.size.width * min(elapsed / duration, 1) : 0)
@@ -375,11 +376,14 @@ private struct PillButtonBody: View {
     private var color: Color { tint ?? Theme.accent }
     private var solid: Bool { prominent && enabled }
     private var look: ButtonLook { Theme.buttonLook }
+    /// The glass look (not in the terminal theme, and not for a solid prominent button).
+    private var glass: Bool { look == .glass && !Theme.isTerminal && !solid }
 
     private var fill: Color {
         if solid { return color.opacity(hovered ? 0.85 : 1) }
         if Theme.isTerminal { return color.opacity(hovered ? 0.14 : 0) }
         switch look {
+        case .glass: return Color.white.opacity(hovered ? 0.14 : 0.07)
         case .outline: return color.opacity(hovered ? 0.12 : 0)
         case .glow: return color.opacity(hovered ? 0.16 : 0.08)
         case .tinted: return color.opacity(hovered ? 0.30 : 0.20)
@@ -390,6 +394,7 @@ private struct PillButtonBody: View {
         if solid { return .clear }
         if Theme.isTerminal { return color.opacity(0.55) }
         switch look {
+        case .glass: return .clear   // drawn as `Theme.glassRim` below
         case .outline: return color.opacity(hovered ? 0.9 : 0.6)
         case .glow: return color.opacity(0.25)
         case .tinted: return .clear
@@ -405,11 +410,13 @@ private struct PillButtonBody: View {
         }
             .font(.system(size: compact ? 10 : 11, weight: .semibold, design: Theme.isTerminal ? .monospaced : .rounded))
             .lineLimit(1)
-            .foregroundStyle(solid ? Theme.background : color)
+            .foregroundStyle(solid ? Theme.background : (glass && tint == nil ? Theme.ink : color))
             .padding(.horizontal, Theme.isTerminal ? 6 : (compact ? 8 : 11))
             .frame(height: compact ? 20 : 26)
             .background(shape.fill(fill))
-            .overlay { shape.strokeBorder(stroke, lineWidth: 1) }
+            .background { if glass { shape.fill(tint.map { $0.opacity(0.10) } ?? .clear) } }
+            .overlay { if glass { shape.fill(Theme.glassSheen).allowsHitTesting(false) } }
+            .overlay { if glass { shape.strokeBorder(Theme.glassRim, lineWidth: 0.75) } else { shape.strokeBorder(stroke, lineWidth: 1) } }
             .shadow(color: look == .glow && !Theme.isTerminal && enabled ? color.opacity(hovered ? 0.55 : 0.35) : .clear,
                     radius: look == .glow ? 7 : 0)
             .contentShape(shape)
@@ -439,6 +446,12 @@ struct IconButton: View {
                         RoundedRectangle(cornerRadius: 3).strokeBorder(Theme.accent.opacity(hovering ? 0.8 : 0.35), lineWidth: 1)
                     } else {
                         switch Theme.buttonLook {
+                        case .glass:
+                            ZStack {
+                                Circle().fill(Color.white.opacity(hovering ? 0.14 : 0.06))
+                                Circle().fill(Theme.glassSheen)
+                                Circle().strokeBorder(Theme.glassRim, lineWidth: 0.75)
+                            }
                         case .outline: Circle().strokeBorder(Theme.accent.opacity(hovering ? 0.7 : 0.3), lineWidth: 1)
                         case .glow: Circle().fill(Theme.accent.opacity(hovering ? 0.16 : 0))
                         case .tinted: Circle().fill(Theme.accent.opacity(hovering ? 0.26 : 0.14))
