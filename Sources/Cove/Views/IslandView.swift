@@ -99,7 +99,7 @@ struct IslandShell: View {
         // so there every state is rounded all round.
         let floating = !model.hasHardwareNotch
         let shape = IslandShape(ear: 0, bottomRadius: radius(for: p), roundedTop: floating)
-        let isOpen = p == .expanded || p == .banner || p == .approval
+        let isOpen = p == .expanded || p == .banner || p == .approval || p == .voice
 
         ZStack(alignment: .top) {
             shape
@@ -158,7 +158,7 @@ struct IslandShell: View {
         switch p {
         case .idle: return model.hasHardwareNotch ? 10 : model.notchSize.height / 2
         case .compact: return model.notchSize.height / 2   // a full pill
-        case .banner: return Theme.Radius.islandBanner
+        case .banner, .voice: return Theme.Radius.islandBanner
         case .expanded, .approval: return Theme.Radius.islandExpanded
         }
     }
@@ -173,6 +173,9 @@ struct IslandShell: View {
             return nil
         case .approval:
             return Palette.amber
+        case .voice:
+            // A soft accent glow while it listens, like Siri's edge light.
+            return model.voice.phase == .listening ? Theme.accent : nil
         default:
             return nil
         }
@@ -196,6 +199,8 @@ struct IslandShell: View {
             }
         case .expanded:
             ExpandedView(model: model)
+        case .voice:
+            VoiceView(model: model, voice: model.voice)
         case .approval:
             if let request = model.approvals.first {
                 ApprovalView(model: model, request: request)

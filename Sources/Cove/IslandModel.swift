@@ -5,7 +5,7 @@ import Combine
 /// All island state lives here. Everything runs on the main actor.
 @MainActor
 final class IslandModel: ObservableObject {
-    enum Presentation: Equatable { case idle, compact, banner, expanded, approval }
+    enum Presentation: Equatable { case idle, compact, banner, expanded, approval, voice }
     enum Tab: String, CaseIterable { case home, ai, schedule, sports, shelf }
     /// The Files tab shows the shelf or a browser for the whole Mac.
     enum FilesMode: String, CaseIterable { case shelf = "Shelf", browse = "Browse" }
@@ -83,6 +83,8 @@ final class IslandModel: ObservableObject {
     enum ComposeTarget: String, CaseIterable { case chat = "Chat", cloud = "Cloud", newTask = "New task" }
     @Published var composeTarget: ComposeTarget = .chat
     let cloudAgents = CloudAgents()
+    /// Hold fn to talk to Claude (see VoiceAssistant).
+    let voice = VoiceAssistant()
     let fileBrowser = FileBrowser()
     @Published var filesMode: FilesMode = .shelf { didSet { recompute() } }
     /// A conversion is running (the Convert menus show a spinner and stay disabled).
@@ -227,6 +229,11 @@ final class IslandModel: ObservableObject {
             tab = .ai
             self.config.homeWidget = .sports
         }
+        voice.config = { [weak self] in self?.config ?? CoveConfig() }
+        voice.onChange = { [weak self] in
+            self?.objectWillChange.send()
+            self?.recompute()
+        }
         codexChats.onState = { [weak self] chat, status in
             guard let self else { return }
             let id = "codex:\(chat.id)"
@@ -275,6 +282,12 @@ final class IslandModel: ObservableObject {
             // Tall enough for a whole row of thumbnails with their names (one row, or two when there are more).
             if tab == .shelf { return CGSize(width: width, height: n.height + (shelf.count <= 4 ? 182 : 252)) }
             return CGSize(width: width, height: n.height + 220)
+        case .voice:
+            // A line for what you said, then the answer growing as it's written (about 64 characters a line).
+            let width = min(max(n.width + 320, 520), availableIslandWidth)
+            if voice.phase == .listening || voice.reply.isEmpty { return CGSize(width: width, height: n.height + 66) }
+            let lines = CGFloat(min(voice.reply.count / 64 + voice.reply.filter { $0 == "\n" }.count + 1, 9))
+            return CGSize(width: width, height: n.height + 104 + lines * 15)
         case .approval:
             // Grows with the preview (a one-line command vs. an 8-line diff).
             let lines = CGFloat(max(approvals.first?.preview.lines.count ?? 1, 1))
@@ -370,6 +383,8 @@ final class IslandModel: ObservableObject {
     private func recompute() {
         let next: Presentation
         if !approvals.isEmpty { next = .approval }
+        // You're talking to Claude, or reading its answer: that wins over everything but a permission prompt.
+        else if voice.isActive { next = .voice }
         else if expanded { next = .expanded }
         else if hud != nil || chargingMoment != nil { next = .compact }
         else if banner != nil { next = .banner }
@@ -386,6 +401,11 @@ final class IslandModel: ObservableObject {
     func setHovering(_ hovering: Bool) {
         let changed = hovering != isHovering
         isHovering = hovering
+        // Reading Claude's answer: keep it up, and don't open the island underneath it.
+        if presentation == .voice {
+            if changed { voice.setHovering(hovering) }
+            return
+        }
         // A banner you can reply to stays put under the pointer, so it can be clicked and typed into.
         if hovering, presentation == .banner, bannerAcceptsReply {
             holdBanner()

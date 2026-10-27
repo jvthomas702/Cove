@@ -133,6 +133,15 @@ struct CoveConfig: Codable {
     var aiWorkInNotch: Bool = true
     /// A "Today" list of finished Claude Code and Codex runs in the AI tab (kept for the current day).
     var agentRecap: Bool = true
+    /// Hold fn (🌐) to talk to Claude: Cove listens, asks Claude Code, and shows the answer in the island.
+    var voiceAssistant: Bool = true
+    /// The folder Claude works in for spoken requests (nil = your home folder).
+    var voiceFolder: String? = nil
+    /// Let spoken requests edit files without asking (Claude Code's acceptEdits mode). Off: Claude can
+    /// read and answer, and offers Terminal for anything that needs permission.
+    var voiceCanEdit: Bool = false
+    /// Read Claude's answers aloud.
+    var voiceSpeaks: Bool = false
     var sportsEnabled: Bool = true
     var sportsLeague: SportsLeague = .nfl
     var sportsGameID: String? = nil
@@ -246,6 +255,10 @@ struct CoveConfig: Codable {
         desktopAIActivity = value(.desktopAIActivity, d.desktopAIActivity)
         aiWorkInNotch = value(.aiWorkInNotch, d.aiWorkInNotch)
         agentRecap = value(.agentRecap, d.agentRecap)
+        voiceAssistant = value(.voiceAssistant, d.voiceAssistant)
+        voiceFolder = value(.voiceFolder, d.voiceFolder)
+        voiceCanEdit = value(.voiceCanEdit, d.voiceCanEdit)
+        voiceSpeaks = value(.voiceSpeaks, d.voiceSpeaks)
         sportsEnabled = value(.sportsEnabled, d.sportsEnabled)
         sportsLeague = value(.sportsLeague, d.sportsLeague)
         sportsGameID = value(.sportsGameID, d.sportsGameID)

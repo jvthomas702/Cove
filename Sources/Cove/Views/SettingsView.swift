@@ -496,8 +496,59 @@ private struct AgentsPane: View {
             ToggleRow(title: "Today's agent recap", detail: "Finished Claude Code and Codex runs in the AI tab: how long they ran and files changed",
                       isOn: controller.binding(\.agentRecap))
         }
+        VoiceSettings(controller: controller)
         Text("Connect Claude Code, Codex, ChatGPT and browser chats in Connections.")
             .font(.caption).foregroundStyle(.secondary)
+    }
+}
+
+/// Settings → AI agents → Talk to Claude.
+private struct VoiceSettings: View {
+    @ObservedObject var controller: SettingsController
+
+    private var folderName: String {
+        guard let path = controller.model.config.voiceFolder else { return "Home" }
+        return FileManager.default.displayName(atPath: path)
+    }
+
+    var body: some View {
+        SettingsGroup(title: "Talk to Claude",
+                      footer: "Hold fn (🌐), talk, and let go. Claude Code answers in the island, signed in with your account. Talk again within five minutes to follow up. In System Settings → Keyboard, set “Press 🌐 key to” to Do Nothing so macOS doesn't start dictation too.") {
+            ToggleRow(title: "Hold fn to talk to Claude",
+                      detail: FnKeyMonitor.hasAccess ? "Uses the microphone and speech recognition, on this Mac when it can"
+                                                     : "Allow Accessibility in Permissions so Cove can see fn in other apps",
+                      isOn: controller.binding(\.voiceAssistant))
+            if controller.model.config.voiceAssistant {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Claude works in")
+                        Text(controller.model.config.voiceFolder ?? FileManager.default.homeDirectoryForCurrentUser.path)
+                            .font(.caption).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
+                    }
+                    Spacer()
+                    Button("\(folderName)…") { chooseFolder() }
+                    if controller.model.config.voiceFolder != nil {
+                        Button("Use Home") { controller.binding(\.voiceFolder).wrappedValue = nil }
+                    }
+                }
+                ToggleRow(title: "Let Claude make changes",
+                          detail: "Edits files without asking. Off: Claude reads and answers, and offers Terminal for anything that needs permission",
+                          isOn: controller.binding(\.voiceCanEdit))
+                ToggleRow(title: "Read answers aloud", isOn: controller.binding(\.voiceSpeaks))
+            }
+        }
+    }
+
+    private func chooseFolder() {
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.allowsMultipleSelection = false
+        panel.prompt = "Choose"
+        panel.message = "Claude Code will work in this folder when you talk to it."
+        if let path = controller.model.config.voiceFolder { panel.directoryURL = URL(fileURLWithPath: path) }
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        controller.binding(\.voiceFolder).wrappedValue = url.path
     }
 }
 

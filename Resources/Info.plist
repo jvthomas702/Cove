@@ -48,6 +48,10 @@
 	<string>Cove shows reminders with due dates (like assignments) in its Due Soon list.</string>
 	<key>NSRemindersUsageDescription</key>
 	<string>Cove shows reminders with due dates (like assignments) in its Due Soon list.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Cove listens while you hold fn, so you can talk to Claude.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Cove turns what you say while holding fn into text for Claude. It runs on your Mac when your Mac supports it.</string>
 	<key>NSDesktopFolderUsageDescription</key>
 	<string>Cove watches your Desktop for new screenshots and puts them on the shelf in the notch, and lists its files when you browse them in the Files tab.</string>
 	<key>NSDocumentsFolderUsageDescription</key>

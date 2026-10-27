@@ -13,6 +13,7 @@ Native Swift and SwiftUI, MIT licensed, macOS 14 or later.
 | | |
 |---|---|
 | **Agents** | Claude Code and Codex sessions show live beside the notch ("Editing eval.py", "$ pytest"), then a banner with the final message. Reply from the banner to keep the conversation going. The AI tab lists today's finished runs. |
+| **Talk to Claude** | Hold fn, ask a question or give a task, and let go. Claude Code answers in the island as it writes. |
 | **Cloud agents** | Message your Claude sessions on claude.ai/code from the AI tab, or start a new one for a repo. |
 | **Approvals** | When Claude Code asks permission, the island drops down with the command or a red and green diff, plus **Allow**, **Always allow** and **Deny**. ⌃⌥Y and ⌃⌥N work too. |
 | **Cloud and CI** | Claude sessions on claude.ai show up through the pull requests they open. Your GitHub Actions runs show live, with **Re-run** on a failure and **Run Deploy** on a pass. |
