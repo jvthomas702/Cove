@@ -272,7 +272,8 @@ final class IslandModel: ObservableObject {
             if tab == .ai { return CGSize(width: width, height: n.height + 346 + (showsRecap ? Self.recapHeight + 8 : 0)) }
             if tab == .sports { return CGSize(width: width, height: n.height + 280) }
             if tab == .shelf, filesMode == .browse { return CGSize(width: width, height: n.height + 280) }
-            if tab == .shelf { return CGSize(width: width, height: n.height + (shelf.count <= 4 ? 150 : 220)) }
+            // Tall enough for a whole row of thumbnails with their names (one row, or two when there are more).
+            if tab == .shelf { return CGSize(width: width, height: n.height + (shelf.count <= 4 ? 182 : 252)) }
             return CGSize(width: width, height: n.height + 220)
         case .approval:
             // Grows with the preview (a one-line command vs. an 8-line diff).

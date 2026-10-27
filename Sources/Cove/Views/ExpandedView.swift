@@ -26,6 +26,9 @@ struct ExpandedView: View {
         }
         .foregroundStyle(Theme.ink)
         .tint(Theme.accent)
+        // No scroll bars inside the island, even with "Always show scroll bars" (a mouse, no trackpad):
+        // lists scroll the same, without a white bar down their edge.
+        .scrollIndicators(.never)
         .environment(\.colorScheme, model.config.islandTheme.colorScheme)
         .animation(Theme.snappy, value: model.tab)
     }
