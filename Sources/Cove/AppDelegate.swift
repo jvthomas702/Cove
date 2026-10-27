@@ -22,6 +22,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let volume = VolumeController()
     private let mediaKeys = MediaKeyTap()
     private let hotKeys = HotKeys()
+    /// Hold fn to talk to Claude.
+    private let fnKey = FnKeyMonitor()
     private var volumeStarted = false
     private var trustTimer: Timer?
     private var statusItem: NSStatusItem!
@@ -90,6 +92,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         startHUD(mode: config.hud)
         hotKeys.onAction = { [weak self] action in self?.model.handleShortcut(action) }
         if config.shortcuts { hotKeys.start() }
+        fnKey.onBegin = { [weak self] in self?.model.voice.begin() }
+        fnKey.onEnd = { [weak self] in self?.model.voice.end() }
+        fnKey.onCancel = { [weak self] in self?.model.voice.cancel() }
+        if config.voiceAssistant { fnKey.start() }
         BrowserExtension.syncFromBundle()
         if config.clipboardHistory { startClipboard() }
         if config.ciMonitor { startActions(config) }
@@ -143,6 +149,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         bluetooth?.stop()
         mediaUse?.stop()
         hotKeys.stop()
+        fnKey.stop()
         volume.stop()
         mediaKeys.stop()
     }
@@ -285,6 +292,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         if new.shortcuts != old.shortcuts {
             if new.shortcuts { hotKeys.start() } else { hotKeys.stop() }
+        }
+        if new.voiceAssistant != old.voiceAssistant {
+            if new.voiceAssistant {
+                fnKey.start()
+                // Watching fn in other apps needs Accessibility; ask when it's turned on, not at every launch.
+                if !FnKeyMonitor.hasAccess { MediaKeyTap.requestTrust() }
+            } else {
+                fnKey.stop()
+                model.voice.cancel()
+            }
         }
         if new.clipboardHistory != old.clipboardHistory {
             if new.clipboardHistory {

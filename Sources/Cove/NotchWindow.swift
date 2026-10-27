@@ -237,7 +237,7 @@ final class NotchWindowController {
 
     private func windowSize(for island: CGSize) -> CGSize {
         let p = model.presentation
-        let pad = (p == .expanded || p == .banner || p == .approval) ? Self.shadowPad : (p == .compact ? Self.springPad : .zero)
+        let pad = (p == .expanded || p == .banner || p == .approval || p == .voice) ? Self.shadowPad : (p == .compact ? Self.springPad : .zero)
         return CGSize(width: island.width + pad.width, height: island.height + pad.height + model.islandTopInset)
     }
 

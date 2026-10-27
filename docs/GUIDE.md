@@ -39,6 +39,14 @@ Timed sessions show as classes; assignments and "Availability Ends" items from D
 
 Calendars already in the Mac's Calendar app (Google added under System Settings → Internet Accounts, iCloud, Exchange) are read too, if you allow calendar access.
 
+## Talk to Claude with fn
+
+Hold **fn** (🌐), say what you want, and let go. The island shows your words as you speak, then Claude's answer as it's written. Ask a question ("what's in my Downloads from today?", "explain this error") or give it a task ("rename the screenshots on my Desktop by date"). Hold fn again within five minutes to follow up in the same conversation. Esc while you're talking cancels, and a quick tap of fn does nothing, so fn+arrow and the other fn shortcuts keep working.
+
+Cove runs Claude Code for you (`claude -p`, signed in with your account, so run `claude auth login` once) in the folder chosen in **Settings → AI agents → Talk to Claude**, your home folder unless you pick another. By default Claude can read files and answer but not change anything; when it needed to, **Continue in Terminal** opens the same conversation in Terminal with Claude's usual permission prompts. Turn on **Let Claude make changes** to let it edit files without asking. **Read answers aloud** speaks the reply.
+
+The first time, macOS asks for the microphone and speech recognition; recognition runs on your Mac when your Mac supports it. Seeing fn while you're in other apps needs **Accessibility** (Settings → Permissions). Set System Settings → Keyboard → **Press 🌐 key to** → Do Nothing, so macOS doesn't open dictation or the emoji picker at the same time.
+
 ## Claude in the cloud
 
 Sessions on claude.ai/code, in Claude projects and in routines run on Anthropic's machines, so Cove's hooks never hear from them. What does reach your Mac is GitHub: those sessions open pull requests that link back to the session. Cove watches for them and shows each one as a Claude activity: when it opens, while CI runs, when CI fails or passes, when it's ready for review and when it merges. Clicking it opens the session or project thread.

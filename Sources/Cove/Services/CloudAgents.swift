@@ -1,5 +1,18 @@
 import Foundation
 
+/// Running the `claude` CLI from an app.
+enum ClaudeCLI {
+    /// The app's environment with the usual install folders first on PATH: apps launched from Finder get a
+    /// bare PATH, and an npm-installed `claude` needs node beside it.
+    nonisolated static func environment() -> [String: String] {
+        var environment = ProcessInfo.processInfo.environment
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
+        let extra = ["\(home)/.local/bin", "/opt/homebrew/bin", "/usr/local/bin", "\(home)/.npm-global/bin"]
+        environment["PATH"] = (extra + [environment["PATH"] ?? "/usr/bin:/bin:/usr/sbin:/sbin"]).joined(separator: ":")
+        return environment
+    }
+}
+
 /// A Claude cloud session on claude.ai/code that Cove can message.
 struct CloudSession: Codable, Identifiable, Hashable {
     /// `session_…` or `cse_…`, as in the session's claude.ai/code URL.
@@ -190,12 +203,7 @@ enum CloudSendResult: Equatable {
             let process = Process()
             process.executableURL = executable
             process.arguments = arguments
-            var environment = ProcessInfo.processInfo.environment
-            let home = FileManager.default.homeDirectoryForCurrentUser.path
-            // Apps launched from Finder get a bare PATH; an npm-installed `claude` needs node beside it.
-            let extra = ["\(home)/.local/bin", "/opt/homebrew/bin", "/usr/local/bin", "\(home)/.npm-global/bin"]
-            environment["PATH"] = (extra + [environment["PATH"] ?? "/usr/bin:/bin:/usr/sbin:/sbin"]).joined(separator: ":")
-            process.environment = environment
+            process.environment = ClaudeCLI.environment()
             let stdin = Pipe(), stdout = Pipe(), stderr = Pipe()
             process.standardInput = stdin
             process.standardOutput = stdout
