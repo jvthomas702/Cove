@@ -1,0 +1,463 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Cove architecture",
+    "output": "docs/architecture/cove-architecture.html",
+    "quality_profile": "showcase",
+    "locale": "en",
+    "repository": {
+      "url": "https://github.com/jvthomas702/Cove",
+      "provider": "github",
+      "link_mode": "web",
+      "revision": "0776a3e2a611813c183ca9460c063b2179c97bc3"
+    }
+  },
+  "components": [
+    {
+      "id": "agents",
+      "type": "external",
+      "label": "Claude Code / Codex",
+      "sublabel": "your agent sessions",
+      "pos": [
+        40,
+        300
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "sources": [
+        {
+          "path": "scripts/install-hooks.sh",
+          "line": 19,
+          "end_line": 25
+        }
+      ]
+    },
+    {
+      "id": "hooks",
+      "type": "backend",
+      "label": "Hook scripts",
+      "sublabel": "bin/cove-claude-*",
+      "tag": "curl, 1 s cap",
+      "pos": [
+        330,
+        300
+      ],
+      "size": [
+        130,
+        64
+      ],
+      "sources": [
+        {
+          "path": "bin/cove-claude-hook",
+          "line": 1,
+          "end_line": 8
+        },
+        {
+          "path": "bin/cove-claude-permission",
+          "line": 1,
+          "end_line": 15
+        }
+      ]
+    },
+    {
+      "id": "server",
+      "type": "security",
+      "label": "EventServer",
+      "sublabel": "127.0.0.1:7777",
+      "tag": "loopback only",
+      "pos": [
+        600,
+        300
+      ],
+      "size": [
+        130,
+        64
+      ],
+      "sources": [
+        {
+          "path": "Sources/Cove/Services/EventServer.swift",
+          "line": 40,
+          "end_line": 67
+        },
+        {
+          "path": "Sources/Cove/AppDelegate.swift",
+          "line": 422,
+          "end_line": 442
+        }
+      ]
+    },
+    {
+      "id": "bridge",
+      "type": "backend",
+      "label": "AgentBridge",
+      "sublabel": "hook JSON → activity",
+      "pos": [
+        800,
+        300
+      ],
+      "size": [
+        140,
+        64
+      ],
+      "sources": [
+        {
+          "path": "Sources/Cove/Services/AgentBridge.swift",
+          "line": 27,
+          "end_line": 30
+        },
+        {
+          "path": "Sources/Cove/Services/AgentBridge.swift",
+          "line": 133,
+          "end_line": 166
+        }
+      ]
+    },
+    {
+      "id": "model",
+      "type": "backend",
+      "label": "IslandModel",
+      "sublabel": "one source of truth",
+      "tag": "ObservableObject",
+      "pos": [
+        1080,
+        296
+      ],
+      "size": [
+        150,
+        72
+      ],
+      "sources": [
+        {
+          "path": "Sources/Cove/IslandModel.swift",
+          "line": 7,
+          "end_line": 11
+        },
+        {
+          "path": "Sources/Cove/IslandModel.swift",
+          "line": 1166,
+          "end_line": 1170
+        },
+        {
+          "path": "Sources/Cove/IslandModel.swift",
+          "line": 1669,
+          "end_line": 1675
+        }
+      ]
+    },
+    {
+      "id": "panel",
+      "type": "frontend",
+      "label": "Notch panel",
+      "sublabel": "SwiftUI island views",
+      "pos": [
+        1370,
+        300
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "sources": [
+        {
+          "path": "Sources/Cove/NotchWindow.swift",
+          "line": 118,
+          "end_line": 139
+        },
+        {
+          "path": "Sources/Cove/Views/IslandView.swift",
+          "line": 186,
+          "end_line": 208
+        }
+      ]
+    },
+    {
+      "id": "espn",
+      "type": "cloud",
+      "label": "ESPN API",
+      "sublabel": "scoreboard + summary",
+      "pos": [
+        1090,
+        40
+      ],
+      "size": [
+        130,
+        60
+      ],
+      "sources": [
+        {
+          "path": "Sources/Cove/Services/SportsMonitor.swift",
+          "line": 37,
+          "end_line": 46
+        }
+      ]
+    },
+    {
+      "id": "sports",
+      "type": "backend",
+      "label": "SportsMonitor",
+      "sublabel": "live scores, auto-unpin",
+      "pos": [
+        1090,
+        170
+      ],
+      "size": [
+        130,
+        60
+      ],
+      "sources": [
+        {
+          "path": "Sources/Cove/Services/SportsMonitor.swift",
+          "line": 260,
+          "end_line": 262
+        },
+        {
+          "path": "Sources/Cove/Services/SportsPreferences.swift",
+          "line": 1,
+          "end_line": 40
+        }
+      ]
+    },
+    {
+      "id": "monitors",
+      "type": "backend",
+      "label": "Mac monitors",
+      "sublabel": "Now Playing · Calendar · Battery",
+      "pos": [
+        790,
+        170
+      ],
+      "size": [
+        200,
+        60
+      ],
+      "sources": [
+        {
+          "path": "Sources/Cove/Services/NowPlayingMonitor.swift",
+          "line": 3,
+          "end_line": 8
+        },
+        {
+          "path": "Sources/Cove/Services/CalendarMonitor.swift",
+          "line": 58,
+          "end_line": 85
+        },
+        {
+          "path": "Sources/Cove/AppDelegate.swift",
+          "line": 77,
+          "end_line": 84
+        }
+      ]
+    },
+    {
+      "id": "fnkey",
+      "type": "backend",
+      "label": "FnKeyMonitor",
+      "sublabel": "hold fn to talk",
+      "pos": [
+        800,
+        440
+      ],
+      "size": [
+        140,
+        60
+      ],
+      "sources": [
+        {
+          "path": "Sources/Cove/Services/FnKey.swift",
+          "line": 8,
+          "end_line": 56
+        },
+        {
+          "path": "Sources/Cove/AppDelegate.swift",
+          "line": 95,
+          "end_line": 98
+        }
+      ]
+    },
+    {
+      "id": "voice",
+      "type": "backend",
+      "label": "VoiceAssistant",
+      "sublabel": "speech → Claude → reply",
+      "pos": [
+        1090,
+        440
+      ],
+      "size": [
+        130,
+        60
+      ],
+      "sources": [
+        {
+          "path": "Sources/Cove/Services/VoiceAssistant.swift",
+          "line": 207,
+          "end_line": 237
+        },
+        {
+          "path": "Sources/Cove/Services/VoiceAssistant.swift",
+          "line": 263,
+          "end_line": 291
+        },
+        {
+          "path": "Sources/Cove/Services/SpeechListener.swift",
+          "line": 42,
+          "end_line": 72
+        }
+      ]
+    },
+    {
+      "id": "claudecli",
+      "type": "external",
+      "label": "claude -p",
+      "sublabel": "headless Claude Code",
+      "pos": [
+        1090,
+        580
+      ],
+      "size": [
+        130,
+        60
+      ],
+      "sources": [
+        {
+          "path": "Sources/Cove/Services/VoiceAssistant.swift",
+          "line": 82,
+          "end_line": 100
+        },
+        {
+          "path": "Sources/Cove/Services/VoiceAssistant.swift",
+          "line": 18,
+          "end_line": 35
+        }
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Cove.app — one process",
+      "wraps": [
+        "server",
+        "bridge",
+        "model",
+        "panel",
+        "sports",
+        "monitors",
+        "fnkey",
+        "voice"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "agent-hooks",
+      "from": "agents",
+      "to": "hooks",
+      "label": "hook JSON on stdin",
+      "variant": "emphasis"
+    },
+    {
+      "id": "hooks-post",
+      "from": "hooks",
+      "to": "server",
+      "label": "POST /hook/claude",
+      "variant": "emphasis"
+    },
+    {
+      "id": "server-route",
+      "from": "server",
+      "to": "bridge",
+      "label": "route"
+    },
+    {
+      "id": "bridge-model",
+      "from": "bridge",
+      "to": "model",
+      "label": "ingest, approval",
+      "variant": "emphasis"
+    },
+    {
+      "id": "model-panel",
+      "from": "model",
+      "to": "panel",
+      "label": "@Published state",
+      "variant": "emphasis"
+    },
+    {
+      "id": "panel-model",
+      "from": "panel",
+      "to": "model",
+      "label": "Allow / Deny"
+    },
+    {
+      "id": "espn-sports",
+      "from": "sports",
+      "to": "espn",
+      "label": "poll",
+      "variant": "dashed"
+    },
+    {
+      "id": "sports-model",
+      "from": "sports",
+      "to": "model",
+      "label": "games"
+    },
+    {
+      "id": "monitors-model",
+      "from": "monitors",
+      "to": "model",
+      "label": "now playing, events"
+    },
+    {
+      "id": "fn-voice",
+      "from": "fnkey",
+      "to": "voice",
+      "label": "hold / release"
+    },
+    {
+      "id": "voice-model",
+      "from": "voice",
+      "to": "model",
+      "label": "transcript, reply"
+    },
+    {
+      "id": "voice-claude",
+      "from": "voice",
+      "to": "claudecli",
+      "label": "prompt on stdin",
+      "variant": "dashed"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "violet",
+      "title": "Agent approvals",
+      "items": [
+        "cove-claude-permission posts the request and waits",
+        "Allow / Deny in the island answers that same HTTP request",
+        "No answer in time: Claude asks in the terminal as usual"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Voice",
+      "items": [
+        "Speech is recognised on-device when the Mac supports it",
+        "Follow-ups within a few minutes resume the same Claude session",
+        "Edits are allowed only when voiceCanEdit is on"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Also wired up at launch",
+      "items": [
+        "Settings: ~/.config/cove/config.json",
+        "Phone pings through ntfy; updates through Sparkle",
+        "CI, cloud sessions, clipboard, shelf, screenshots"
+      ]
+    }
+  ]
+}

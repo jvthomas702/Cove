@@ -74,6 +74,8 @@ Cove listens on `127.0.0.1:7777` (this Mac only). It accepts requests from local
 
 ## How it's built
 
+See the [architecture diagram](docs/architecture/) for how the pieces connect: an interactive page, with every box linked to its source.
+
 ```
 Sources/Cove/
 ├── AppDelegate.swift            lifecycle, menu bar, routing, applying settings
