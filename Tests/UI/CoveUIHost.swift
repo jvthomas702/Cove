@@ -99,6 +99,8 @@ struct UIHostView: View {
         var config = CoveConfig()
         config.calendar = false; config.sounds = false; config.desktopAIActivity = false
         config.homeWidget = .sports; config.sportsLeague = .nba; config.sportsGameID = "401810946"
+        // The fixture game is final and the flows read its plays, so it was pinned after it ended.
+        config.sportsPinnedFinalGame = true
         NSApp.appearance = NSAppearance(named: CommandLine.arguments.contains("--light-system") ? .aqua : .darkAqua)
         let shelfDefaults = UserDefaults(suiteName: "app.cove.ui-test.shelf")!
         if !CommandLine.arguments.contains("--preserve-shelf") {

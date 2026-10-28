@@ -215,11 +215,13 @@ final class IslandModel: ObservableObject {
                 self?.objectWillChange.send()
                 self?.recompute()
                 self?.forgetFinishedWatchedGames()
+                self?.unpinFinishedGame()
             }
         }
         self.sports.onAutomaticSelection = { [weak self] game in
             guard let self else { return }
             var next = self.config; next.sportsLeague = game.league; next.sportsGameID = game.id
+            next.sportsPinnedFinalGame = false
             self.applyConfig?(next)
         }
         self.sports.onAlert = { [weak self] alert in
@@ -530,11 +532,22 @@ final class IslandModel: ObservableObject {
         applyConfig?(next)
     }
 
+    /// A pinned game that has just ended is unpinned. With a favorite team playing later, the automatic
+    /// pick moves on to that game instead.
+    func unpinFinishedGame() {
+        guard SportsFollowRules.shouldUnpin(sports.selectedGame, config: config) else { return }
+        var next = config
+        next.sportsGameID = nil
+        next.sportsPinnedFinalGame = false
+        applyConfig?(next)
+    }
+
     func chooseSportsLeague(_ league: SportsLeague) {
         guard league != config.sportsLeague else { return }
         var next = config
         next.sportsLeague = league
         next.sportsGameID = nil
+        next.sportsPinnedFinalGame = false
         applyConfig?(next)
     }
 
@@ -542,6 +555,8 @@ final class IslandModel: ObservableObject {
         var next = config
         next.sportsLeague = game.league
         next.sportsGameID = game.id
+        // Picking a game that's already over is for reading it, so it stays pinned.
+        next.sportsPinnedFinalGame = game.isFinal
         next.homeWidget = .sports
         next.sportsEnabled = true
         applyConfig?(next)

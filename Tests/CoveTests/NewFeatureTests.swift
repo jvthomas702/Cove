@@ -9,6 +9,46 @@ import XCTest
                    home: SportsTeam(name: "Home", abbreviation: "HME", score: "0", rank: nil, id: "2", league: league),
                    state: state, status: state)
     }
+    func testPinnedGameUnpinsWhenItEndsButNotWhenPickedAfterTheEnd() throws {
+        var config = CoveConfig(); config.sportsLeague = .nba; config.sportsGameID = "g1"
+        XCTAssertFalse(SportsFollowRules.shouldUnpin(game("g1", state: "in"), config: config), "still playing")
+        XCTAssertTrue(SportsFollowRules.shouldUnpin(game("g1", state: "post"), config: config), "it ended while pinned")
+        XCTAssertFalse(SportsFollowRules.shouldUnpin(game("g2", state: "post"), config: config), "another game ended")
+        XCTAssertFalse(SportsFollowRules.shouldUnpin(game("g1", league: .nfl, state: "post"), config: config), "same id, other league")
+        XCTAssertFalse(SportsFollowRules.shouldUnpin(nil, config: config))
+        config.sportsPinnedFinalGame = true
+        XCTAssertFalse(SportsFollowRules.shouldUnpin(game("g1", state: "post"), config: config), "pinned to read a finished game")
+        XCTAssertFalse(try JSONDecoder().decode(CoveConfig.self, from: Data("{}".utf8)).sportsPinnedFinalGame)
+
+        var quiet = CoveConfig(); quiet.sounds = false; quiet.calendar = false
+        let model = IslandModel(config: quiet)
+        var applied: CoveConfig?
+        model.applyConfig = { applied = $0 }
+        model.chooseSportsGame(game("live", state: "in"))
+        XCTAssertEqual(applied?.sportsGameID, "live")
+        XCTAssertEqual(applied?.sportsPinnedFinalGame, false)
+        model.chooseSportsGame(game("over", state: "post"))
+        XCTAssertEqual(applied?.sportsPinnedFinalGame, true)
+    }
+
+    func testScoreCardsSayWhenAGameStartsInsteadOfESPNsTimestamp() throws {
+        let calendar = Calendar.current
+        let noon = try XCTUnwrap(calendar.date(bySettingHour: 12, minute: 0, second: 0, of: Date()))
+        func line(_ state: String, in seconds: TimeInterval, status: String? = nil) -> String {
+            var g = game("g", state: state, start: noon.addingTimeInterval(seconds))
+            if let status { g.status = status }
+            return g.statusLine(now: noon, calendar: calendar)
+        }
+        XCTAssertTrue(line("pre", in: 3600).hasPrefix("Today "))
+        XCTAssertTrue(line("pre", in: 86_400).hasPrefix("Tomorrow "))
+        let later = line("pre", in: 3 * 86_400)
+        XCTAssertFalse(later.hasPrefix("Today") || later.hasPrefix("Tomorrow") || later.contains(","), later)
+        XCTAssertTrue(line("pre", in: 20 * 86_400).contains(","))
+        XCTAssertEqual(line("in", in: -600, status: "Q3 4:12"), "Q3 4:12")
+        XCTAssertEqual(line("post", in: -9000, status: "10/31 - 7:30 PM EDT"), "Final")
+        XCTAssertEqual(line("post", in: -9000, status: "Final/OT"), "Final/OT")
+    }
+
     func testFavoriteSettingsRoundTripAndQuietDefaults() throws {
         let old = try JSONDecoder().decode(CoveConfig.self, from: Data("{}".utf8))
         XCTAssertTrue(old.sportsAutoFollow); XCTAssertFalse(old.sportsStartAlerts); XCTAssertFalse(old.sportsScoreAlerts)
