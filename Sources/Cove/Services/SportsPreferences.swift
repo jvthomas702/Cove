@@ -91,3 +91,23 @@ struct SportsAlertTracker {
         return alerts
     }
 }
+
+extension SportsGame {
+    /// What a score card says above the teams: the clock while it's on, "Final" after, otherwise when it
+    /// starts ("Today 7:30 PM", "Tomorrow 1:00 PM", "Sat 12:00 PM", "Nov 2, 8:15 PM") rather than ESPN's
+    /// "10/31 - 12:00 PM EDT".
+    func statusLine(now: Date = Date(), calendar: Calendar = .current) -> String {
+        if isLive { return status }
+        if isFinal { return status.lowercased().hasPrefix("final") ? status : "Final" }
+        guard let start else { return status }
+        let time = start.formatted(date: .omitted, time: .shortened)
+        if calendar.isDate(start, inSameDayAs: now) { return "Today \(time)" }
+        if let tomorrow = calendar.date(byAdding: .day, value: 1, to: now), calendar.isDate(start, inSameDayAs: tomorrow) {
+            return "Tomorrow \(time)"
+        }
+        if start > now, start.timeIntervalSince(now) < 6 * 86_400 {
+            return "\(start.formatted(.dateTime.weekday(.abbreviated))) \(time)"
+        }
+        return "\(start.formatted(.dateTime.month(.abbreviated).day())), \(time)"
+    }
+}

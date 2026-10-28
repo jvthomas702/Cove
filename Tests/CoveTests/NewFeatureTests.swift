@@ -31,6 +31,24 @@ import XCTest
         XCTAssertEqual(applied?.sportsPinnedFinalGame, true)
     }
 
+    func testScoreCardsSayWhenAGameStartsInsteadOfESPNsTimestamp() throws {
+        let calendar = Calendar.current
+        let noon = try XCTUnwrap(calendar.date(bySettingHour: 12, minute: 0, second: 0, of: Date()))
+        func line(_ state: String, in seconds: TimeInterval, status: String? = nil) -> String {
+            var g = game("g", state: state, start: noon.addingTimeInterval(seconds))
+            if let status { g.status = status }
+            return g.statusLine(now: noon, calendar: calendar)
+        }
+        XCTAssertTrue(line("pre", in: 3600).hasPrefix("Today "))
+        XCTAssertTrue(line("pre", in: 86_400).hasPrefix("Tomorrow "))
+        let later = line("pre", in: 3 * 86_400)
+        XCTAssertFalse(later.hasPrefix("Today") || later.hasPrefix("Tomorrow") || later.contains(","), later)
+        XCTAssertTrue(line("pre", in: 20 * 86_400).contains(","))
+        XCTAssertEqual(line("in", in: -600, status: "Q3 4:12"), "Q3 4:12")
+        XCTAssertEqual(line("post", in: -9000, status: "10/31 - 7:30 PM EDT"), "Final")
+        XCTAssertEqual(line("post", in: -9000, status: "Final/OT"), "Final/OT")
+    }
+
     func testFavoriteSettingsRoundTripAndQuietDefaults() throws {
         let old = try JSONDecoder().decode(CoveConfig.self, from: Data("{}".utf8))
         XCTAssertTrue(old.sportsAutoFollow); XCTAssertFalse(old.sportsStartAlerts); XCTAssertFalse(old.sportsScoreAlerts)
