@@ -9,6 +9,28 @@ import XCTest
                    home: SportsTeam(name: "Home", abbreviation: "HME", score: "0", rank: nil, id: "2", league: league),
                    state: state, status: state)
     }
+    func testPinnedGameUnpinsWhenItEndsButNotWhenPickedAfterTheEnd() throws {
+        var config = CoveConfig(); config.sportsLeague = .nba; config.sportsGameID = "g1"
+        XCTAssertFalse(SportsFollowRules.shouldUnpin(game("g1", state: "in"), config: config), "still playing")
+        XCTAssertTrue(SportsFollowRules.shouldUnpin(game("g1", state: "post"), config: config), "it ended while pinned")
+        XCTAssertFalse(SportsFollowRules.shouldUnpin(game("g2", state: "post"), config: config), "another game ended")
+        XCTAssertFalse(SportsFollowRules.shouldUnpin(game("g1", league: .nfl, state: "post"), config: config), "same id, other league")
+        XCTAssertFalse(SportsFollowRules.shouldUnpin(nil, config: config))
+        config.sportsPinnedFinalGame = true
+        XCTAssertFalse(SportsFollowRules.shouldUnpin(game("g1", state: "post"), config: config), "pinned to read a finished game")
+        XCTAssertFalse(try JSONDecoder().decode(CoveConfig.self, from: Data("{}".utf8)).sportsPinnedFinalGame)
+
+        var quiet = CoveConfig(); quiet.sounds = false; quiet.calendar = false
+        let model = IslandModel(config: quiet)
+        var applied: CoveConfig?
+        model.applyConfig = { applied = $0 }
+        model.chooseSportsGame(game("live", state: "in"))
+        XCTAssertEqual(applied?.sportsGameID, "live")
+        XCTAssertEqual(applied?.sportsPinnedFinalGame, false)
+        model.chooseSportsGame(game("over", state: "post"))
+        XCTAssertEqual(applied?.sportsPinnedFinalGame, true)
+    }
+
     func testFavoriteSettingsRoundTripAndQuietDefaults() throws {
         let old = try JSONDecoder().decode(CoveConfig.self, from: Data("{}".utf8))
         XCTAssertTrue(old.sportsAutoFollow); XCTAssertFalse(old.sportsStartAlerts); XCTAssertFalse(old.sportsScoreAlerts)

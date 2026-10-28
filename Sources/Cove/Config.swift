@@ -145,6 +145,9 @@ struct CoveConfig: Codable {
     var sportsEnabled: Bool = true
     var sportsLeague: SportsLeague = .nfl
     var sportsGameID: String? = nil
+    /// The pinned game was already over when you picked it (to read its plays and stats), so it stays
+    /// pinned until you pick another. A game that ends while pinned is unpinned.
+    var sportsPinnedFinalGame: Bool = false
     /// "Big games": at least one Top 25 team. Turn off to browse all FBS games.
     var sportsRankedOnly: Bool = true
     var sportsFavoriteTeams: [String] = []
@@ -262,6 +265,7 @@ struct CoveConfig: Codable {
         sportsEnabled = value(.sportsEnabled, d.sportsEnabled)
         sportsLeague = value(.sportsLeague, d.sportsLeague)
         sportsGameID = value(.sportsGameID, d.sportsGameID)
+        sportsPinnedFinalGame = value(.sportsPinnedFinalGame, d.sportsPinnedFinalGame)
         sportsRankedOnly = value(.sportsRankedOnly, d.sportsRankedOnly)
         sportsFavoriteTeams = Array(Set(value(.sportsFavoriteTeams, d.sportsFavoriteTeams))).sorted()
         sportsWatchedGames = Array(Set(value(.sportsWatchedGames, d.sportsWatchedGames))).sorted()

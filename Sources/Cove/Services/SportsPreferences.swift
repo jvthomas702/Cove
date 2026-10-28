@@ -53,6 +53,13 @@ enum SportsFollowRules {
         Set(games.filter(\.isFinal).map(\.key)).intersection(config.sportsWatchedGames)
     }
 
+    /// The pinned game has ended: unpin it, so the notch stops showing a final score. A game you pinned
+    /// after it ended stays (see `sportsPinnedFinalGame`).
+    static func shouldUnpin(_ pinned: SportsGame?, config: CoveConfig) -> Bool {
+        guard let pinned, pinned.id == config.sportsGameID, pinned.league == config.sportsLeague, pinned.isFinal else { return false }
+        return !config.sportsPinnedFinalGame
+    }
+
     static func automaticGame(_ games: [SportsGame], current: SportsGame?, config: CoveConfig) -> SportsGame? {
         guard config.sportsAutoFollow, !config.sportsFavoriteTeams.isEmpty else { return nil }
         // Respect a manually chosen game while it is active, and keep stable selection between polls.
