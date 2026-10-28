@@ -1,0 +1,786 @@
+Building for debugging...
+[0/13] /Users/runner/work/Cove/Cove/.build/arm64-apple-macosx/debug/CovePackageTests.derived/runner.swift
+[1/13] Write sources
+[2/13] Copying Fixtures
+[3/13] Write sources
+[4/13] Write Cove-entitlement.plist
+[6/13] Copying Sparkle.framework
+[7/13] Write swift-version--79AA4F9932D1E87A.txt
+[9/58] Compiling Cove AppDelegate.swift
+[10/58] Compiling Cove Config.swift
+[11/58] Compiling Cove IslandModel.swift
+[12/58] Compiling Cove Models.swift
+[13/58] Compiling Cove NotchWindow.swift
+[14/58] Compiling Cove AgentBridge.swift
+[15/58] Compiling Cove AgentLauncher.swift
+[16/58] Compiling Cove AgentRecap.swift
+[17/58] Compiling Cove BannerReply.swift
+[18/58] Compiling Cove BatteryMonitor.swift
+[19/58] Compiling Cove BluetoothBattery.swift
+[20/58] Compiling Cove CIActions.swift
+[21/58] Compiling Cove CalendarMonitor.swift
+[22/58] Compiling Cove ClipboardMonitor.swift
+[23/58] Compiling Cove CloudAgents.swift
+[24/58] Compiling Cove CloudSessions.swift
+[25/58] Compiling Cove CodexChats.swift
+[26/58] Compiling Cove CodexDesktopConnection.swift
+[27/58] Compiling Cove CoveUpdater.swift
+[28/58] Compiling Cove DesktopAIActivityMonitor.swift
+[29/58] Compiling Cove DisplayPicker.swift
+[30/58] Compiling Cove DropRouting.swift
+[31/80] Compiling Cove EventServer.swift
+[32/80] Compiling Cove FileBrowser.swift
+[33/80] Compiling Cove FileConverter.swift
+[34/80] Compiling Cove FnKey.swift
+[35/80] Compiling Cove GitHubActions.swift
+[36/80] Compiling Cove HotKeys.swift
+[37/80] Compiling Cove ICSFeeds.swift
+[38/80] Compiling Cove Integrations.swift
+[39/80] Compiling Cove MediaUseMonitor.swift
+[40/80] Compiling Cove NotificationMirror.swift
+[41/80] Compiling Cove NowPlayingMonitor.swift
+[42/80] Compiling Cove PhoneRelay.swift
+[43/80] Compiling Cove QuickTimer.swift
+[44/80] Compiling Cove ScreenshotWatcher.swift
+[45/80] Compiling Cove ShelfStore.swift
+[46/80] Compiling Cove SpeechListener.swift
+[47/80] Compiling Cove SportsGameData.swift
+[48/80] Compiling Cove SportsMonitor.swift
+[49/80] Compiling Cove SportsPreferences.swift
+[50/80] Compiling Cove SystemControls.swift
+[51/80] Compiling Cove VoiceAssistant.swift
+[52/80] Compiling Cove AIWorkWidget.swift
+[53/80] Emitting module Cove
+[54/80] Compiling Cove AgentComposer.swift
+[55/80] Compiling Cove AgentRecapList.swift
+[56/80] Compiling Cove ApprovalView.swift
+[57/80] Compiling Cove BannerView.swift
+[58/80] Compiling Cove Buddy.swift
+[59/80] Compiling Cove CompactView.swift
+[60/80] Compiling Cove Components.swift
+[61/80] Compiling Cove ExpandedView.swift
+[62/80] Compiling Cove FileBrowserView.swift
+[63/80] Compiling Cove Glass.swift
+[64/80] Compiling Cove IslandView.swift
+[65/80] Compiling Cove MatteDashboard.swift
+[66/80] Compiling Cove SettingsView.swift
+[67/80] Compiling Cove ShelfEditor.swift
+[68/80] Compiling Cove SportsFavoritesView.swift
+[69/80] Compiling Cove SportsGamecastView.swift
+[70/80] Compiling Cove SportsView.swift
+[71/80] Compiling Cove TeamLogo.swift
+[72/80] Compiling Cove Theme.swift
+[73/80] Compiling Cove VoiceView.swift
+[74/80] Compiling Cove WelcomeView.swift
+[75/80] Compiling Cove main.swift
+[75/80] Write Objects.LinkFileList
+[76/80] Linking Cove
+[77/80] Applying Cove
+[79/101] Compiling CoveTests CodexChatsTests.swift
+[80/101] Compiling CoveTests DisplayPickerTests.swift
+[81/101] Compiling CoveTests DropRoutingTests.swift
+[82/101] Compiling CoveTests FileBrowserTests.swift
+[83/101] Compiling CoveTests FileConverterTests.swift
+[84/101] Compiling CoveTests GamecastMonitorTests.swift
+[85/101] Compiling CoveTests GamecastTests.swift
+[86/101] Compiling CoveTests MergedWorkspaceTests.swift
+[87/101] Compiling CoveTests NewFeatureTests.swift
+[88/101] Compiling CoveTests PermissionMemoryTests.swift
+[89/110] Emitting module CoveTests
+[90/110] Compiling CoveTests AIActivityTests.swift
+[91/110] Compiling CoveTests AgentAttentionTests.swift
+[92/110] Compiling CoveTests AgentLauncherTests.swift
+[93/110] Compiling CoveTests AgentRecapTests.swift
+[94/110] Compiling CoveTests BannerReplyTests.swift
+[95/110] Compiling CoveTests CIActionsTests.swift
+[96/110] Compiling CoveTests CalendarFeedTests.swift
+[97/110] Compiling CoveTests ChargingAnimationTests.swift
+[98/110] Compiling CoveTests CloudAgentsTests.swift
+[99/110] Compiling CoveTests CloudSessionsTests.swift
+[100/110] Compiling CoveTests PhoneRelayTests.swift
+[101/110] Compiling CoveTests PrivacyIndicatorTests.swift
+[102/110] Compiling CoveTests QuickTimerTests.swift
+[103/110] Compiling CoveTests ShelfPersistenceTests.swift
+[104/110] Compiling CoveTests SmokeTests.swift
+[105/110] Compiling CoveTests SportsTests.swift
+[106/110] Compiling CoveTests VoiceTests.swift
+[107/110] Compiling CoveTests WelcomeTests.swift
+[108/110] Compiling CoveTests resource_bundle_accessor.swift
+[109/112] Compiling CovePackageTests runner.swift
+[110/112] Emitting module CovePackageTests
+[110/112] Write Objects.LinkFileList
+[111/112] Linking CovePackageTests
+Build complete! (57.74s)
+Test Suite 'All tests' started at 2026-10-28 17:36:47.813.
+Test Suite 'CovePackageTests.xctest' started at 2026-10-28 17:36:47.814.
+Test Suite 'AIWidgetTests' started at 2026-10-28 17:36:47.814.
+Test Case '-[CoveTests.AIWidgetTests testActivitySummaryUsesObservedTasksAndPrioritizesAttention]' started.
+Test Case '-[CoveTests.AIWidgetTests testActivitySummaryUsesObservedTasksAndPrioritizesAttention]' passed (0.227 seconds).
+Test Case '-[CoveTests.AIWidgetTests testChatLinksAreLimitedToSupportedSites]' started.
+Test Case '-[CoveTests.AIWidgetTests testChatLinksAreLimitedToSupportedSites]' passed (0.000 seconds).
+Test Case '-[CoveTests.AIWidgetTests testClaudeToolStepsRespectHiddenToolActivitySetting]' started.
+Test Case '-[CoveTests.AIWidgetTests testClaudeToolStepsRespectHiddenToolActivitySetting]' passed (0.006 seconds).
+Test Case '-[CoveTests.AIWidgetTests testCompletionAfterReconnectionStillCreatesWidgetActivity]' started.
+Test Case '-[CoveTests.AIWidgetTests testCompletionAfterReconnectionStillCreatesWidgetActivity]' passed (0.006 seconds).
+Test Case '-[CoveTests.AIWidgetTests testDisabledDesktopTrackingDoesNotClaimToBeChecking]' started.
+Test Case '-[CoveTests.AIWidgetTests testDisabledDesktopTrackingDoesNotClaimToBeChecking]' passed (0.006 seconds).
+Test Case '-[CoveTests.AIWidgetTests testFilteredSelectionAndDetailAlwaysAgree]' started.
+Test Case '-[CoveTests.AIWidgetTests testFilteredSelectionAndDetailAlwaysAgree]' passed (0.006 seconds).
+Test Case '-[CoveTests.AIWidgetTests testLiveAIHasCompactPriorityAndCanBeTurnedOff]' started.
+Test Case '-[CoveTests.AIWidgetTests testLiveAIHasCompactPriorityAndCanBeTurnedOff]' passed (0.006 seconds).
+Test Case '-[CoveTests.AIWidgetTests testObservedPhasesCoalesceReplyChunksAndKeepTheirOwnDetails]' started.
+Test Case '-[CoveTests.AIWidgetTests testObservedPhasesCoalesceReplyChunksAndKeepTheirOwnDetails]' passed (0.023 seconds).
+Test Case '-[CoveTests.AIWidgetTests testOldWhitePreferenceLoadsBlackAndPreservesOtherSettings]' started.
+Test Case '-[CoveTests.AIWidgetTests testOldWhitePreferenceLoadsBlackAndPreservesOtherSettings]' passed (0.001 seconds).
+Test Case '-[CoveTests.AIWidgetTests testOpeningTaskOutsideFilterRevealsIt]' started.
+Test Case '-[CoveTests.AIWidgetTests testOpeningTaskOutsideFilterRevealsIt]' passed (0.008 seconds).
+Test Case '-[CoveTests.AIWidgetTests testQuietBrowserCompletionStaysInWidget]' started.
+Test Case '-[CoveTests.AIWidgetTests testQuietBrowserCompletionStaysInWidget]' passed (0.007 seconds).
+Test Case '-[CoveTests.AIWidgetTests testStepHistoryIsBoundedAndClearedForNewTurnsAndRemovedSessions]' started.
+Test Case '-[CoveTests.AIWidgetTests testStepHistoryIsBoundedAndClearedForNewTurnsAndRemovedSessions]' passed (0.006 seconds).
+Test Suite 'AIWidgetTests' passed at 2026-10-28 17:36:48.117.
+	 Executed 12 tests, with 0 failures (0 unexpected) in 0.302 (0.303) seconds
+Test Suite 'AgentAttentionTests' started at 2026-10-28 17:36:48.117.
+Test Case '-[CoveTests.AgentAttentionTests testDesktopWaitDebouncesAutomaticApprovalAndIncludesUserInput]' started.
+Test Case '-[CoveTests.AgentAttentionTests testDesktopWaitDebouncesAutomaticApprovalAndIncludesUserInput]' passed (0.006 seconds).
+Test Case '-[CoveTests.AgentAttentionTests testLateTranscriptCannotFinishNewClaudeTurn]' started.
+Test Case '-[CoveTests.AgentAttentionTests testLateTranscriptCannotFinishNewClaudeTurn]' passed (0.134 seconds).
+Test Case '-[CoveTests.AgentAttentionTests testOptionalNotificationSetupIsQuietNonstickyAndDoesNotRepeat]' started.
+Test Case '-[CoveTests.AgentAttentionTests testOptionalNotificationSetupIsQuietNonstickyAndDoesNotRepeat]' passed (0.014 seconds).
+Test Case '-[CoveTests.AgentAttentionTests testPermissionArrivingFirstCreatesActivityAndCancellationClearsAttention]' started.
+Test Case '-[CoveTests.AgentAttentionTests testPermissionArrivingFirstCreatesActivityAndCancellationClearsAttention]' passed (0.025 seconds).
+Test Case '-[CoveTests.AgentAttentionTests testRepeatedWaitRingsOnceAndNewPromptClearsStickyBanner]' started.
+Test Case '-[CoveTests.AgentAttentionTests testRepeatedWaitRingsOnceAndNewPromptClearsStickyBanner]' passed (0.057 seconds).
+Test Case '-[CoveTests.AgentAttentionTests testTypedClaudeNotificationsIgnoreIdleAndAuthButAcceptRealQuestions]' started.
+Test Case '-[CoveTests.AgentAttentionTests testTypedClaudeNotificationsIgnoreIdleAndAuthButAcceptRealQuestions]' passed (0.017 seconds).
+Test Suite 'AgentAttentionTests' passed at 2026-10-28 17:36:48.370.
+	 Executed 6 tests, with 0 failures (0 unexpected) in 0.252 (0.253) seconds
+Test Suite 'AgentBridgeTests' started at 2026-10-28 17:36:48.371.
+Test Case '-[CoveTests.AgentBridgeTests testDescribesBash]' started.
+Test Case '-[CoveTests.AgentBridgeTests testDescribesBash]' passed (0.002 seconds).
+Test Case '-[CoveTests.AgentBridgeTests testDescribesEditAsDiff]' started.
+Test Case '-[CoveTests.AgentBridgeTests testDescribesEditAsDiff]' passed (0.000 seconds).
+Test Case '-[CoveTests.AgentBridgeTests testDescribesMCPTool]' started.
+Test Case '-[CoveTests.AgentBridgeTests testDescribesMCPTool]' passed (0.006 seconds).
+Test Case '-[CoveTests.AgentBridgeTests testLongPreviewIsCapped]' started.
+Test Case '-[CoveTests.AgentBridgeTests testLongPreviewIsCapped]' passed (0.000 seconds).
+Test Case '-[CoveTests.AgentBridgeTests testPermissionResponses]' started.
+Test Case '-[CoveTests.AgentBridgeTests testPermissionResponses]' passed (0.000 seconds).
+Test Case '-[CoveTests.AgentBridgeTests testTranscriptReaderFindsLastAssistantText]' started.
+Test Case '-[CoveTests.AgentBridgeTests testTranscriptReaderFindsLastAssistantText]' passed (0.018 seconds).
+Test Case '-[CoveTests.AgentBridgeTests testTranscriptUsageCountsEachMessageOnce]' started.
+Test Case '-[CoveTests.AgentBridgeTests testTranscriptUsageCountsEachMessageOnce]' passed (0.011 seconds).
+Test Suite 'AgentBridgeTests' passed at 2026-10-28 17:36:48.413.
+	 Executed 7 tests, with 0 failures (0 unexpected) in 0.039 (0.042) seconds
+Test Suite 'AgentLauncherTests' started at 2026-10-28 17:36:48.413.
+Test Case '-[CoveTests.AgentLauncherTests testCloudTaskRunsClaudeCloudWithTheTaskAsItsValue]' started.
+Test Case '-[CoveTests.AgentLauncherTests testCloudTaskRunsClaudeCloudWithTheTaskAsItsValue]' passed (0.350 seconds).
+Test Case '-[CoveTests.AgentLauncherTests testFloatingPanelSelectAllWorksWithoutAnEditMenu]' started.
+Test Case '-[CoveTests.AgentLauncherTests testFloatingPanelSelectAllWorksWithoutAnEditMenu]' passed (0.164 seconds).
+Test Case '-[CoveTests.AgentLauncherTests testInvalidInputsDoNotCreateCommands]' started.
+Test Case '-[CoveTests.AgentLauncherTests testInvalidInputsDoNotCreateCommands]' passed (0.001 seconds).
+Test Case '-[CoveTests.AgentLauncherTests testLaunchFailureKeepsDraftAndCleansTemporaryCommand]' started.
+Test Case '-[CoveTests.AgentLauncherTests testLaunchFailureKeepsDraftAndCleansTemporaryCommand]' passed (0.030 seconds).
+Test Case '-[CoveTests.AgentLauncherTests testPromptAndFolderStayLiteralAndTemporaryCommandRemovesItself]' started.
+Test Case '-[CoveTests.AgentLauncherTests testPromptAndFolderStayLiteralAndTemporaryCommandRemovesItself]' passed (0.081 seconds).
+Test Case '-[CoveTests.AgentLauncherTests testUnavailableAgentPreservesDraft]' started.
+Test Case '-[CoveTests.AgentLauncherTests testUnavailableAgentPreservesDraft]' passed (0.000 seconds).
+Test Suite 'AgentLauncherTests' passed at 2026-10-28 17:36:49.040.
+	 Executed 6 tests, with 0 failures (0 unexpected) in 0.626 (0.626) seconds
+Test Suite 'AgentRecapTests' started at 2026-10-28 17:36:49.040.
+Test Case '-[CoveTests.AgentRecapTests testClaudeAndCodexRunsAreRecordedWithFilesAndPersisted]' started.
+Test Case '-[CoveTests.AgentRecapTests testClaudeAndCodexRunsAreRecordedWithFilesAndPersisted]' passed (0.004 seconds).
+Test Case '-[CoveTests.AgentRecapTests testFailureRightAfterDoneReplacesTheRun]' started.
+Test Case '-[CoveTests.AgentRecapTests testFailureRightAfterDoneReplacesTheRun]' passed (0.007 seconds).
+Test Case '-[CoveTests.AgentRecapTests testListIsCapped]' started.
+Test Case '-[CoveTests.AgentRecapTests testListIsCapped]' passed (0.015 seconds).
+Test Case '-[CoveTests.AgentRecapTests testOnlyEditingToolsCountAndEachFileOnce]' started.
+Test Case '-[CoveTests.AgentRecapTests testOnlyEditingToolsCountAndEachFileOnce]' passed (0.000 seconds).
+Test Case '-[CoveTests.AgentRecapTests testRollStartsAFreshDayOnlyAfterMidnight]' started.
+Test Case '-[CoveTests.AgentRecapTests testRollStartsAFreshDayOnlyAfterMidnight]' passed (0.001 seconds).
+Test Case '-[CoveTests.AgentRecapTests testRunFinishingOnANewDayReplacesYesterdayAndLateRunsAreIgnored]' started.
+Test Case '-[CoveTests.AgentRecapTests testRunFinishingOnANewDayReplacesYesterdayAndLateRunsAreIgnored]' passed (0.001 seconds).
+Test Case '-[CoveTests.AgentRecapTests testRunsAreNewestFirstReplacedByIdAndSummed]' started.
+Test Case '-[CoveTests.AgentRecapTests testRunsAreNewestFirstReplacedByIdAndSummed]' passed (0.001 seconds).
+Test Case '-[CoveTests.AgentRecapTests testStoreKeepsTodayAcrossRestartsAndDropsEarlierDays]' started.
+Test Case '-[CoveTests.AgentRecapTests testStoreKeepsTodayAcrossRestartsAndDropsEarlierDays]' passed (0.003 seconds).
+Test Case '-[CoveTests.AgentRecapTests testTurningTheRecapOffStopsRecordingAndHidesIt]' started.
+Test Case '-[CoveTests.AgentRecapTests testTurningTheRecapOffStopsRecordingAndHidesIt]' passed (0.006 seconds).
+Test Suite 'AgentRecapTests' passed at 2026-10-28 17:36:49.077.
+	 Executed 9 tests, with 0 failures (0 unexpected) in 0.037 (0.038) seconds
+Test Suite 'BannerReplyTests' started at 2026-10-28 17:36:49.077.
+Test Case '-[CoveTests.BannerReplyTests testClaudeCommandQuotesEveryValue]' started.
+Test Case '-[CoveTests.BannerReplyTests testClaudeCommandQuotesEveryValue]' passed (0.000 seconds).
+Test Case '-[CoveTests.BannerReplyTests testClaudeDoneBannerOffersReplyForItsSession]' started.
+Test Case '-[CoveTests.BannerReplyTests testClaudeDoneBannerOffersReplyForItsSession]' passed (0.002 seconds).
+Test Case '-[CoveTests.BannerReplyTests testCodexCommandUsesResumeSubcommand]' started.
+Test Case '-[CoveTests.BannerReplyTests testCodexCommandUsesResumeSubcommand]' passed (0.000 seconds).
+Test Case '-[CoveTests.BannerReplyTests testCodexNotifyWithThreadIDOffersCodexResume]' started.
+Test Case '-[CoveTests.BannerReplyTests testCodexNotifyWithThreadIDOffersCodexResume]' passed (0.006 seconds).
+Test Case '-[CoveTests.BannerReplyTests testEmptyRepliesAndMissingFoldersAreRejected]' started.
+Test Case '-[CoveTests.BannerReplyTests testEmptyRepliesAndMissingFoldersAreRejected]' passed (0.000 seconds).
+Test Case '-[CoveTests.BannerReplyTests testHeldBannerResumesCountdownWhenReplyIsAbandoned]' started.
+Test Case '-[CoveTests.BannerReplyTests testHeldBannerResumesCountdownWhenReplyIsAbandoned]' passed (0.003 seconds).
+Test Case '-[CoveTests.BannerReplyTests testMissingCLIKeepsBannerAndExplains]' started.
+Test Case '-[CoveTests.BannerReplyTests testMissingCLIKeepsBannerAndExplains]' passed (0.001 seconds).
+Test Case '-[CoveTests.BannerReplyTests testNoReplyWithoutARealSessionOrWhileWorking]' started.
+Test Case '-[CoveTests.BannerReplyTests testNoReplyWithoutARealSessionOrWhileWorking]' passed (0.003 seconds).
+Test Case '-[CoveTests.BannerReplyTests testOnlyResumableSessionsAndAbsoluteFoldersAreOffered]' started.
+Test Case '-[CoveTests.BannerReplyTests testOnlyResumableSessionsAndAbsoluteFoldersAreOffered]' passed (0.001 seconds).
+Test Case '-[CoveTests.BannerReplyTests testPreparedScriptPassesReplyLiterallyFromTheProjectFolder]' started.
+Test Case '-[CoveTests.BannerReplyTests testPreparedScriptPassesReplyLiterallyFromTheProjectFolder]' passed (0.083 seconds).
+Test Case '-[CoveTests.BannerReplyTests testSendingOpensTerminalAndDismissesBanner]' started.
+Test Case '-[CoveTests.BannerReplyTests testSendingOpensTerminalAndDismissesBanner]' passed (0.003 seconds).
+Test Suite 'BannerReplyTests' passed at 2026-10-28 17:36:49.181.
+	 Executed 11 tests, with 0 failures (0 unexpected) in 0.103 (0.104) seconds
+Test Suite 'BluetoothBatteryTests' started at 2026-10-28 17:36:49.181.
+Test Case '-[CoveTests.BluetoothBatteryTests testFirstReadingIsQuietThenConnectAndLowShowBanners]' started.
+Test Case '-[CoveTests.BluetoothBatteryTests testFirstReadingIsQuietThenConnectAndLowShowBanners]' passed (0.006 seconds).
+Test Case '-[CoveTests.BluetoothBatteryTests testParsesConnectedDevicesWithBatteries]' started.
+Test Case '-[CoveTests.BluetoothBatteryTests testParsesConnectedDevicesWithBatteries]' passed (0.000 seconds).
+Test Suite 'BluetoothBatteryTests' passed at 2026-10-28 17:36:49.188.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.007 (0.007) seconds
+Test Suite 'CIActionsTests' started at 2026-10-28 17:36:49.188.
+Test Case '-[CoveTests.CIActionsTests testDeployWorkflowsKeepsOnlyHandStartableOnes]' started.
+Test Case '-[CoveTests.CIActionsTests testDeployWorkflowsKeepsOnlyHandStartableOnes]' passed (0.003 seconds).
+Test Case '-[CoveTests.CIActionsTests testDispatchRequestSendsTheBranch]' started.
+Test Case '-[CoveTests.CIActionsTests testDispatchRequestSendsTheBranch]' passed (0.001 seconds).
+Test Case '-[CoveTests.CIActionsTests testDispatchTriggerDetection]' started.
+Test Case '-[CoveTests.CIActionsTests testDispatchTriggerDetection]' passed (0.000 seconds).
+Test Case '-[CoveTests.CIActionsTests testFailedRunOffersRerunAndShowsProgress]' started.
+Test Case '-[CoveTests.CIActionsTests testFailedRunOffersRerunAndShowsProgress]' passed (0.042 seconds).
+Test Case '-[CoveTests.CIActionsTests testFindsActiveDeployAndReleaseWorkflowsDeployFirst]' started.
+Test Case '-[CoveTests.CIActionsTests testFindsActiveDeployAndReleaseWorkflowsDeployFirst]' passed (0.000 seconds).
+Test Case '-[CoveTests.CIActionsTests testLooksLikeDeploy]' started.
+Test Case '-[CoveTests.CIActionsTests testLooksLikeDeploy]' passed (0.000 seconds).
+Test Case '-[CoveTests.CIActionsTests testPassedRunOffersDeployOnItsBranch]' started.
+Test Case '-[CoveTests.CIActionsTests testPassedRunOffersDeployOnItsBranch]' passed (0.053 seconds).
+Test Case '-[CoveTests.CIActionsTests testPermissionErrorsExplainTheScopes]' started.
+Test Case '-[CoveTests.CIActionsTests testPermissionErrorsExplainTheScopes]' passed (0.000 seconds).
+Test Case '-[CoveTests.CIActionsTests testRerunFallsBackToTheWholeRun]' started.
+Test Case '-[CoveTests.CIActionsTests testRerunFallsBackToTheWholeRun]' passed (0.000 seconds).
+Test Case '-[CoveTests.CIActionsTests testRerunReportsScopeProblem]' started.
+Test Case '-[CoveTests.CIActionsTests testRerunReportsScopeProblem]' passed (0.000 seconds).
+Test Case '-[CoveTests.CIActionsTests testRerunRequests]' started.
+Test Case '-[CoveTests.CIActionsTests testRerunRequests]' passed (0.000 seconds).
+Test Case '-[CoveTests.CIActionsTests testSignedOutIsExplained]' started.
+Test Case '-[CoveTests.CIActionsTests testSignedOutIsExplained]' passed (0.000 seconds).
+Test Case '-[CoveTests.CIActionsTests testWorkflowFileRequestAsksForRawYAMLOnTheBranch]' started.
+Test Case '-[CoveTests.CIActionsTests testWorkflowFileRequestAsksForRawYAMLOnTheBranch]' passed (0.000 seconds).
+Test Suite 'CIActionsTests' passed at 2026-10-28 17:36:49.290.
+	 Executed 13 tests, with 0 failures (0 unexpected) in 0.101 (0.102) seconds
+Test Suite 'CalendarClassifierTests' started at 2026-10-28 17:36:49.290.
+Test Case '-[CoveTests.CalendarClassifierTests testAssignmentsInD2LFeedAreDue]' started.
+Test Case '-[CoveTests.CalendarClassifierTests testAssignmentsInD2LFeedAreDue]' passed (0.000 seconds).
+Test Case '-[CoveTests.CalendarClassifierTests testClassesInD2LFeedStayClasses]' started.
+Test Case '-[CoveTests.CalendarClassifierTests testClassesInD2LFeedStayClasses]' passed (0.001 seconds).
+Test Case '-[CoveTests.CalendarClassifierTests testCleanDueTitle]' started.
+Test Case '-[CoveTests.CalendarClassifierTests testCleanDueTitle]' passed (0.001 seconds).
+Test Case '-[CoveTests.CalendarClassifierTests testRegularCalendars]' started.
+Test Case '-[CoveTests.CalendarClassifierTests testRegularCalendars]' passed (0.000 seconds).
+Test Suite 'CalendarClassifierTests' passed at 2026-10-28 17:36:49.292.
+	 Executed 4 tests, with 0 failures (0 unexpected) in 0.002 (0.002) seconds
+Test Suite 'CalendarLinkTests' started at 2026-10-28 17:36:49.292.
+Test Case '-[CoveTests.CalendarLinkTests testCatchesWrongLinks]' started.
+Test Case '-[CoveTests.CalendarLinkTests testCatchesWrongLinks]' passed (0.000 seconds).
+Test Case '-[CoveTests.CalendarLinkTests testFriendlyNames]' started.
+Test Case '-[CoveTests.CalendarLinkTests testFriendlyNames]' passed (0.000 seconds).
+Test Case '-[CoveTests.CalendarLinkTests testMergeDropsDuplicates]' started.
+Test Case '-[CoveTests.CalendarLinkTests testMergeDropsDuplicates]' passed (0.000 seconds).
+Test Case '-[CoveTests.CalendarLinkTests testNormalize]' started.
+Test Case '-[CoveTests.CalendarLinkTests testNormalize]' passed (0.000 seconds).
+Test Suite 'CalendarLinkTests' passed at 2026-10-28 17:36:49.293.
+	 Executed 4 tests, with 0 failures (0 unexpected) in 0.001 (0.001) seconds
+Test Suite 'ChargingAnimationTests' started at 2026-10-28 17:36:49.293.
+Test Case '-[CoveTests.ChargingAnimationTests testLaunchingOnPowerStaysQuiet]' started.
+Test Case '-[CoveTests.ChargingAnimationTests testLaunchingOnPowerStaysQuiet]' passed (0.007 seconds).
+Test Case '-[CoveTests.ChargingAnimationTests testOnlyTheUnpluggedToPluggedChangeCounts]' started.
+Test Case '-[CoveTests.ChargingAnimationTests testOnlyTheUnpluggedToPluggedChangeCounts]' passed (0.000 seconds).
+Test Case '-[CoveTests.ChargingAnimationTests testPluggingInPlaysTheMomentInsteadOfTheBannerThenCollapses]' started.
+Test Case '-[CoveTests.ChargingAnimationTests testPluggingInPlaysTheMomentInsteadOfTheBannerThenCollapses]' passed (3.075 seconds).
+Test Case '-[CoveTests.ChargingAnimationTests testSettingOffKeepsTheChargingBanner]' started.
+Test Case '-[CoveTests.ChargingAnimationTests testSettingOffKeepsTheChargingBanner]' passed (0.007 seconds).
+Test Suite 'ChargingAnimationTests' passed at 2026-10-28 17:36:52.383.
+	 Executed 4 tests, with 0 failures (0 unexpected) in 3.090 (3.090) seconds
+Test Suite 'ClipboardTests' started at 2026-10-28 17:36:52.383.
+Test Case '-[CoveTests.ClipboardTests testClipsAreNewestFirstAndDeduplicated]' started.
+Test Case '-[CoveTests.ClipboardTests testClipsAreNewestFirstAndDeduplicated]' passed (0.006 seconds).
+Test Case '-[CoveTests.ClipboardTests testSkipsSecretsFilesAndBlankText]' started.
+Test Case '-[CoveTests.ClipboardTests testSkipsSecretsFilesAndBlankText]' passed (0.000 seconds).
+Test Suite 'ClipboardTests' passed at 2026-10-28 17:36:52.390.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.007 (0.007) seconds
+Test Suite 'CloudAgentsTests' started at 2026-10-28 17:36:52.390.
+Test Case '-[CoveTests.CloudAgentsTests testCloudPullRequestsOfferMessagingFromTheAITab]' started.
+Test Case '-[CoveTests.CloudAgentsTests testCloudPullRequestsOfferMessagingFromTheAITab]' passed (0.007 seconds).
+Test Case '-[CoveTests.CloudAgentsTests testFindsTheSessionIDInLinksAndText]' started.
+Test Case '-[CoveTests.CloudAgentsTests testFindsTheSessionIDInLinksAndText]' passed (0.000 seconds).
+Test Case '-[CoveTests.CloudAgentsTests testKeepsOnlyRecentSessions]' started.
+Test Case '-[CoveTests.CloudAgentsTests testKeepsOnlyRecentSessions]' passed (0.009 seconds).
+Test Case '-[CoveTests.CloudAgentsTests testPastedLinksAndPullRequestsBecomeSessionsThatPersist]' started.
+Test Case '-[CoveTests.CloudAgentsTests testPastedLinksAndPullRequestsBecomeSessionsThatPersist]' passed (0.003 seconds).
+Test Case '-[CoveTests.CloudAgentsTests testReadsTheCLIAnswer]' started.
+Test Case '-[CoveTests.CloudAgentsTests testReadsTheCLIAnswer]' passed (0.001 seconds).
+Test Case '-[CoveTests.CloudAgentsTests testSendPassesTheMessageOnStdinAndKeepsTheDraftOnFailure]' started.
+Test Case '-[CoveTests.CloudAgentsTests testSendPassesTheMessageOnStdinAndKeepsTheDraftOnFailure]' passed (0.046 seconds).
+Test Suite 'CloudAgentsTests' passed at 2026-10-28 17:36:52.457.
+	 Executed 6 tests, with 0 failures (0 unexpected) in 0.067 (0.067) seconds
+Test Suite 'CloudSessionsTests' started at 2026-10-28 17:36:52.457.
+Test Case '-[CoveTests.CloudSessionsTests testCheckSummary]' started.
+Test Case '-[CoveTests.CloudSessionsTests testCheckSummary]' passed (0.000 seconds).
+Test Case '-[CoveTests.CloudSessionsTests testCloudActivityOpensTheSession]' started.
+Test Case '-[CoveTests.CloudSessionsTests testCloudActivityOpensTheSession]' passed (0.369 seconds).
+Test Case '-[CoveTests.CloudSessionsTests testKeepsOnlyClaudePullRequests]' started.
+Test Case '-[CoveTests.CloudSessionsTests testKeepsOnlyClaudePullRequests]' passed (0.007 seconds).
+Test Case '-[CoveTests.CloudSessionsTests testPrefersTheProjectThread]' started.
+Test Case '-[CoveTests.CloudSessionsTests testPrefersTheProjectThread]' passed (0.000 seconds).
+Test Case '-[CoveTests.CloudSessionsTests testReadyWhenNotDraft]' started.
+Test Case '-[CoveTests.CloudSessionsTests testReadyWhenNotDraft]' passed (0.000 seconds).
+Test Case '-[CoveTests.CloudSessionsTests testStates]' started.
+Test Case '-[CoveTests.CloudSessionsTests testStates]' passed (0.001 seconds).
+Test Suite 'CloudSessionsTests' passed at 2026-10-28 17:36:52.835.
+	 Executed 6 tests, with 0 failures (0 unexpected) in 0.377 (0.378) seconds
+Test Suite 'CodexChatsTests' started at 2026-10-28 17:36:52.835.
+Test Case '-[CoveTests.CodexChatsTests testActiveChatReceivesSteeringAndKeepsNewlyTypedDraft]' started.
+Test Case '-[CoveTests.CodexChatsTests testActiveChatReceivesSteeringAndKeepsNewlyTypedDraft]' passed (0.106 seconds).
+Test Case '-[CoveTests.CodexChatsTests testCatalogExcludesArchivedAndSubagentsAndKeepsNamedChatTitles]' started.
+Test Case '-[CoveTests.CodexChatsTests testCatalogExcludesArchivedAndSubagentsAndKeepsNamedChatTitles]' passed (0.004 seconds).
+Test Case '-[CoveTests.CodexChatsTests testIdleSendUsesExactChatAndLiteralTextWithoutOverridingPermissions]' started.
+Test Case '-[CoveTests.CodexChatsTests testIdleSendUsesExactChatAndLiteralTextWithoutOverridingPermissions]' passed (0.042 seconds).
+Test Case '-[CoveTests.CodexChatsTests testRecoveredCatalogClearsStaleErrorWithoutChangingDraftOrDestination]' started.
+Test Case '-[CoveTests.CodexChatsTests testRecoveredCatalogClearsStaleErrorWithoutChangingDraftOrDestination]' passed (0.001 seconds).
+Test Case '-[CoveTests.CodexChatsTests testUnavailableOwnerAndDisappearedSelectionNeverRedirectMessage]' started.
+Test Case '-[CoveTests.CodexChatsTests testUnavailableOwnerAndDisappearedSelectionNeverRedirectMessage]' passed (0.084 seconds).
+Test Case '-[CoveTests.CodexChatsTests testUncertainDeliveryKeepsDraftAndNeverRetries]' started.
+Test Case '-[CoveTests.CodexChatsTests testUncertainDeliveryKeepsDraftAndNeverRetries]' passed (0.051 seconds).
+Test Suite 'CodexChatsTests' passed at 2026-10-28 17:36:53.123.
+	 Executed 6 tests, with 0 failures (0 unexpected) in 0.288 (0.289) seconds
+Test Suite 'ConfigTests' started at 2026-10-28 17:36:53.123.
+Test Case '-[CoveTests.ConfigTests testMissingKeysUseDefaults]' started.
+Test Case '-[CoveTests.ConfigTests testMissingKeysUseDefaults]' passed (0.001 seconds).
+Test Case '-[CoveTests.ConfigTests testRoundTrip]' started.
+Test Case '-[CoveTests.ConfigTests testRoundTrip]' passed (0.002 seconds).
+Test Case '-[CoveTests.ConfigTests testWrongTypesFallBackInsteadOfFailing]' started.
+Test Case '-[CoveTests.ConfigTests testWrongTypesFallBackInsteadOfFailing]' passed (0.001 seconds).
+Test Suite 'ConfigTests' passed at 2026-10-28 17:36:53.127.
+	 Executed 3 tests, with 0 failures (0 unexpected) in 0.003 (0.004) seconds
+Test Suite 'DesktopAITrackerTests' started at 2026-10-28 17:36:53.127.
+Test Case '-[CoveTests.DesktopAITrackerTests testDetectsComposerControlsWithoutConfusingVoiceButtons]' started.
+Test Case '-[CoveTests.DesktopAITrackerTests testDetectsComposerControlsWithoutConfusingVoiceButtons]' passed (0.000 seconds).
+Test Case '-[CoveTests.DesktopAITrackerTests testMissingWindowAndLostPermissionClearOnlyRunningWork]' started.
+Test Case '-[CoveTests.DesktopAITrackerTests testMissingWindowAndLostPermissionClearOnlyRunningWork]' passed (0.001 seconds).
+Test Case '-[CoveTests.DesktopAITrackerTests testSwitchingChatsClearsWithoutInventingCompletion]' started.
+Test Case '-[CoveTests.DesktopAITrackerTests testSwitchingChatsClearsWithoutInventingCompletion]' passed (0.000 seconds).
+Test Case '-[CoveTests.DesktopAITrackerTests testUnreadableControlsNeverFinishTheTask]' started.
+Test Case '-[CoveTests.DesktopAITrackerTests testUnreadableControlsNeverFinishTheTask]' passed (0.000 seconds).
+Test Suite 'DesktopAITrackerTests' passed at 2026-10-28 17:36:53.129.
+	 Executed 4 tests, with 0 failures (0 unexpected) in 0.002 (0.002) seconds
+Test Suite 'DisplayPickerTests' started at 2026-10-28 17:36:53.129.
+Test Case '-[CoveTests.DisplayPickerTests testActiveModeCountsTheTopEdgeAndSplitsSharedSideEdges]' started.
+Test Case '-[CoveTests.DisplayPickerTests testActiveModeCountsTheTopEdgeAndSplitsSharedSideEdges]' passed (0.000 seconds).
+Test Case '-[CoveTests.DisplayPickerTests testActiveModeFallsBackToMainThenNotchWhenPointerIsOffScreen]' started.
+Test Case '-[CoveTests.DisplayPickerTests testActiveModeFallsBackToMainThenNotchWhenPointerIsOffScreen]' passed (0.000 seconds).
+Test Case '-[CoveTests.DisplayPickerTests testActiveModeFollowsThePointer]' started.
+Test Case '-[CoveTests.DisplayPickerTests testActiveModeFollowsThePointer]' passed (0.000 seconds).
+Test Case '-[CoveTests.DisplayPickerTests testFloatingIslandSitsBelowTheTopEdgeOnlyWithoutANotch]' started.
+Test Case '-[CoveTests.DisplayPickerTests testFloatingIslandSitsBelowTheTopEdgeOnlyWithoutANotch]' passed (0.007 seconds).
+Test Case '-[CoveTests.DisplayPickerTests testNoScreensPicksNothing]' started.
+Test Case '-[CoveTests.DisplayPickerTests testNoScreensPicksNothing]' passed (0.000 seconds).
+Test Case '-[CoveTests.DisplayPickerTests testNotchModeFallsBackToFirstScreenWithoutMain]' started.
+Test Case '-[CoveTests.DisplayPickerTests testNotchModeFallsBackToFirstScreenWithoutMain]' passed (0.000 seconds).
+Test Case '-[CoveTests.DisplayPickerTests testNotchModeFallsBackToMainWhenDockedWithLidClosed]' started.
+Test Case '-[CoveTests.DisplayPickerTests testNotchModeFallsBackToMainWhenDockedWithLidClosed]' passed (0.000 seconds).
+Test Case '-[CoveTests.DisplayPickerTests testNotchModePrefersTheNotchEvenWhenAnotherScreenIsMain]' started.
+Test Case '-[CoveTests.DisplayPickerTests testNotchModePrefersTheNotchEvenWhenAnotherScreenIsMain]' passed (0.000 seconds).
+Test Case '-[CoveTests.DisplayPickerTests testSettingDefaultsToNotchAndRoundTrips]' started.
+Test Case '-[CoveTests.DisplayPickerTests testSettingDefaultsToNotchAndRoundTrips]' passed (0.000 seconds).
+Test Suite 'DisplayPickerTests' passed at 2026-10-28 17:36:53.139.
+	 Executed 9 tests, with 0 failures (0 unexpected) in 0.009 (0.009) seconds
+Test Suite 'DropRoutingTests' started at 2026-10-28 17:36:53.139.
+Test Case '-[CoveTests.DropRoutingTests testDragOverOpensTheShelfAndLeavingClearsTheHighlight]' started.
+Test Case '-[CoveTests.DropRoutingTests testDragOverOpensTheShelfAndLeavingClearsTheHighlight]' passed (0.008 seconds).
+Test Case '-[CoveTests.DropRoutingTests testDropLandsOnTheTargetUnderThePointer]' started.
+Test Case '-[CoveTests.DropRoutingTests testDropLandsOnTheTargetUnderThePointer]' passed (0.000 seconds).
+Test Case '-[CoveTests.DropRoutingTests testDropOnKeepPutsTheFileOnTheShelf]' started.
+Test Case '-[CoveTests.DropRoutingTests testDropOnKeepPutsTheFileOnTheShelf]' passed (0.091 seconds).
+Test Case '-[CoveTests.DropRoutingTests testDropOutsideTheTargetsOrBeforeTheyAppearKeepsTheFile]' started.
+Test Case '-[CoveTests.DropRoutingTests testDropOutsideTheTargetsOrBeforeTheyAppearKeepsTheFile]' passed (0.000 seconds).
+Test Case '-[CoveTests.DropRoutingTests testOnlyFileURLsAreAcceptedOnceEachInOrder]' started.
+Test Case '-[CoveTests.DropRoutingTests testOnlyFileURLsAreAcceptedOnceEachInOrder]' passed (0.001 seconds).
+Test Case '-[CoveTests.DropRoutingTests testSettingDefaultsOnAndRoundTrips]' started.
+Test Case '-[CoveTests.DropRoutingTests testSettingDefaultsOnAndRoundTrips]' passed (0.000 seconds).
+Test Case '-[CoveTests.DropRoutingTests testTurningTheZoneOffAlwaysKeeps]' started.
+Test Case '-[CoveTests.DropRoutingTests testTurningTheZoneOffAlwaysKeeps]' passed (0.000 seconds).
+Test Suite 'DropRoutingTests' passed at 2026-10-28 17:36:53.240.
+	 Executed 7 tests, with 0 failures (0 unexpected) in 0.101 (0.101) seconds
+Test Suite 'FileBrowserTests' started at 2026-10-28 17:36:53.240.
+Test Case '-[CoveTests.FileBrowserTests testFilterSelectionAndHistory]' started.
+Test Case '-[CoveTests.FileBrowserTests testFilterSelectionAndHistory]' passed (0.185 seconds).
+Test Case '-[CoveTests.FileBrowserTests testListsFoldersFirstInFinderOrderAndHidesDotFiles]' started.
+Test Case '-[CoveTests.FileBrowserTests testListsFoldersFirstInFinderOrderAndHidesDotFiles]' passed (0.106 seconds).
+Test Case '-[CoveTests.FileBrowserTests testMissingFolderExplainsItself]' started.
+Test Case '-[CoveTests.FileBrowserTests testMissingFolderExplainsItself]' passed (0.089 seconds).
+Test Case '-[CoveTests.FileBrowserTests testSortByDateKeepsFoldersFirst]' started.
+Test Case '-[CoveTests.FileBrowserTests testSortByDateKeepsFoldersFirst]' passed (0.001 seconds).
+Test Case '-[CoveTests.FileBrowserTests testSpotlightResultsSkipFilesAlreadyListed]' started.
+Test Case '-[CoveTests.FileBrowserTests testSpotlightResultsSkipFilesAlreadyListed]' passed (0.417 seconds).
+Test Suite 'FileBrowserTests' passed at 2026-10-28 17:36:54.038.
+	 Executed 5 tests, with 0 failures (0 unexpected) in 0.797 (0.798) seconds
+Test Suite 'FileConverterTests' started at 2026-10-28 17:36:54.038.
+Test Case '-[CoveTests.FileConverterTests testCombinesImagesAndPDFsInOrderWithoutOverwriting]' started.
+Test Case '-[CoveTests.FileConverterTests testCombinesImagesAndPDFsInOrderWithoutOverwriting]' passed (0.043 seconds).
+Test Case '-[CoveTests.FileConverterTests testImageFormatsAndTransparentPNGToJPEGOnWhite]' started.
+Test Case '-[CoveTests.FileConverterTests testImageFormatsAndTransparentPNGToJPEGOnWhite]' passed (0.035 seconds).
+Test Case '-[CoveTests.FileConverterTests testJPEGBecomesAOnePagePDFBesideIt]' started.
+Test Case '-[CoveTests.FileConverterTests testJPEGBecomesAOnePagePDFBesideIt]' passed (0.005 seconds).
+Test Case '-[CoveTests.FileConverterTests testLargeImagesFitAnA4SizedPage]' started.
+Test Case '-[CoveTests.FileConverterTests testLargeImagesFitAnA4SizedPage]' passed (0.066 seconds).
+Test Case '-[CoveTests.FileConverterTests testOffersConversionsThatFitTheSelection]' started.
+Test Case '-[CoveTests.FileConverterTests testOffersConversionsThatFitTheSelection]' passed (0.001 seconds).
+Test Case '-[CoveTests.FileConverterTests testOutputGoesToDownloadsForFilesInsideLibrary]' started.
+Test Case '-[CoveTests.FileConverterTests testOutputGoesToDownloadsForFilesInsideLibrary]' passed (0.001 seconds).
+Test Case '-[CoveTests.FileConverterTests testPDFPagesExportAsNumberedImages]' started.
+Test Case '-[CoveTests.FileConverterTests testPDFPagesExportAsNumberedImages]' passed (0.006 seconds).
+Test Case '-[CoveTests.FileConverterTests testUnreadableFilesFailWithoutLeavingHalfAFile]' started.
+Test Case '-[CoveTests.FileConverterTests testUnreadableFilesFailWithoutLeavingHalfAFile]' passed (0.002 seconds).
+Test Suite 'FileConverterTests' passed at 2026-10-28 17:36:54.197.
+	 Executed 8 tests, with 0 failures (0 unexpected) in 0.159 (0.159) seconds
+Test Suite 'FnHoldGestureTests' started at 2026-10-28 17:36:54.197.
+Test Case '-[CoveTests.FnHoldGestureTests testEscapeCancelsAndReleaseThenDoesNothing]' started.
+Test Case '-[CoveTests.FnHoldGestureTests testEscapeCancelsAndReleaseThenDoesNothing]' passed (0.000 seconds).
+Test Case '-[CoveTests.FnHoldGestureTests testFnAsAModifierNeverListens]' started.
+Test Case '-[CoveTests.FnHoldGestureTests testFnAsAModifierNeverListens]' passed (0.000 seconds).
+Test Case '-[CoveTests.FnHoldGestureTests testHoldingFnAloneStartsListeningAndReleaseSends]' started.
+Test Case '-[CoveTests.FnHoldGestureTests testHoldingFnAloneStartsListeningAndReleaseSends]' passed (0.000 seconds).
+Test Case '-[CoveTests.FnHoldGestureTests testQuickTapDoesNothing]' started.
+Test Case '-[CoveTests.FnHoldGestureTests testQuickTapDoesNothing]' passed (0.000 seconds).
+Test Suite 'FnHoldGestureTests' passed at 2026-10-28 17:36:54.198.
+	 Executed 4 tests, with 0 failures (0 unexpected) in 0.000 (0.001) seconds
+Test Suite 'GamecastMonitorTests' started at 2026-10-28 17:36:54.198.
+Test Case '-[CoveTests.GamecastMonitorTests testDetailDoesNotWaitForSlowSlateAndOfflinePreservesRichData]' started.
+Test Case '-[CoveTests.GamecastMonitorTests testDetailDoesNotWaitForSlowSlateAndOfflinePreservesRichData]' passed (1.681 seconds).
+Test Suite 'GamecastMonitorTests' passed at 2026-10-28 17:36:55.879.
+	 Executed 1 test, with 0 failures (0 unexpected) in 1.681 (1.681) seconds
+Test Suite 'GamecastTests' started at 2026-10-28 17:36:55.879.
+Test Case '-[CoveTests.GamecastTests testCollegeFootballHasFullDriveFeed]' started.
+Test Case '-[CoveTests.GamecastTests testCollegeFootballHasFullDriveFeed]' passed (0.042 seconds).
+Test Case '-[CoveTests.GamecastTests testCorrectionsReplaceRepeatedPlayAndDoNotInventContext]' started.
+Test Case '-[CoveTests.GamecastTests testCorrectionsReplaceRepeatedPlayAndDoNotInventContext]' passed (0.105 seconds).
+Test Case '-[CoveTests.GamecastTests testFootballDownDistanceDrivesAndScoringTeam]' started.
+Test Case '-[CoveTests.GamecastTests testFootballDownDistanceDrivesAndScoringTeam]' passed (0.056 seconds).
+Test Case '-[CoveTests.GamecastTests testGamecastLinksRequireNumericEventID]' started.
+Test Case '-[CoveTests.GamecastTests testGamecastLinksRequireNumericEventID]' passed (0.000 seconds).
+Test Case '-[CoveTests.GamecastTests testKeepsWholeBasketballGameAndResolvesPlayers]' started.
+Test Case '-[CoveTests.GamecastTests testKeepsWholeBasketballGameAndResolvesPlayers]' passed (0.098 seconds).
+Test Case '-[CoveTests.GamecastTests testQuarterAndScoringFiltersIncludeEarlyGame]' started.
+Test Case '-[CoveTests.GamecastTests testQuarterAndScoringFiltersIncludeEarlyGame]' passed (0.087 seconds).
+Test Case '-[CoveTests.GamecastTests testStatsAreMappedByTeamRatherThanProviderOrder]' started.
+Test Case '-[CoveTests.GamecastTests testStatsAreMappedByTeamRatherThanProviderOrder]' passed (0.079 seconds).
+Test Suite 'GamecastTests' passed at 2026-10-28 17:36:56.347.
+	 Executed 7 tests, with 0 failures (0 unexpected) in 0.467 (0.468) seconds
+Test Suite 'GitHubActionsTests' started at 2026-10-28 17:36:56.347.
+Test Case '-[CoveTests.GitHubActionsTests testParsesRuns]' started.
+Test Case '-[CoveTests.GitHubActionsTests testParsesRuns]' passed (0.001 seconds).
+Test Case '-[CoveTests.GitHubActionsTests testRunShowsAsActivityThenFinishes]' started.
+Test Case '-[CoveTests.GitHubActionsTests testRunShowsAsActivityThenFinishes]' passed (0.011 seconds).
+Test Suite 'GitHubActionsTests' passed at 2026-10-28 17:36:56.358.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.011 (0.011) seconds
+Test Suite 'HTTPTests' started at 2026-10-28 17:36:56.358.
+Test Case '-[CoveTests.HTTPTests testAsksToContinue]' started.
+Test Case '-[CoveTests.HTTPTests testAsksToContinue]' passed (0.000 seconds).
+Test Case '-[CoveTests.HTTPTests testOriginPolicy]' started.
+Test Case '-[CoveTests.HTTPTests testOriginPolicy]' passed (0.000 seconds).
+Test Case '-[CoveTests.HTTPTests testParsesCompleteRequest]' started.
+Test Case '-[CoveTests.HTTPTests testParsesCompleteRequest]' passed (0.000 seconds).
+Test Case '-[CoveTests.HTTPTests testRejectsGarbage]' started.
+Test Case '-[CoveTests.HTTPTests testRejectsGarbage]' passed (0.000 seconds).
+Test Case '-[CoveTests.HTTPTests testWaitsForBody]' started.
+Test Case '-[CoveTests.HTTPTests testWaitsForBody]' passed (0.000 seconds).
+Test Suite 'HTTPTests' passed at 2026-10-28 17:36:56.359.
+	 Executed 5 tests, with 0 failures (0 unexpected) in 0.001 (0.001) seconds
+Test Suite 'ICSParserTests' started at 2026-10-28 17:36:56.359.
+Test Case '-[CoveTests.ICSParserTests testAllDayAndCancelledEvents]' started.
+Test Case '-[CoveTests.ICSParserTests testAllDayAndCancelledEvents]' passed (0.002 seconds).
+Test Case '-[CoveTests.ICSParserTests testCalendarName]' started.
+Test Case '-[CoveTests.ICSParserTests testCalendarName]' passed (0.000 seconds).
+Test Case '-[CoveTests.ICSParserTests testClassKeepsLocalTimeAcrossDaylightSavingAndHonorsExdateAndUntil]' started.
+Test Case '-[CoveTests.ICSParserTests testClassKeepsLocalTimeAcrossDaylightSavingAndHonorsExdateAndUntil]' passed (0.002 seconds).
+Test Case '-[CoveTests.ICSParserTests testD2LFeedItems]' started.
+Test Case '-[CoveTests.ICSParserTests testD2LFeedItems]' passed (0.001 seconds).
+Test Case '-[CoveTests.ICSParserTests testDurations]' started.
+Test Case '-[CoveTests.ICSParserTests testDurations]' passed (0.000 seconds).
+Test Case '-[CoveTests.ICSParserTests testRecurrenceEdges]' started.
+Test Case '-[CoveTests.ICSParserTests testRecurrenceEdges]' passed (0.001 seconds).
+Test Case '-[CoveTests.ICSParserTests testWeeklyClassWithMovedAndCancelledInstances]' started.
+Test Case '-[CoveTests.ICSParserTests testWeeklyClassWithMovedAndCancelledInstances]' passed (0.004 seconds).
+Test Suite 'ICSParserTests' passed at 2026-10-28 17:36:56.369.
+	 Executed 7 tests, with 0 failures (0 unexpected) in 0.010 (0.010) seconds
+Test Suite 'IslandModelTests' started at 2026-10-28 17:36:56.369.
+Test Case '-[CoveTests.IslandModelTests testAgentLifecycle]' started.
+Test Case '-[CoveTests.IslandModelTests testAgentLifecycle]' passed (0.006 seconds).
+Test Case '-[CoveTests.IslandModelTests testApprovalTakesOverAndResolves]' started.
+Test Case '-[CoveTests.IslandModelTests testApprovalTakesOverAndResolves]' passed (0.005 seconds).
+Test Case '-[CoveTests.IslandModelTests testBannersQueueAndAttentionJumpsAhead]' started.
+Test Case '-[CoveTests.IslandModelTests testBannersQueueAndAttentionJumpsAhead]' passed (0.006 seconds).
+Test Case '-[CoveTests.IslandModelTests testBrowserExtensionEvents]' started.
+Test Case '-[CoveTests.IslandModelTests testBrowserExtensionEvents]' passed (0.006 seconds).
+Test Case '-[CoveTests.IslandModelTests testBuddyNapsWhenAlwaysVisible]' started.
+Test Case '-[CoveTests.IslandModelTests testBuddyNapsWhenAlwaysVisible]' passed (0.006 seconds).
+Test Case '-[CoveTests.IslandModelTests testGenericEventsFromTheAPI]' started.
+Test Case '-[CoveTests.IslandModelTests testGenericEventsFromTheAPI]' passed (0.005 seconds).
+Test Case '-[CoveTests.IslandModelTests testIdleByDefault]' started.
+Test Case '-[CoveTests.IslandModelTests testIdleByDefault]' passed (0.005 seconds).
+Test Case '-[CoveTests.IslandModelTests testRelativeTimes]' started.
+Test Case '-[CoveTests.IslandModelTests testRelativeTimes]' passed (0.000 seconds).
+Test Case '-[CoveTests.IslandModelTests testTimeLeftAndLookaheadWording]' started.
+Test Case '-[CoveTests.IslandModelTests testTimeLeftAndLookaheadWording]' passed (0.000 seconds).
+Test Suite 'IslandModelTests' passed at 2026-10-28 17:36:56.409.
+	 Executed 9 tests, with 0 failures (0 unexpected) in 0.039 (0.039) seconds
+Test Suite 'MergedWorkspaceTests' started at 2026-10-28 17:36:56.409.
+Test Case '-[CoveTests.MergedWorkspaceTests testCloudWorkAppearsInTheAIWorkspaceWithItsActualPhaseAndDestination]' started.
+Test Case '-[CoveTests.MergedWorkspaceTests testCloudWorkAppearsInTheAIWorkspaceWithItsActualPhaseAndDestination]' passed (0.005 seconds).
+Test Case '-[CoveTests.MergedWorkspaceTests testUsageRefreshPreservesAttentionAndItsBanner]' started.
+Test Case '-[CoveTests.MergedWorkspaceTests testUsageRefreshPreservesAttentionAndItsBanner]' passed (0.005 seconds).
+Test Suite 'MergedWorkspaceTests' passed at 2026-10-28 17:36:56.419.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.011 (0.011) seconds
+Test Suite 'NewFeatureTests' started at 2026-10-28 17:36:56.419.
+Test Case '-[CoveTests.NewFeatureTests testAlertsHaveBaselineAndDoNotRepeatOrFireOnCorrections]' started.
+Test Case '-[CoveTests.NewFeatureTests testAlertsHaveBaselineAndDoNotRepeatOrFireOnCorrections]' passed (0.000 seconds).
+Test Case '-[CoveTests.NewFeatureTests testAnnotationRendererChangesMarkedPixelsAndKeepsResolution]' started.
+Test Case '-[CoveTests.NewFeatureTests testAnnotationRendererChangesMarkedPixelsAndKeepsResolution]' passed (0.007 seconds).
+Test Case '-[CoveTests.NewFeatureTests testAutoFollowPrefersLiveFavoriteAndHoldsActiveSelection]' started.
+Test Case '-[CoveTests.NewFeatureTests testAutoFollowPrefersLiveFavoriteAndHoldsActiveSelection]' passed (0.000 seconds).
+Test Case '-[CoveTests.NewFeatureTests testButtonLookDefaultsToGlassAndRoundTrips]' started.
+Test Case '-[CoveTests.NewFeatureTests testButtonLookDefaultsToGlassAndRoundTrips]' passed (0.000 seconds).
+Test Case '-[CoveTests.NewFeatureTests testClickNavigationStaysOpenUntilExplicitClose]' started.
+Test Case '-[CoveTests.NewFeatureTests testClickNavigationStaysOpenUntilExplicitClose]' passed (0.813 seconds).
+Test Case '-[CoveTests.NewFeatureTests testFavoriteSettingsRoundTripAndQuietDefaults]' started.
+Test Case '-[CoveTests.NewFeatureTests testFavoriteSettingsRoundTripAndQuietDefaults]' passed (0.000 seconds).
+Test Case '-[CoveTests.NewFeatureTests testFinishedWatchedGamesAreDropped]' started.
+Test Case '-[CoveTests.NewFeatureTests testFinishedWatchedGamesAreDropped]' passed (0.000 seconds).
+Test Case '-[CoveTests.NewFeatureTests testGameKeysDoNotCollideAcrossLeagues]' started.
+Test Case '-[CoveTests.NewFeatureTests testGameKeysDoNotCollideAcrossLeagues]' passed (0.000 seconds).
+Test Case '-[CoveTests.NewFeatureTests testLegacyAIHomePreferenceOpensDedicatedAITab]' started.
+Test Case '-[CoveTests.NewFeatureTests testLegacyAIHomePreferenceOpensDedicatedAITab]' passed (0.006 seconds).
+Test Case '-[CoveTests.NewFeatureTests testPinnedGameUnpinsWhenItEndsButNotWhenPickedAfterTheEnd]' started.
+Test Case '-[CoveTests.NewFeatureTests testPinnedGameUnpinsWhenItEndsButNotWhenPickedAfterTheEnd]' passed (0.007 seconds).
+Test Case '-[CoveTests.NewFeatureTests testPinSurvivesMouseExitAndMenusThenExplicitClose]' started.
+Test Case '-[CoveTests.NewFeatureTests testPinSurvivesMouseExitAndMenusThenExplicitClose]' passed (1.707 seconds).
+Test Case '-[CoveTests.NewFeatureTests testRenameAndAnnotatedCopyPreserveOriginal]' started.
+Test Case '-[CoveTests.NewFeatureTests testRenameAndAnnotatedCopyPreserveOriginal]' passed (0.027 seconds).
+Test Case '-[CoveTests.NewFeatureTests testScoreCardsSayWhenAGameStartsInsteadOfESPNsTimestamp]' started.
+Test Case '-[CoveTests.NewFeatureTests testScoreCardsSayWhenAGameStartsInsteadOfESPNsTimestamp]' passed (0.002 seconds).
+Test Case '-[CoveTests.NewFeatureTests testUndoRemovalAndClearSurviveStoreRestart]' started.
+Test Case '-[CoveTests.NewFeatureTests testUndoRemovalAndClearSurviveStoreRestart]' passed (0.013 seconds).
+Test Suite 'NewFeatureTests' passed at 2026-10-28 17:36:59.004.
+	 Executed 14 tests, with 0 failures (0 unexpected) in 2.584 (2.584) seconds
+Test Suite 'NotificationDecodeTests' started at 2026-10-28 17:36:59.004.
+Test Case '-[CoveTests.NotificationDecodeTests testDecodesUsernotedRecord]' started.
+Test Case '-[CoveTests.NotificationDecodeTests testDecodesUsernotedRecord]' passed (0.000 seconds).
+Test Suite 'NotificationDecodeTests' passed at 2026-10-28 17:36:59.004.
+	 Executed 1 test, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
+Test Suite 'PermissionMemoryTests' started at 2026-10-28 17:36:59.004.
+Test Case '-[CoveTests.PermissionMemoryTests testDesktopFolderIsNotTracked]' started.
+Test Case '-[CoveTests.PermissionMemoryTests testDesktopFolderIsNotTracked]' passed (0.001 seconds).
+Test Case '-[CoveTests.PermissionMemoryTests testNothingIsLostUntilItWasGranted]' started.
+Test Case '-[CoveTests.PermissionMemoryTests testNothingIsLostUntilItWasGranted]' passed (0.001 seconds).
+Test Case '-[CoveTests.PermissionMemoryTests testPermissionGrantedBeforeButNotNowIsLost]' started.
+Test Case '-[CoveTests.PermissionMemoryTests testPermissionGrantedBeforeButNotNowIsLost]' passed (0.002 seconds).
+Test Suite 'PermissionMemoryTests' passed at 2026-10-28 17:36:59.008.
+	 Executed 3 tests, with 0 failures (0 unexpected) in 0.003 (0.004) seconds
+Test Suite 'PhoneRelayTests' started at 2026-10-28 17:36:59.008.
+Test Case '-[CoveTests.PhoneRelayTests testApprovalWithoutPhoneAnswersHasNoButtons]' started.
+Test Case '-[CoveTests.PhoneRelayTests testApprovalWithoutPhoneAnswersHasNoButtons]' passed (0.000 seconds).
+Test Case '-[CoveTests.PhoneRelayTests testModelPushesNeedsYouAndFinishedToThePhone]' started.
+Test Case '-[CoveTests.PhoneRelayTests testModelPushesNeedsYouAndFinishedToThePhone]' passed (0.202 seconds).
+Test Case '-[CoveTests.PhoneRelayTests testParsesPhoneAnswers]' started.
+Test Case '-[CoveTests.PhoneRelayTests testParsesPhoneAnswers]' passed (0.001 seconds).
+Test Case '-[CoveTests.PhoneRelayTests testPublishPayloadPointsButtonsAtTheReplyTopic]' started.
+Test Case '-[CoveTests.PhoneRelayTests testPublishPayloadPointsButtonsAtTheReplyTopic]' passed (0.001 seconds).
+Test Case '-[CoveTests.PhoneRelayTests testReadsOnlyMessagesFromTheStream]' started.
+Test Case '-[CoveTests.PhoneRelayTests testReadsOnlyMessagesFromTheStream]' passed (0.000 seconds).
+Test Case '-[CoveTests.PhoneRelayTests testStatusListsLiveAgentsFirst]' started.
+Test Case '-[CoveTests.PhoneRelayTests testStatusListsLiveAgentsFirst]' passed (0.013 seconds).
+Test Case '-[CoveTests.PhoneRelayTests testTopicsAreLongAndRandom]' started.
+Test Case '-[CoveTests.PhoneRelayTests testTopicsAreLongAndRandom]' passed (0.000 seconds).
+Test Suite 'PhoneRelayTests' passed at 2026-10-28 17:36:59.227.
+	 Executed 7 tests, with 0 failures (0 unexpected) in 0.218 (0.219) seconds
+Test Suite 'PopupMenuTests' started at 2026-10-28 17:36:59.227.
+Test Case '-[CoveTests.PopupMenuTests testNestedMenusAndPointerReturnDoNotCollapse]' started.
+Test Case '-[CoveTests.PopupMenuTests testNestedMenusAndPointerReturnDoNotCollapse]' passed (0.923 seconds).
+Test Case '-[CoveTests.PopupMenuTests testPopupOutsideIslandKeepsItExpandedUntilMenuEnds]' started.
+Test Case '-[CoveTests.PopupMenuTests testPopupOutsideIslandKeepsItExpandedUntilMenuEnds]' passed (1.346 seconds).
+Test Suite 'PopupMenuTests' passed at 2026-10-28 17:37:01.496.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 2.269 (2.269) seconds
+Test Suite 'PrivacyIndicatorTests' started at 2026-10-28 17:37:01.496.
+Test Case '-[CoveTests.PrivacyIndicatorTests testAnyRunningCameraOrMicrophoneCounts]' started.
+Test Case '-[CoveTests.PrivacyIndicatorTests testAnyRunningCameraOrMicrophoneCounts]' passed (0.000 seconds).
+Test Case '-[CoveTests.PrivacyIndicatorTests testCameraWinsOverMicrophoneLikeTheIPhone]' started.
+Test Case '-[CoveTests.PrivacyIndicatorTests testCameraWinsOverMicrophoneLikeTheIPhone]' passed (0.000 seconds).
+Test Case '-[CoveTests.PrivacyIndicatorTests testCoveItselfNeverCounts]' started.
+Test Case '-[CoveTests.PrivacyIndicatorTests testCoveItselfNeverCounts]' passed (0.000 seconds).
+Test Case '-[CoveTests.PrivacyIndicatorTests testDotRidesAlongWithOtherContentWithoutWideningTheIsland]' started.
+Test Case '-[CoveTests.PrivacyIndicatorTests testDotRidesAlongWithOtherContentWithoutWideningTheIsland]' passed (0.006 seconds).
+Test Case '-[CoveTests.PrivacyIndicatorTests testDotShowsOnItsOwnWhenNothingElseIs]' started.
+Test Case '-[CoveTests.PrivacyIndicatorTests testDotShowsOnItsOwnWhenNothingElseIs]' passed (0.007 seconds).
+Test Case '-[CoveTests.PrivacyIndicatorTests testNothingRunningMeansNoDot]' started.
+Test Case '-[CoveTests.PrivacyIndicatorTests testNothingRunningMeansNoDot]' passed (0.000 seconds).
+Test Case '-[CoveTests.PrivacyIndicatorTests testSettingTurnsTheDotOff]' started.
+Test Case '-[CoveTests.PrivacyIndicatorTests testSettingTurnsTheDotOff]' passed (0.006 seconds).
+Test Suite 'PrivacyIndicatorTests' passed at 2026-10-28 17:37:01.516.
+	 Executed 7 tests, with 0 failures (0 unexpected) in 0.019 (0.020) seconds
+Test Suite 'QuickTimerTests' started at 2026-10-28 17:37:01.516.
+Test Case '-[CoveTests.QuickTimerTests testBareNumbersAreMinutes]' started.
+Test Case '-[CoveTests.QuickTimerTests testBareNumbersAreMinutes]' passed (0.001 seconds).
+Test Case '-[CoveTests.QuickTimerTests testClockAndNames]' started.
+Test Case '-[CoveTests.QuickTimerTests testClockAndNames]' passed (0.000 seconds).
+Test Case '-[CoveTests.QuickTimerTests testClockTimesCountDownToTheNextOne]' started.
+Test Case '-[CoveTests.QuickTimerTests testClockTimesCountDownToTheNextOne]' passed (0.002 seconds).
+Test Case '-[CoveTests.QuickTimerTests testFocusStillWorksThroughTheTimer]' started.
+Test Case '-[CoveTests.QuickTimerTests testFocusStillWorksThroughTheTimer]' passed (0.005 seconds).
+Test Case '-[CoveTests.QuickTimerTests testHoursMinutesSeconds]' started.
+Test Case '-[CoveTests.QuickTimerTests testHoursMinutesSeconds]' passed (0.001 seconds).
+Test Case '-[CoveTests.QuickTimerTests testRejectsNonsense]' started.
+Test Case '-[CoveTests.QuickTimerTests testRejectsNonsense]' passed (0.001 seconds).
+Test Case '-[CoveTests.QuickTimerTests testRemainingPauseAndResume]' started.
+Test Case '-[CoveTests.QuickTimerTests testRemainingPauseAndResume]' passed (0.000 seconds).
+Test Case '-[CoveTests.QuickTimerTests testRunningTimerSurvivesRestart]' started.
+Test Case '-[CoveTests.QuickTimerTests testRunningTimerSurvivesRestart]' passed (0.025 seconds).
+Test Case '-[CoveTests.QuickTimerTests testShortTimerRingsAtZero]' started.
+Test Case '-[CoveTests.QuickTimerTests testShortTimerRingsAtZero]' passed (1.087 seconds).
+Test Case '-[CoveTests.QuickTimerTests testStoreRoundTrips]' started.
+Test Case '-[CoveTests.QuickTimerTests testStoreRoundTrips]' passed (0.003 seconds).
+Test Case '-[CoveTests.QuickTimerTests testTimerThatEndedWhileClosedRingsOnLaunch]' started.
+Test Case '-[CoveTests.QuickTimerTests testTimerThatEndedWhileClosedRingsOnLaunch]' passed (0.009 seconds).
+Test Case '-[CoveTests.QuickTimerTests testUnits]' started.
+Test Case '-[CoveTests.QuickTimerTests testUnits]' passed (0.002 seconds).
+Test Suite 'QuickTimerTests' passed at 2026-10-28 17:37:02.653.
+	 Executed 12 tests, with 0 failures (0 unexpected) in 1.137 (1.138) seconds
+Test Suite 'QuietScreenshotTests' started at 2026-10-28 17:37:02.653.
+Test Case '-[CoveTests.QuietScreenshotTests testCaptureIdentitySurvivesRenameAndOldFilesAreRejected]' started.
+Test Case '-[CoveTests.QuietScreenshotTests testCaptureIdentitySurvivesRenameAndOldFilesAreRejected]' passed (0.004 seconds).
+Test Case '-[CoveTests.QuietScreenshotTests testDeniedFolderAccessDoesNotCreateStickyPopup]' started.
+Test Case '-[CoveTests.QuietScreenshotTests testDeniedFolderAccessDoesNotCreateStickyPopup]' passed (0.008 seconds).
+Test Case '-[CoveTests.QuietScreenshotTests testDuplicateCaptureDoesNotReplayBanner]' started.
+Test Case '-[CoveTests.QuietScreenshotTests testDuplicateCaptureDoesNotReplayBanner]' passed (0.007 seconds).
+Test Case '-[CoveTests.QuietScreenshotTests testQuietCaptureKeepsSelectedTab]' started.
+Test Case '-[CoveTests.QuietScreenshotTests testQuietCaptureKeepsSelectedTab]' passed (0.007 seconds).
+Test Suite 'QuietScreenshotTests' passed at 2026-10-28 17:37:02.679.
+	 Executed 4 tests, with 0 failures (0 unexpected) in 0.026 (0.026) seconds
+Test Suite 'ScheduleSetupTests' started at 2026-10-28 17:37:02.679.
+Test Case '-[CoveTests.ScheduleSetupTests testAsksToConnectWhenNothingIsSetUp]' started.
+Test Case '-[CoveTests.ScheduleSetupTests testAsksToConnectWhenNothingIsSetUp]' passed (0.013 seconds).
+Test Case '-[CoveTests.ScheduleSetupTests testFeedStates]' started.
+Test Case '-[CoveTests.ScheduleSetupTests testFeedStates]' passed (0.010 seconds).
+Test Suite 'ScheduleSetupTests' passed at 2026-10-28 17:37:02.703.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.023 (0.024) seconds
+Test Suite 'ScheduleTests' started at 2026-10-28 17:37:02.703.
+Test Case '-[CoveTests.ScheduleTests testCurrentAndUpcoming]' started.
+Test Case '-[CoveTests.ScheduleTests testCurrentAndUpcoming]' passed (0.000 seconds).
+Test Suite 'ScheduleTests' passed at 2026-10-28 17:37:02.704.
+	 Executed 1 test, with 0 failures (0 unexpected) in 0.000 (0.001) seconds
+Test Suite 'ScreenshotTests' started at 2026-10-28 17:37:02.704.
+Test Case '-[CoveTests.ScreenshotTests testOnlyImagesCount]' started.
+Test Case '-[CoveTests.ScreenshotTests testOnlyImagesCount]' passed (0.000 seconds).
+Test Case '-[CoveTests.ScreenshotTests testScreenshotNames]' started.
+Test Case '-[CoveTests.ScreenshotTests testScreenshotNames]' passed (0.000 seconds).
+Test Suite 'ScreenshotTests' passed at 2026-10-28 17:37:02.704.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
+Test Suite 'SettingsPaneTests' started at 2026-10-28 17:37:02.704.
+Test Case '-[CoveTests.SettingsPaneTests testSidebarShowsEveryPaneOnce]' started.
+Test Case '-[CoveTests.SettingsPaneTests testSidebarShowsEveryPaneOnce]' passed (0.000 seconds).
+Test Suite 'SettingsPaneTests' passed at 2026-10-28 17:37:02.705.
+	 Executed 1 test, with 0 failures (0 unexpected) in 0.000 (0.000) seconds
+Test Suite 'ShelfBannerTests' started at 2026-10-28 17:37:02.705.
+Test Case '-[CoveTests.ShelfBannerTests testScreenshotBannersCoalesceAndStayOutOfHistory]' started.
+Test Case '-[CoveTests.ShelfBannerTests testScreenshotBannersCoalesceAndStayOutOfHistory]' passed (0.008 seconds).
+Test Suite 'ShelfBannerTests' passed at 2026-10-28 17:37:02.713.
+	 Executed 1 test, with 0 failures (0 unexpected) in 0.008 (0.008) seconds
+Test Suite 'ShelfPersistenceTests' started at 2026-10-28 17:37:02.713.
+Test Case '-[CoveTests.ShelfPersistenceTests testCaptureMustBeCompleteBeforeDelivery]' started.
+Test Case '-[CoveTests.ShelfPersistenceTests testCaptureMustBeCompleteBeforeDelivery]' passed (0.006 seconds).
+Test Case '-[CoveTests.ShelfPersistenceTests testClearLeavesOriginalFilesUntouched]' started.
+Test Case '-[CoveTests.ShelfPersistenceTests testClearLeavesOriginalFilesUntouched]' passed (0.007 seconds).
+Test Case '-[CoveTests.ShelfPersistenceTests testCopyFailureKeepsReference]' started.
+Test Case '-[CoveTests.ShelfPersistenceTests testCopyFailureKeepsReference]' passed (0.004 seconds).
+Test Case '-[CoveTests.ShelfPersistenceTests testDuplicateSourceAndRetainedURLDoNotDuplicate]' started.
+Test Case '-[CoveTests.ShelfPersistenceTests testDuplicateSourceAndRetainedURLDoNotDuplicate]' passed (0.005 seconds).
+Test Case '-[CoveTests.ShelfPersistenceTests testFortyItemsAreRetainedAcrossRestart]' started.
+Test Case '-[CoveTests.ShelfPersistenceTests testFortyItemsAreRetainedAcrossRestart]' passed (0.011 seconds).
+Test Case '-[CoveTests.ShelfPersistenceTests testImagesSurviveSourceDeletionAndRestart]' started.
+Test Case '-[CoveTests.ShelfPersistenceTests testImagesSurviveSourceDeletionAndRestart]' passed (0.005 seconds).
+Test Case '-[CoveTests.ShelfPersistenceTests testLegacyMigrationRetainsMissingEntriesAndCopiesImages]' started.
+Test Case '-[CoveTests.ShelfPersistenceTests testLegacyMigrationRetainsMissingEntriesAndCopiesImages]' passed (0.008 seconds).
+Test Case '-[CoveTests.ShelfPersistenceTests testParsedTeamsKeepLeagueForBundledLogoLookup]' started.
+Test Case '-[CoveTests.ShelfPersistenceTests testParsedTeamsKeepLeagueForBundledLogoLookup]' passed (0.001 seconds).
+Test Case '-[CoveTests.ShelfPersistenceTests testQuietScreenshotPersistenceAndCompactGeometry]' started.
+Test Case '-[CoveTests.ShelfPersistenceTests testQuietScreenshotPersistenceAndCompactGeometry]' passed (0.012 seconds).
+Test Case '-[CoveTests.ShelfPersistenceTests testRemoveDeletesOnlyOwnedCopy]' started.
+Test Case '-[CoveTests.ShelfPersistenceTests testRemoveDeletesOnlyOwnedCopy]' passed (0.005 seconds).
+Test Suite 'ShelfPersistenceTests' passed at 2026-10-28 17:37:02.777.
+	 Executed 10 tests, with 0 failures (0 unexpected) in 0.064 (0.065) seconds
+Test Suite 'SportsParserTests' started at 2026-10-28 17:37:02.777.
+Test Case '-[CoveTests.SportsParserTests testCollegeRankingsExcludeSentinel99]' started.
+Test Case '-[CoveTests.SportsParserTests testCollegeRankingsExcludeSentinel99]' passed (0.001 seconds).
+Test Case '-[CoveTests.SportsParserTests testCurrentDriveIsIncludedAndDuplicateIDsAreRemoved]' started.
+Test Case '-[CoveTests.SportsParserTests testCurrentDriveIsIncludedAndDuplicateIDsAreRemoved]' passed (0.001 seconds).
+Test Case '-[CoveTests.SportsParserTests testEmptySlateAndInvalidResponseDiffer]' started.
+Test Case '-[CoveTests.SportsParserTests testEmptySlateAndInvalidResponseDiffer]' passed (0.000 seconds).
+Test Case '-[CoveTests.SportsParserTests testNBAPlaysAreNewestFirst]' started.
+Test Case '-[CoveTests.SportsParserTests testNBAPlaysAreNewestFirst]' passed (0.001 seconds).
+Test Case '-[CoveTests.SportsParserTests testNFLUsesDrivePlays]' started.
+Test Case '-[CoveTests.SportsParserTests testNFLUsesDrivePlays]' passed (0.001 seconds).
+Test Case '-[CoveTests.SportsParserTests testScoreboardDatesWithoutSeconds]' started.
+Test Case '-[CoveTests.SportsParserTests testScoreboardDatesWithoutSeconds]' passed (0.001 seconds).
+Test Case '-[CoveTests.SportsParserTests testScoringRecapIsNotUsedAsPlayByPlay]' started.
+Test Case '-[CoveTests.SportsParserTests testScoringRecapIsNotUsedAsPlayByPlay]' passed (0.001 seconds).
+Test Case '-[CoveTests.SportsParserTests testWidgetConfigPersistsAndOldConfigsBecomeQuiet]' started.
+Test Case '-[CoveTests.SportsParserTests testWidgetConfigPersistsAndOldConfigsBecomeQuiet]' passed (0.000 seconds).
+Test Suite 'SportsParserTests' passed at 2026-10-28 17:37:02.784.
+	 Executed 8 tests, with 0 failures (0 unexpected) in 0.006 (0.006) seconds
+Test Suite 'TeamColorTests' started at 2026-10-28 17:37:02.784.
+Test Case '-[CoveTests.TeamColorTests testDarkTeamColorsRemainReadableOnBlack]' started.
+Test Case '-[CoveTests.TeamColorTests testDarkTeamColorsRemainReadableOnBlack]' passed (0.000 seconds).
+Test Case '-[CoveTests.TeamColorTests testReadsProviderColorsAndRejectsMalformedHex]' started.
+Test Case '-[CoveTests.TeamColorTests testReadsProviderColorsAndRejectsMalformedHex]' passed (0.001 seconds).
+Test Suite 'TeamColorTests' passed at 2026-10-28 17:37:02.785.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.001 (0.001) seconds
+Test Suite 'TeamLogoTests' started at 2026-10-28 17:37:02.785.
+Test Case '-[CoveTests.TeamLogoTests testMissingAndInvalidLogosKeepFallback]' started.
+Test Case '-[CoveTests.TeamLogoTests testMissingAndInvalidLogosKeepFallback]' passed (0.000 seconds).
+Test Case '-[CoveTests.TeamLogoTests testSummaryAndScoreboardLogoShapes]' started.
+Test Case '-[CoveTests.TeamLogoTests testSummaryAndScoreboardLogoShapes]' passed (0.001 seconds).
+Test Suite 'TeamLogoTests' passed at 2026-10-28 17:37:02.786.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 0.001 (0.001) seconds
+Test Suite 'VoiceCommandTests' started at 2026-10-28 17:37:02.786.
+Test Case '-[CoveTests.VoiceCommandTests testArgumentsKeepThePromptOffTheCommandLine]' started.
+Test Case '-[CoveTests.VoiceCommandTests testArgumentsKeepThePromptOffTheCommandLine]' passed (0.000 seconds).
+Test Case '-[CoveTests.VoiceCommandTests testParsesTheStreamLinesCoveUses]' started.
+Test Case '-[CoveTests.VoiceCommandTests testParsesTheStreamLinesCoveUses]' passed (0.000 seconds).
+Test Case '-[CoveTests.VoiceCommandTests testRunReadsTheStreamAndTheRequestArrivesOnStdin]' started.
+Test Case '-[CoveTests.VoiceCommandTests testRunReadsTheStreamAndTheRequestArrivesOnStdin]' passed (0.398 seconds).
+Test Suite 'VoiceCommandTests' passed at 2026-10-28 17:37:03.184.
+	 Executed 3 tests, with 0 failures (0 unexpected) in 0.398 (0.398) seconds
+Test Suite 'VoicePresentationTests' started at 2026-10-28 17:37:03.185.
+Test Case '-[CoveTests.VoicePresentationTests testVoiceDefaultsAndTheIslandMakesRoomForIt]' started.
+Test Case '-[CoveTests.VoicePresentationTests testVoiceDefaultsAndTheIslandMakesRoomForIt]' passed (0.021 seconds).
+Test Suite 'VoicePresentationTests' passed at 2026-10-28 17:37:03.206.
+	 Executed 1 test, with 0 failures (0 unexpected) in 0.021 (0.022) seconds
+Test Suite 'WelcomeTests' started at 2026-10-28 17:37:03.206.
+Test Case '-[CoveTests.WelcomeTests testDefaultsAskForEverythingTheyUse]' started.
+Test Case '-[CoveTests.WelcomeTests testDefaultsAskForEverythingTheyUse]' passed (0.001 seconds).
+Test Case '-[CoveTests.WelcomeTests testNothingPickedNeedsNothing]' started.
+Test Case '-[CoveTests.WelcomeTests testNothingPickedNeedsNothing]' passed (0.000 seconds).
+Test Case '-[CoveTests.WelcomeTests testOnlyPickedFeaturesAskForPermissions]' started.
+Test Case '-[CoveTests.WelcomeTests testOnlyPickedFeaturesAskForPermissions]' passed (0.000 seconds).
+Test Case '-[CoveTests.WelcomeTests testTogglesRoundTrip]' started.
+Test Case '-[CoveTests.WelcomeTests testTogglesRoundTrip]' passed (0.000 seconds).
+Test Suite 'WelcomeTests' passed at 2026-10-28 17:37:03.209.
+	 Executed 4 tests, with 0 failures (0 unexpected) in 0.002 (0.002) seconds
+Test Suite 'CovePackageTests.xctest' passed at 2026-10-28 17:37:03.209.
+	 Executed 258 tests, with 0 failures (0 unexpected) in 15.372 (15.394) seconds
+Test Suite 'All tests' passed at 2026-10-28 17:37:03.209.
+	 Executed 258 tests, with 0 failures (0 unexpected) in 15.372 (15.396) seconds
+◇ Test run started.
+↳ Testing Library Version: 124.4
+↳ Target Platform: arm64e-apple-macos14.0
+✔ Test run with 0 tests passed after 0.001 seconds.

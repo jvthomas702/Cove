@@ -1,0 +1,18 @@
+→ Building Cove (release)…
+[0/1] Planning build
+Building for production...
+[0/2] Write swift-version--79AA4F9932D1E87A.txt
+Build complete! (0.35s)
+/Users/runner/work/Cove/Cove/build/Cove.app/Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices/Installer.xpc/Contents/MacOS/Installer: replacing existing signature
+/Users/runner/work/Cove/Cove/build/Cove.app/Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices/Downloader.xpc/Contents/MacOS/Downloader: replacing existing signature
+/Users/runner/work/Cove/Cove/build/Cove.app/Contents/Frameworks/Sparkle.framework/Versions/B/Updater.app/Contents/MacOS/Updater: replacing existing signature
+/Users/runner/work/Cove/Cove/build/Cove.app/Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices/Downloader.xpc: replacing existing signature
+/Users/runner/work/Cove/Cove/build/Cove.app/Contents/Frameworks/Sparkle.framework/Versions/B/XPCServices/Installer.xpc: replacing existing signature
+/Users/runner/work/Cove/Cove/build/Cove.app/Contents/Frameworks/Sparkle.framework/Versions/B/Autoupdate: replacing existing signature
+/Users/runner/work/Cove/Cove/build/Cove.app/Contents/Frameworks/Sparkle.framework/Versions/B/Updater.app: replacing existing signature
+/Users/runner/work/Cove/Cove/build/Cove.app/Contents/Frameworks/Sparkle.framework/Versions/B/Sparkle: replacing existing signature
+/Users/runner/work/Cove/Cove/build/Cove.app/Contents/Frameworks/Sparkle.framework: replacing existing signature
+→ Signing with: ad-hoc signature
+✓ Built /Users/runner/work/Cove/Cove/build/Cove.app
+Executable=/Users/runner/work/Cove/Cove/build/Cove.app/Contents/MacOS/Cove
+# designated => cdhash H"885a779951e948fe0999744a6fb46aa8a2f7ae8f"

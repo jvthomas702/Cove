@@ -1,0 +1,54 @@
+screen width: 1024
+PASS server answers /health
+PASS web pages are refused
+PASS extension origin is allowed
+snap 01-welcome-banner
+snap 02-welcome
+snap 02b-welcome-pick
+snap 02c-welcome-allow
+snap 02d-settings-permissions
+snap 03-settings-agents
+snap 03a-settings-alerts
+snap 04-settings-connections
+snap 05-idle-buddy
+snap 06-working
+snap 07-expanded-home
+snap 08-expanded-schedule
+snap 08b-schedule-connect
+PASS schedule tab asks to connect calendars
+{"events":2,"due":2,"feeds":"ok:2,ok:2"}
+PASS calendar links load (classes and due dates)
+snap 08c-schedule-from-links
+snap 07b-home-from-links
+snap 03b-settings-calendar-links
+snap 09-done-banner
+snap 10-approval
+snap 10b-cloud-pr
+total 64
+drwx------+  4 runner  staff    128 Oct 28 17:46 .
+drwxr-x---+ 42 runner  staff   1344 Oct 28 17:45 ..
+-rw-r--r--   1 runner  staff      0 Aug 31 04:08 .localized
+-rw-r--r--@  1 runner  staff  32343 Oct 28 17:46 Screenshot 2026-10-12 at 9.00.00 PM.png
+snap 11-screenshot-banner
+PASS screenshot reached the shelf
+snap 12-shelf
+snap 12b-ai
+snap 12c-sports
+snap 12g-buttons-outline-ai
+snap 12h-buttons-outline-home
+snap 12g-buttons-glow-ai
+snap 12h-buttons-glow-home
+snap 12g-buttons-tinted-ai
+snap 12h-buttons-tinted-home
+snap 12d-terminal-home
+snap 12e-terminal-ai
+snap 12f-terminal-sports
+snap 13-hud
+snap 14-class-now
+snap 15-napping-next-class
+PASS buddy film rendered
+buddy frames: 467
+idle CPU: 0% (average over 10 s)
+memory: 168 MB
+PASS idle CPU under 5%
+failures: 0

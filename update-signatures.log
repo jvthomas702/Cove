@@ -1,0 +1,5 @@
+Error: failed to pass signing verification.
+<!-- Updated signature inside appcast.xml and added warning for making further modifications. -->
+Error: failed to pass signing verification.
+325 bytes were expected to be signed, but actually read 329 bytes.
+PASS valid archives/feed accepted; modified archives/feed rejected
