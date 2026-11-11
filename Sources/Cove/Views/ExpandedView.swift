@@ -137,6 +137,7 @@ struct AIWorkspacePane: View {
 
     var body: some View {
         VStack(spacing: 8) {
+            AIUsageView(model: model)
             if !model.aiActivities.isEmpty { AIWorkOverview(model: model) }
             AIWorkWidget(model: model)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)

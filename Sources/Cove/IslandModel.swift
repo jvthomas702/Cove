@@ -83,6 +83,7 @@ final class IslandModel: ObservableObject {
     enum ComposeTarget: String, CaseIterable { case chat = "Chat", cloud = "Cloud", newTask = "New task" }
     @Published var composeTarget: ComposeTarget = .chat
     let cloudAgents = CloudAgents()
+    let accountLimits = AccountLimits()
     /// Hold fn to talk to Claude (see VoiceAssistant).
     let voice = VoiceAssistant()
     let fileBrowser = FileBrowser()
@@ -97,6 +98,9 @@ final class IslandModel: ObservableObject {
     @Published private(set) var lastExtensionEvent: Date?
     @Published var selectedAIActivityID: String?
     @Published var aiActivityFilter: AIActivityFilter = .all
+    @Published var aiUsageSourceFilter: AIUsageSource?
+    @Published private(set) var aiUsage: AIUsage
+    private let usageStore: AIUsageStore
     @Published var desktopAIStatus = "Checking ChatGPT app…"
     /// GitHub Actions sign-in and what's being watched (Settings → Connections).
     @Published var ciStatus: GitHubActionsMonitor.Status?
@@ -198,13 +202,16 @@ final class IslandModel: ObservableObject {
     ]
 
     init(config: CoveConfig, sports: SportsMonitor? = nil, shelfStore: ShelfStore? = nil, ciClient: CIActionClient? = nil,
-         recapStore: AgentRecapStore? = nil, timerStore: QuickTimerStore? = nil) {
+         recapStore: AgentRecapStore? = nil, timerStore: QuickTimerStore? = nil, usageStore: AIUsageStore? = nil) {
         self.shelfStore = shelfStore ?? ShelfStore()
         self.ciClient = ciClient ?? CIActionClient()
         self.timerStore = timerStore ?? QuickTimerStore()
         let recapStore = recapStore ?? AgentRecapStore()
         self.recapStore = recapStore
         self.recap = recapStore.load()
+        let usageStore = usageStore ?? AIUsageStore()
+        self.usageStore = usageStore
+        self.aiUsage = usageStore.load()
         self.config = config
         Theme.style = config.islandTheme
         Theme.buttonLook = config.buttonLook
@@ -238,11 +245,18 @@ final class IslandModel: ObservableObject {
             guard let self else { return }
             let id = "codex:\(chat.id)"
             if status.needsYou {
+                if self.activity(id) == nil {
+                    self.agentStarted(id: id, agent: .codex, title: chat.title, detail: status.phase, ownerApp: "com.openai.codex")
+                }
                 self.agentAttention(id: id, agent: .codex, title: chat.title, message: status.phase + ". Open this chat in Codex.")
             } else if status.type == "active" {
                 self.agentStarted(id: id, agent: .codex, title: chat.title, detail: "Codex is working", ownerApp: "com.openai.codex")
             } else if self.activity(id)?.isLive == true {
                 self.agentFinished(id: id, agent: .codex, title: chat.title, summary: "Turn ended", failed: status.type == "systemError", notify: false)
+            }
+            if var activity = self.activity(id), activity.ownerApp != "com.openai.codex" {
+                activity.ownerApp = "com.openai.codex"
+                self.put(activity)
             }
         }
         codexChats.onDisconnect = { [weak self] in
@@ -276,7 +290,7 @@ final class IslandModel: ObservableObject {
             // Narrow and short, like the iPhone island opened: just wide enough for the tabs and buttons.
             let width = min(max(n.width + 440, 620), availableIslandWidth)
             if tab == .home { return CGSize(width: width, height: n.height + 150) }
-            if tab == .ai { return CGSize(width: width, height: n.height + 346 + (showsRecap ? Self.recapHeight + 8 : 0)) }
+            if tab == .ai { return CGSize(width: width, height: n.height + 346 + Self.usageHeight + 8 + (showsRecap ? Self.recapHeight + 8 : 0)) }
             if tab == .sports { return CGSize(width: width, height: n.height + 280) }
             if tab == .shelf, filesMode == .browse { return CGSize(width: width, height: n.height + 280) }
             // Tall enough for a whole row of thumbnails with their names (one row, or two when there are more).
@@ -718,6 +732,7 @@ final class IslandModel: ObservableObject {
 
     private func put(_ a: Activity) {
         recordAIStep(a)
+        if aiUsage.record(a) { usageStore.save(aiUsage) }
         if let i = activities.firstIndex(where: { $0.id == a.id }) {
             activities[i] = a
         } else {
@@ -1207,7 +1222,11 @@ final class IslandModel: ObservableObject {
         }
     }
 
-    var filteredAIActivities: [Activity] { aiActivities.filter(aiActivityFilter.includes) }
+    static let usageHeight: CGFloat = 96
+
+    var filteredAIActivities: [Activity] {
+        aiActivities.filter { aiActivityFilter.includes($0) && (aiUsageSourceFilter == nil || $0.usageSource == aiUsageSourceFilter) }
+    }
 
     var selectedAIActivity: Activity? {
         let visible = filteredAIActivities
@@ -1231,6 +1250,7 @@ final class IslandModel: ObservableObject {
 
     func selectAIActivity(_ activity: Activity) {
         if !aiActivityFilter.includes(activity) { aiActivityFilter = .all }
+        if let source = aiUsageSourceFilter, activity.usageSource != source { aiUsageSourceFilter = nil }
         selectedAIActivityID = activity.id
     }
 
@@ -1548,6 +1568,10 @@ final class IslandModel: ObservableObject {
     /// Runs every 20 s: refreshes the countdown and fires heads-up banners for thresholds crossed since the last tick.
     private func clockTick() {
         let now = Date()
+        if aiUsage.roll(to: now) {
+            for activity in aiActivities where activity.isLive { aiUsage.record(activity, now: now) }
+            usageStore.save(aiUsage)
+        }
         let since = lastAlertCheck
         lastAlertCheck = now
         rollRecap(now: now)

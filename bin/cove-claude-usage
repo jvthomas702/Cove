@@ -1,0 +1,50 @@
+#!/usr/bin/env python3
+"""Forward only Claude's documented quota fields to Cove; preserve the previous status line."""
+import json
+import os
+import subprocess
+import sys
+import urllib.request
+
+
+def main():
+    raw = sys.stdin.buffer.read()
+    data = {}
+    try:
+        data = json.loads(raw)
+        if not isinstance(data, dict):
+            data = {}
+        limits = data.get("rate_limits")
+        if isinstance(limits, dict):
+            # Keep only quota numbers. No session ids, file paths, prompts, or account credentials.
+            clean = {key: {field: value for field, value in window.items()
+                           if field in ("used_percentage", "resets_at") and type(value) in (int, float)}
+                     for key, window in limits.items()
+                     if key in ("five_hour", "seven_day", "spend_limit") and isinstance(window, dict)}
+            port = int(os.environ.get("COVE_PORT", "7777"))
+            if 1 <= port <= 65535:
+                request = urllib.request.Request(f"http://127.0.0.1:{port}/usage/claude",
+                                                 data=json.dumps({"rate_limits": clean}).encode(),
+                                                 headers={"Content-Type": "application/json"})
+                opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+                with opener.open(request, timeout=0.3):
+                    pass
+    except (ValueError, OSError, TypeError):
+        pass
+    previous = sys.argv[2] if len(sys.argv) > 2 and sys.argv[1] == "--" else ""
+    if previous:
+        return subprocess.run(previous, shell=True, input=raw).returncode
+    parts = []
+    limits = data.get("rate_limits", {})
+    if isinstance(limits, dict):
+        for key, label in (("five_hour", "5h"), ("seven_day", "7d")):
+            window = limits.get(key, {})
+            value = window.get("used_percentage") if isinstance(window, dict) else None
+            if type(value) in (int, float):
+                parts.append(f"{label}: {value:.0f}% used")
+    print("Claude" + (" · " + " · ".join(parts) if parts else ""))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

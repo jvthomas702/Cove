@@ -26,6 +26,9 @@ final class SpeechListener {
     private var task: SFSpeechRecognitionTask?
     private var finish: ((String) -> Void)?
     private var running = false
+    private var tapInstalled = false
+    private var recognitionID = UUID()
+    private var recognitionEnded = false
 
     /// Asks for the microphone and speech recognition the first time; afterwards it returns at once.
     static func authorize() async -> Failure? {
@@ -39,13 +42,17 @@ final class SpeechListener {
         return speech == .authorized ? nil : .speechDenied
     }
 
-    func start() throws {
+    func start(contextualStrings: [String] = SpeechVocabulary.builtIn) throws {
         cancel()
+        let id = recognitionID
+        recognitionEnded = false
         guard let recognizer = SFSpeechRecognizer() ?? SFSpeechRecognizer(locale: Locale(identifier: "en-US")),
               recognizer.isAvailable else { throw Failure.unavailable }
         let request = SFSpeechAudioBufferRecognitionRequest()
         request.shouldReportPartialResults = true
         request.addsPunctuation = true
+        request.taskHint = .dictation
+        request.contextualStrings = contextualStrings
         if recognizer.supportsOnDeviceRecognition { request.requiresOnDeviceRecognition = true }
 
         let input = engine.inputNode
@@ -54,12 +61,19 @@ final class SpeechListener {
         input.removeTap(onBus: 0)
         input.installTap(onBus: 0, bufferSize: 1024, format: format,
                          block: Self.tap(request: request, level: { [weak self] level in
-                             Task { @MainActor in self?.onLevel?(level) }
+                             Task { @MainActor in
+                                 guard let self, self.recognitionID == id else { return }
+                                 self.onLevel?(level)
+                             }
                          }))
+        tapInstalled = true
         self.request = request
         transcript = ""
         task = recognizer.recognitionTask(with: request, resultHandler: Self.results { [weak self] text, final, failed in
-            Task { @MainActor in self?.receive(text: text, final: final, failed: failed) }
+            Task { @MainActor in
+                guard let self, self.recognitionID == id else { return }
+                self.receive(text: text, final: final, failed: failed)
+            }
         })
         engine.prepare()
         do {
@@ -75,41 +89,50 @@ final class SpeechListener {
     /// that doesn't come within a moment.
     func stop(_ done: @escaping (String) -> Void) {
         guard running || task != nil else { done(transcript); return }
+        finish = done
         stopAudio()
         request?.endAudio()
-        finish = done
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
-            MainActor.assumeIsolated { self?.complete() }
+        if recognitionEnded { complete(); return }
+        let id = recognitionID
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) { [weak self] in
+            MainActor.assumeIsolated {
+                guard let self, self.recognitionID == id else { return }
+                self.complete()
+            }
         }
     }
 
     func cancel() {
+        recognitionID = UUID()
         stopAudio()
         task?.cancel()
         task = nil
         request = nil
         finish = nil
+        transcript = ""
+        recognitionEnded = false
     }
 
     private func stopAudio() {
-        guard running else { return }
+        if running { engine.stop() }
         running = false
-        engine.stop()
-        engine.inputNode.removeTap(onBus: 0)
+        if tapInstalled { engine.inputNode.removeTap(onBus: 0); tapInstalled = false }
     }
 
     private func receive(text: String?, final: Bool, failed: Bool) {
         if let text, !text.isEmpty {
-            transcript = text
-            onTranscript?(text)
+            transcript = SpeechVocabulary.normalize(text)
+            onTranscript?(transcript)
         }
-        if final || failed { complete() }
+        if final || failed { recognitionEnded = true; complete() }
     }
 
     private func complete() {
         guard let done = finish else { return }
         finish = nil
-        task?.finish()
+        recognitionID = UUID()
+        stopAudio()
+        task?.cancel()
         task = nil
         request = nil
         done(transcript)

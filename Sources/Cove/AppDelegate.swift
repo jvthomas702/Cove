@@ -432,6 +432,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         case ("POST", "/hook/claude"):
             agents.handleClaude(exchange.body)
             exchange.respond(200, ok)
+        case ("POST", "/usage/claude"):
+            let accepted = model.accountLimits.receiveClaude(exchange.body)
+            exchange.respond(accepted ? 200 : 400, accepted ? ok : #"{"error":"invalid quota payload"}"#)
         case ("POST", "/hook/claude/permission"):
             agents.handlePermission(exchange) // answers later, when you click
         case ("POST", "/hook/codex"):

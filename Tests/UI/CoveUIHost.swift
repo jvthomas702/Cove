@@ -58,6 +58,11 @@ struct UIHostView: View {
                     Button("Finish AI task") {
                         model.ingest(CoveEvent(id: "web:chatgpt:ui:tab:1", title: "Example reply", body: "Finished simulated reply", kind: "done", source: "chatgpt", silent: true))
                     }
+                    Button("Add usage sessions") {
+                        model.ingest(CoveEvent(id: "claude:ui-terminal", title: "Terminal task", body: "Reported transcript usage", kind: "running", source: "claude"))
+                        model.setUsage(id: "claude:ui-terminal", TokenUsage(input: 1200, output: 300))
+                        model.ingest(CoveEvent(id: "desktop:chatgpt:ui-desktop", title: "Desktop task", body: "Visible app activity", kind: "running", source: "chatgpt"))
+                    }
                     Button("Follow slate") {
                         var config = model.config; config.sportsWatchedGames = model.sports.allGames.map(\.key)
                         model.applyConfig?(config)
@@ -109,8 +114,15 @@ struct UIHostView: View {
         QuickTimerStore(defaults: timerDefaults).save(nil)
         model = IslandModel(config: config, sports: SportsMonitor(session: URLSession(configuration: sessionConfig)), shelfStore: ShelfStore(defaults: shelfDefaults, root: FileManager.default.temporaryDirectory.appendingPathComponent("cove-ui-shelf")),
                             recapStore: AgentRecapStore(url: FileManager.default.temporaryDirectory.appendingPathComponent("cove-ui-recap-\(UUID().uuidString).json")),
-                            timerStore: QuickTimerStore(defaults: timerDefaults))
+                            timerStore: QuickTimerStore(defaults: timerDefaults),
+                            usageStore: AIUsageStore(url: FileManager.default.temporaryDirectory.appendingPathComponent("cove-ui-usage-\(UUID().uuidString).json")))
         model.agentLauncher.folder = UIFeed.root
+        model.accountLimits.resolveExecutable = { URL(fileURLWithPath: "/usr/bin/true") }
+        model.accountLimits.readCodex = { _ in
+            [QuotaWindow(id: "codex.primary", title: "5h", usedPercent: 35, resetsAt: Date().addingTimeInterval(3600)),
+             QuotaWindow(id: "codex.secondary", title: "7d", usedPercent: 60, resetsAt: Date().addingTimeInterval(86400))]
+        }
+        model.accountLimits.receiveClaude(Data("{\"rate_limits\":{\"five_hour\":{\"used_percentage\":20,\"resets_at\":\(Int(Date().timeIntervalSince1970) + 7200)}}}".utf8))
         model.agentLauncher.resolveExecutable = { _ in URL(fileURLWithPath: "/usr/bin/true") }
         model.agentLauncher.openCommand = { url, completion in
             try? FileManager.default.removeItem(at: url.deletingLastPathComponent())

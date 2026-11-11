@@ -186,6 +186,7 @@ final class VoiceAssistant: ObservableObject {
     private let speaker = AVSpeechSynthesizer()
     private var dismissWork: DispatchWorkItem?
     private var hovering = false
+    private var turnID = UUID()
 
     var isActive: Bool { phase != .idle }
 
@@ -205,6 +206,9 @@ final class VoiceAssistant: ObservableObject {
     // MARK: fn
 
     func begin() {
+        turnID = UUID()
+        let id = turnID
+        listener.cancel()
         dismissWork?.cancel()
         run?.cancel()
         run = nil
@@ -219,9 +223,13 @@ final class VoiceAssistant: ObservableObject {
         changed()
         Task { [weak self] in
             let failure = await SpeechListener.authorize()
-            guard let self, self.phase == .listening else { return }
+            guard let self, self.turnID == id, self.phase == .listening else { return }
             if let failure { self.fail(failure.message); return }
-            do { try self.listener.start() } catch let error as SpeechListener.Failure {
+            do {
+                let config = self.config()
+                try self.listener.start(contextualStrings: SpeechVocabulary.phrases(
+                    custom: config.voiceVocabulary, folder: self.folder, repos: config.cloudRepos))
+            } catch let error as SpeechListener.Failure {
                 self.fail(error.message)
             } catch {
                 self.fail(error.localizedDescription)
@@ -234,10 +242,15 @@ final class VoiceAssistant: ObservableObject {
         phase = .thinking
         activity = "Listening…"
         changed()
-        listener.stop { [weak self] text in self?.send(text) }
+        let id = turnID
+        listener.stop { [weak self] text in
+            guard let self, self.turnID == id else { return }
+            self.send(text)
+        }
     }
 
     func cancel() {
+        turnID = UUID()
         listener.cancel()
         run?.cancel()
         run = nil
@@ -261,7 +274,7 @@ final class VoiceAssistant: ObservableObject {
     // MARK: Claude
 
     private func send(_ text: String) {
-        let request = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let request = SpeechVocabulary.normalize(text).trimmingCharacters(in: .whitespacesAndNewlines)
         guard !request.isEmpty else { fail("Didn't catch that. Hold fn and try again."); return }
         transcript = request
         guard let executable = resolveExecutable() else {
@@ -275,15 +288,22 @@ final class VoiceAssistant: ObservableObject {
         activity = "Thinking…"
         phase = .thinking
         changed()
+        let id = turnID
         do {
             run = try ClaudeRun(
                 executable: executable,
                 arguments: VoiceCommand.arguments(resume: resume, canEdit: config().voiceCanEdit),
                 folder: folder, prompt: request,
                 // The main queue runs these in the order they're sent, so the answer always lands before the exit.
-                onEvent: { [weak self] event in DispatchQueue.main.async { MainActor.assumeIsolated { self?.receive(event) } } },
+                onEvent: { [weak self] event in DispatchQueue.main.async { MainActor.assumeIsolated {
+                    guard let self, self.turnID == id else { return }
+                    self.receive(event)
+                } } },
                 onExit: { [weak self] status, errors in
-                    DispatchQueue.main.async { MainActor.assumeIsolated { self?.exited(status: status, errors: errors) } }
+                    DispatchQueue.main.async { MainActor.assumeIsolated {
+                        guard let self, self.turnID == id else { return }
+                        self.exited(status: status, errors: errors)
+                    } }
                 })
         } catch {
             fail("Couldn't start Claude Code: \(error.localizedDescription)")

@@ -91,14 +91,14 @@ struct AIWorkWidget: View {
                     if model.config.buddy { Buddy(mood: .sleepy, size: 54, animating: false) }
                     VStack(alignment: .leading, spacing: 8) {
                         Text(emptyTitle).font(Theme.Font.title)
-                        Text(model.aiActivities.isEmpty ? "Connect a coding agent or chat app to follow its work here." : "Switch to All to see your other tasks.")
+                        Text(model.aiActivities.isEmpty ? "Connect a coding agent or chat app to follow its work here." : "Show all sources and tasks to see your other sessions.")
                             .font(Theme.Font.body).foregroundStyle(Theme.inkSecondary)
                         if model.aiActivities.isEmpty {
                             Text(model.desktopAITrackingStatus).font(Theme.Font.caption).foregroundStyle(Theme.inkTertiary)
                         }
                         Button(model.aiActivities.isEmpty ? "Connect AI" : "Show all tasks") {
                             if model.aiActivities.isEmpty { model.openAIConnections() }
-                            else { model.aiActivityFilter = .all }
+                            else { model.aiActivityFilter = .all; model.aiUsageSourceFilter = nil }
                         }
                             .buttonStyle(PillButtonStyle()).accessibilityIdentifier("ai.emptyAction")
                     }
@@ -120,6 +120,7 @@ struct AIWorkWidget: View {
 
     private var emptyTitle: String {
         if model.aiActivities.isEmpty { return "Ready for your next task" }
+        if let source = model.aiUsageSourceFilter { return "No recent \(source.title.lowercased()) tasks" }
         return model.aiActivityFilter == .live ? "Nothing working right now" : "No finished tasks yet"
     }
 }
