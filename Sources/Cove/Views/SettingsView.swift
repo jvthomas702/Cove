@@ -535,6 +535,18 @@ private struct VoiceSettings: View {
                           detail: "Edits files without asking. Off: Claude reads and answers, and offers Terminal for anything that needs permission",
                           isOn: controller.binding(\.voiceCanEdit))
                 ToggleRow(title: "Read answers aloud", isOn: controller.binding(\.voiceSpeaks))
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Speech vocabulary")
+                    TextField("Project names or technical terms, separated by commas", text: Binding(
+                        get: { controller.model.config.voiceVocabulary.joined(separator: ", ") },
+                        set: { text in
+                            controller.binding(\.voiceVocabulary).wrappedValue = text.components(separatedBy: ",")
+                        }))
+                        .textFieldStyle(.roundedBorder)
+                        .accessibilityIdentifier("voice.vocabulary")
+                    Text("GitHub, Codex and other developer terms are included. Add names you use often to help recognition.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
             }
         }
     }

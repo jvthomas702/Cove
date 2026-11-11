@@ -88,7 +88,7 @@ enum AgentKind: String {
 }
 
 /// Tokens a Claude Code session has used, summed over its transcript.
-struct TokenUsage: Equatable {
+struct TokenUsage: Codable, Equatable {
     /// Prompt tokens, including cache reads and writes.
     var input: Int
     var output: Int
@@ -140,11 +140,18 @@ struct Activity: Identifiable, Equatable {
     /// The CLI session behind this activity, when its done banner can take a reply.
     var resume: ResumeTarget? = nil
 
+    var usageSource: AIUsageSource {
+        if id.hasPrefix("cloud:") || id.hasPrefix("web:") { return .cloud }
+        if id.hasPrefix("desktop:") || (agent == .codex && ownerApp == "com.openai.codex") { return .desktop }
+        return .terminal
+    }
+
     var originLabel: String {
         if id.hasPrefix("web:") { return "Browser tab" }
         if id.hasPrefix("desktop:") { return "Desktop app" }
         if id.hasPrefix("cloud:") { return "Claude cloud" }
         if id.hasPrefix("ci:") { return "GitHub Actions" }
+        if agent.isAI { return usageSource.title }
         return "Agent"
     }
     /// Tokens used so far (Claude Code sessions, read from the transcript).

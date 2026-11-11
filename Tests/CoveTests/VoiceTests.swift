@@ -1,6 +1,35 @@
 import XCTest
 @testable import Cove
 
+final class SpeechVocabularyTests: XCTestCase {
+    func testGitHubCorrectionsPreserveOrdinarySpeechAndIdentifiers() {
+        XCTAssertEqual(SpeechVocabulary.normalize("Open git hub and check get hub pull requests."), "Open GitHub and check GitHub pull requests.")
+        XCTAssertEqual(SpeechVocabulary.normalize("Push to GIT-HUB."), "Push to GitHub.")
+        let untouched = "Get up, get help, and open github.com/jvthomas702/Cove or mygithubtool."
+        XCTAssertEqual(SpeechVocabulary.normalize(untouched), untouched)
+    }
+
+    func testVocabularyIncludesDeveloperTermsCustomNamesAndProjectsWithinAppleLimit() {
+        let phrases = SpeechVocabulary.phrases(custom: [" github ", "", "Nori", "nori"],
+                                                folder: URL(fileURLWithPath: "/tmp/Cove"), repos: ["owner/NotchKit"])
+        XCTAssertTrue(phrases.contains("GitHub"))
+        XCTAssertTrue(phrases.contains("Codex"))
+        XCTAssertTrue(phrases.contains("Nori"))
+        XCTAssertTrue(phrases.contains("Cove"))
+        XCTAssertTrue(phrases.contains("NotchKit"))
+        XCTAssertEqual(phrases.filter { $0.lowercased() == "github" }.count, 1)
+        XCTAssertEqual(phrases.filter { $0.lowercased() == "nori" }.count, 1)
+        XCTAssertEqual(SpeechVocabulary.phrases(custom: (0..<150).map { "Project\($0)" }).count, 100)
+    }
+
+    func testCustomVocabularyRoundTripsAndOldSettingsStillLoad() throws {
+        let old = try JSONDecoder().decode(CoveConfig.self, from: Data("{}".utf8))
+        XCTAssertEqual(old.voiceVocabulary, [])
+        var config = old; config.voiceVocabulary = ["Nori", "NotchKit"]
+        XCTAssertEqual(try JSONDecoder().decode(CoveConfig.self, from: JSONEncoder().encode(config)).voiceVocabulary, config.voiceVocabulary)
+    }
+}
+
 final class FnHoldGestureTests: XCTestCase {
     private let start = Date(timeIntervalSinceReferenceDate: 1000)
 

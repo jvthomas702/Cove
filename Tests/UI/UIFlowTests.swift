@@ -175,6 +175,36 @@ final class UIFlowTests: XCTestCase {
         attachment.name = "AI task overview"; attachment.lifetime = .keepAlways; add(attachment)
     }
 
+    func testUsageSourcesFilterRecentTasksAndCanBeCleared() {
+        window.descendants(matching: .any).matching(identifier: "ui.fixtures").firstMatch.click()
+        app.menuItems["Add usage sessions"].click()
+        window.buttons["tab.ai"].click()
+        for source in ["cloud", "desktop", "terminal"] {
+            XCTAssertTrue(window.buttons["ai.usage.\(source)"].waitForExistence(timeout: 5))
+        }
+        window.buttons["ai.usage.terminal"].click()
+        XCTAssertTrue(window.buttons["ai.task.claude:ui-terminal"].waitForExistence(timeout: 5))
+        XCTAssertFalse(window.buttons["ai.task.desktop:chatgpt:ui-desktop"].exists)
+        XCTAssertTrue(text("2k tokens").exists || text("1 session · 2k tokens").exists)
+        window.buttons["ai.usage.desktop"].click()
+        XCTAssertTrue(window.buttons["ai.task.desktop:chatgpt:ui-desktop"].waitForExistence(timeout: 5))
+        XCTAssertFalse(window.buttons["ai.task.claude:ui-terminal"].exists)
+        window.buttons["ai.usage.all"].click()
+        XCTAssertTrue(window.buttons["ai.task.claude:ui-terminal"].waitForExistence(timeout: 5))
+        let attachment = XCTAttachment(screenshot: window.screenshot())
+        attachment.name = "Usage by source"; attachment.lifetime = .keepAlways; add(attachment)
+    }
+
+    func testAccountLimitsShowRemainingQuotaAndResetTimes() {
+        window.buttons["tab.ai"].click()
+        window.buttons["ai.limits.open"].click()
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "value CONTAINS %@ OR label CONTAINS %@", "65% remaining", "65% remaining")).firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "value CONTAINS %@ OR label CONTAINS %@", "80% remaining", "80% remaining")).firstMatch.exists)
+        XCTAssertTrue(app.buttons["ai.limits.refresh"].exists)
+        let attachment = XCTAttachment(screenshot: window.screenshot())
+        attachment.name = "Account limits and resets"; attachment.lifetime = .keepAlways; add(attachment)
+    }
+
     func testShelfUndoRenameAndAnnotation() {
         window.buttons["Quiet screenshot"].click(); window.buttons["tab.shelf"].click()
         let item = window.descendants(matching: .any).matching(identifier: "shelf.item.Cove UI Screenshot.png").firstMatch

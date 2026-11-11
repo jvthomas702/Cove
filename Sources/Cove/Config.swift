@@ -142,6 +142,8 @@ struct CoveConfig: Codable {
     var voiceCanEdit: Bool = false
     /// Read Claude's answers aloud.
     var voiceSpeaks: Bool = false
+    /// Extra names and technical terms for speech recognition, alongside Cove's built-in vocabulary.
+    var voiceVocabulary: [String] = []
     var sportsEnabled: Bool = true
     var sportsLeague: SportsLeague = .nfl
     var sportsGameID: String? = nil
@@ -259,6 +261,7 @@ struct CoveConfig: Codable {
         voiceFolder = value(.voiceFolder, d.voiceFolder)
         voiceCanEdit = value(.voiceCanEdit, d.voiceCanEdit)
         voiceSpeaks = value(.voiceSpeaks, d.voiceSpeaks)
+        voiceVocabulary = value(.voiceVocabulary, d.voiceVocabulary)
         sportsEnabled = value(.sportsEnabled, d.sportsEnabled)
         sportsLeague = value(.sportsLeague, d.sportsLeague)
         sportsGameID = value(.sportsGameID, d.sportsGameID)
